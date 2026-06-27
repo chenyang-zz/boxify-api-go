@@ -1,0 +1,54 @@
+internal/svc/context.go
+  h_e1f1392360ad67 36,63,73
+internal/transport/http/request/conversation.go
+  h_e1f1392360ad67 1-11
+internal/transport/http/routes/conversation.go
+  h_e1f1392360ad67 1-20
+internal/mapper/conversation.go
+  h_e1f1392360ad67 1-41
+internal/models/user_test.go
+  s_1f0e84774bb562::t_98c0a9c229fd7e 8-9,133-256
+internal/logic/conversation/list_conversations.go
+  h_e1f1392360ad67 1-38
+internal/transport/http/response/base.go
+  h_e1f1392360ad67 1-11
+internal/models/hooks.go
+  s_1f0e84774bb562::t_d3eb000746958d 1-32
+internal/transport/http/response/conversation.go
+  h_e1f1392360ad67 1-23
+internal/infrastructure/db/migration/runner.go
+  h_e1f1392360ad67 41-42
+internal/transport/http/handler/conversation.go
+  h_e1f1392360ad67 1-38
+internal/repository/conversation.go
+  h_e1f1392360ad67 1-18
+internal/transport/http/router.go
+  h_e1f1392360ad67 37,45
+internal/models/conversation.go
+  h_e1f1392360ad67 1-30
+internal/repository/postgres/conversation.go
+  h_e1f1392360ad67 1-42
+internal/logic/conversation/create_conversation.go
+  h_e1f1392360ad67 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "7d5d984187fca47b50f918f2427951e2cb84a2a8",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_1f0e84774bb562": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f041d-8057-7f62-8345-464924a521d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
