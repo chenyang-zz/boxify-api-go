@@ -1,0 +1,101 @@
+cmd/routegen/generate_handler.go
+  s_68c6fb60822163::t_a824f7c8a7b636 38-42,99,106-110,142,151,160,170-175,179-185
+  s_68c6fb60822163::t_55cf2cbcaa6722 176-178
+  s_68c6fb60822163::t_465c172aca5d97 186-187
+internal/logic/conversation/conversation_test.go
+  s_d5520a108cc9cc::t_b1e91f108fc616 73-74
+  s_d5520a108cc9cc::t_0bae99c109ed41 8,20-21,72,75-82,197-202,204-205
+  s_d5520a108cc9cc::t_927584b26ecc8e 137-138
+  s_d5520a108cc9cc::t_803551a6f7cbc2 149
+  s_d5520a108cc9cc::t_c85c9dbaac9a99 142
+  s_d5520a108cc9cc::t_95fe7e6335fa9c 139-141,143-148
+  s_d5520a108cc9cc::t_bd50b92b16d3dd 1-7,9-19,22-71,83-136,150-196,203,206-210
+cmd/routegen/directive.go
+  s_68c6fb60822163::t_5d7c76a987a704 81,87,90,138,145-148
+  s_68c6fb60822163::t_c98eea97f35635 50-53,71-72,83-85,92-94,96,99,101-106,112-114,118-137,139-144,149-159,200
+internal/logic/conversation/list_conversations.go
+  s_d5520a108cc9cc::t_42628506765f9a 29
+cmd/routegen/scan_request.go
+  s_68c6fb60822163::t_4f8d5aa3068bab 41-43,114-171
+  s_68c6fb60822163::t_2545c47f4e65d2 172
+internal/transport/http/handler/conversation.go
+  h_e1f1392360ad67 56
+AGENTS.md
+  s_d5520a108cc9cc::t_45584e3c5ec2ee 4
+  s_d5520a108cc9cc::t_ba1c4ebbbfcc52 27-30,43
+internal/transport/http/request/conversation.go
+  h_e1f1392360ad67 14
+  s_d5520a108cc9cc::t_9a07db2e9d1bd6 13,15-16,18
+CLAUDE.md
+  s_d5520a108cc9cc::t_45584e3c5ec2ee 4
+  s_d5520a108cc9cc::t_ba1c4ebbbfcc52 27-30,43
+internal/logic/conversation/create_conversation.go
+  s_d5520a108cc9cc::t_91cf82aab66e6c 42
+cmd/routegen/types.go
+  s_68c6fb60822163::t_b13e7afdcb5805 58-64
+  s_68c6fb60822163::t_9ae563bff2e02e 81-83
+internal/repository/conversation.go
+  s_d5520a108cc9cc::t_e66fdb2c4301f0 17-20,22
+  s_d5520a108cc9cc::t_156a9d2e1e252e 21,23-77
+  h_e1f1392360ad67 13
+internal/transport/http/routes/conversation.go
+  h_e1f1392360ad67 20-23,25
+internal/logic/conversation/helper.go
+  s_d5520a108cc9cc::t_0879fe2b20789c 1-18
+internal/logic/conversation/rename_conversation.go
+  h_e1f1392360ad67 5-6
+  s_d5520a108cc9cc::t_4c7dbbade2c3cc 7,40-42,50-53
+  s_1f0e84774bb562::t_c4cf60e94256aa 14,36-38
+  s_d5520a108cc9cc::t_97d4c432657e67 8,10,39,43-49
+cmd/routegen/main_test.go
+  s_68c6fb60822163::t_026271d7106cd0 68-120,383-398,400-420,424-455
+  s_68c6fb60822163::t_47b5e4a679a786 399,421-423
+  s_68c6fb60822163::t_28acf83750db1b 456,593,601-604,609-654,817,825-828,836-957
+  s_68c6fb60822163::t_2227ef7c48730f 457
+  s_68c6fb60822163::t_e2d205094ae48f 958
+internal/repository/postgres/conversation_test.go
+  s_d5520a108cc9cc::t_4ec17312b48f87 1-7,9-81,133-134
+  s_d5520a108cc9cc::t_666a2dbd064ce8 8,82-132
+internal/repository/postgres/conversation.go
+  s_d5520a108cc9cc::t_88190570088e4a 79-97,109
+  s_d5520a108cc9cc::t_ea51f9a6ce1934 28-29,36,39-42,50,52-54,59,61-67,70-78,98-108
+  h_e1f1392360ad67 11,16,49,51,55-58,60
+  s_d5520a108cc9cc::t_5d9ca694dd3feb 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "47a1cc6094d1439c187ff88ee2cc8d46b72a6515",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_1f0e84774bb562": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f041d-8057-7f62-8345-464924a521d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_d5520a108cc9cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0892-f010-7a52-bb80-be2f10228cc9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
