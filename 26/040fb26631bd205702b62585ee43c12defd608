@@ -1,0 +1,212 @@
+internal/logic/auth/update_avatar.go
+  h_e1f1392360ad67 1-84
+internal/transport/http/routes/auth.go
+  h_e1f1392360ad67 19-20
+internal/mapper/modelconfig_test.go
+  s_68c6fb60822163::t_b9f60da913af63 56,62
+  s_68c6fb60822163::t_b846a0468dd49b 1-55,57-61,63-141
+internal/logic/health/health.go
+  h_e1f1392360ad67 99
+  s_1f0e84774bb562::t_de6ce0d680fa8d 42-96
+  s_1f0e84774bb562::t_93f601ab9ac9a2 39-41
+  s_1f0e84774bb562::t_5227a91d4e3548 1-38,97-98,100-108
+internal/transport/http/response/auth.go
+  h_e1f1392360ad67 24
+internal/transport/http/request/modelconfig.go
+  h_e1f1392360ad67 17-29
+internal/transport/http/handler/auth.go
+  h_e1f1392360ad67 120-121,125
+internal/infrastructure/db/es/client_test.go
+  s_68c6fb60822163::t_ae4032ef05d997 1-119
+internal/svc/context_test.go
+  s_68c6fb60822163::t_fa4e886c547bfc 96,98,100
+  s_68c6fb60822163::t_70e2f4b4d38d83 99
+  s_68c6fb60822163::t_3be4c6034feca1 5,10,40,50-95,97
+internal/transport/http/router_test.go
+  s_1f0e84774bb562::t_de6ce0d680fa8d 6,201-219
+  s_68c6fb60822163::t_7bf3596c4dc9af 49-51,56-76,87-94
+  s_68c6fb60822163::t_8aa4c756eae86a 95
+internal/xerr/xerr.go
+  s_68c6fb60822163::t_29bb4b26223b09 7-8,31-37,96,187-208,210
+internal/infrastructure/db/neo4j/client_test.go
+  s_68c6fb60822163::t_f0727cf1d222a6 8,45-54,82-84
+internal/infrastructure/storage/cos.go
+  s_68c6fb60822163::t_01808f4526f389 1-82,93-103
+  s_68c6fb60822163::t_f1ccc05b3856a5 83-92
+cmd/routegen/main.go
+  s_68c6fb60822163::t_87e1844e9e0082 17,81,273,286-300,697-701,705,789-802
+  s_68c6fb60822163::t_55a70867c2f3cc 90-91,99-103,448-451,466,471,493-514,531-543,702-704,706,766-777,779
+  s_68c6fb60822163::t_f0d255713784db 89,92-98,104-105,137-140,153
+  s_68c6fb60822163::t_c1eb39df6515ae 421-447,452-465,467-470,472-492,515-530,544-557
+  s_68c6fb60822163::t_f53e39cec7f4a1 558-568
+  s_68c6fb60822163::t_01a986db159f19 691,707-711,758-765,778,780-788
+  s_68c6fb60822163::t_9293fae10cefbd 15,608,634
+  s_68c6fb60822163::t_be01d726160ded 803
+internal/transport/http/response/response.go
+  s_68c6fb60822163::t_3bc32c1fd64add 81-87
+  s_68c6fb60822163::t_7ba3d973821c7a 4,6,13-14,35-37,43-75,77-78,80,88-99,112-124
+  s_68c6fb60822163::t_1c3d697e4d0f74 5,76,79,100-111
+internal/mapper/modelconfig.go
+  s_68c6fb60822163::t_bf5f4369a6b9c6 1-54
+  s_1f0e84774bb562::t_de6ce0d680fa8d 55-66
+internal/transport/http/response/health.go
+  h_e1f1392360ad67 1-17
+internal/infrastructure/db/postgres/gorm.go
+  s_68c6fb60822163::t_5defeaa1f68ab0 31-44
+internal/observability/xlog/gin.go
+  s_68c6fb60822163::t_a6f90ed7c9a0d9 59
+internal/transport/http/routes/health.go
+  h_e1f1392360ad67 9
+internal/repository/postgres/model_config.go
+  s_68c6fb60822163::t_adffbfe71b2b80 72
+  h_e1f1392360ad67 5,23,25,27,32,34,43,46-71,73-80,97-108
+configs/config.yml.example
+  s_68c6fb60822163::t_4e6c2b9b969156 13-15,19-21,38-42
+internal/transport/http/router.go
+  h_e1f1392360ad67 33
+internal/infrastructure/db/redis/client.go
+  s_68c6fb60822163::t_ae4032ef05d997 1-55
+internal/infrastructure/db/postgres/client.go
+  s_68c6fb60822163::t_f0727cf1d222a6 45-48
+internal/logic/modelconfig/set_model_default.go
+  s_1f0e84774bb562::t_9d22faaf6a6ec8 28,32-36
+  h_e1f1392360ad67 5-8,13,37-52
+  s_1f0e84774bb562::t_ba989e095d5d37 29-31
+  s_1f0e84774bb562::t_87485723388f2c 1-4,9-12,14-27,53
+internal/transport/http/request/auth.go
+  h_e1f1392360ad67 3-4,31-34
+go.mod
+  s_68c6fb60822163::t_7ae5a5b5d06045 8,10,18-19
+  s_68c6fb60822163::t_0b7ce77ac5843d 34,39,42-43,47,59,63,75-77
+internal/repository/model_config.go
+  h_e1f1392360ad67 12-14,16
+internal/logic/modelconfig/create_model.go
+  s_68c6fb60822163::t_18906cbc22a74d 8,38,42
+internal/infrastructure/storage/local_test.go
+  s_68c6fb60822163::t_d2d68576de9e36 1-16
+internal/infrastructure/storage/cos_test.go
+  s_68c6fb60822163::t_b86cda10ab0d81 23
+  h_e1f1392360ad67 11,88,90
+  s_68c6fb60822163::t_09f2567e051206 37-39
+  s_68c6fb60822163::t_821d622ec01730 30-31,55-57,74
+  s_68c6fb60822163::t_2cf4cac70d62f2 1-10,12-22,24-29,32-36,40-54,58-73,75-84,122-129
+  s_68c6fb60822163::t_d45783c0c4bb2f 85-87,89,91-95,97,99,101-103,105,107,109-121
+  s_68c6fb60822163::t_d41f3d0620f81f 96,98,100,104,106,108
+internal/svc/context.go
+  s_68c6fb60822163::t_fa4e886c547bfc 26-28,30
+  s_68c6fb60822163::t_e1f1d8ac7bef5c 15,29,76-106,136-145,162-179
+  s_68c6fb60822163::t_f0727cf1d222a6 10,13
+  s_68c6fb60822163::t_3c1b5d51562cda 180
+internal/transport/http/response/modelconfig.go
+  h_e1f1392360ad67 20
+cmd/routegen/main_test.go
+  s_68c6fb60822163::t_c50e5c07505b98 101-103,196-233,245-275,517-519,552-554
+  s_68c6fb60822163::t_09befd3ff93bcd 234-244,276-360,494-516
+  s_68c6fb60822163::t_bb4fc04f52d7ae 361-493
+internal/util/text_test.go
+  s_68c6fb60822163::t_664b54ca104a1e 116-135
+internal/mapper/user.go
+  h_e1f1392360ad67 1-24
+internal/transport/http/error_flow_test.go
+  s_68c6fb60822163::t_a4a8d926f3ee88 4,55-64,66-67,69-95
+internal/logic/modelconfig/modelconfig_test.go
+  s_68c6fb60822163::t_7037c530cd2359 1-147
+internal/infrastructure/storage/storage.go
+  h_e1f1392360ad67 6-7,23,27
+  s_68c6fb60822163::t_f7fc6f2a33b8f8 3-5,8,19-22,24-26
+  s_68c6fb60822163::t_3e0416539f3e08 11
+  s_68c6fb60822163::t_01808f4526f389 16-18,28
+internal/logic/modelconfig/update_model.go
+  s_68c6fb60822163::t_267af92f317092 7-8,28,37,39,41-42,48,55-59
+  h_e1f1392360ad67 13,43-47,50-54
+  s_1f0e84774bb562::t_9d22faaf6a6ec8 32-36,38
+  s_68c6fb60822163::t_98cb4a696b5c43 4-6
+  s_68c6fb60822163::t_273b493458a104 40
+  s_68c6fb60822163::t_b3bbd012fe9f47 60
+  s_1f0e84774bb562::t_e669f488c5497d 1-3,9-12,14-27,29-31,49
+internal/infrastructure/db/es/client.go
+  s_68c6fb60822163::t_ae4032ef05d997 1-128
+internal/logic/modelconfig/delete_model.go
+  s_1f0e84774bb562::t_9d22faaf6a6ec8 24,28-35,38-40
+  h_e1f1392360ad67 43-44
+  s_1f0e84774bb562::t_b78a169e1af085 21-23
+  s_1f0e84774bb562::t_01ca595cc025f9 25-27
+  s_1f0e84774bb562::t_6b84d8685df2a6 36-37
+  s_1f0e84774bb562::t_27b4f12293aa3c 1-20,41-42,45-47
+internal/config/config.go
+  s_68c6fb60822163::t_fa4e886c547bfc 68-69
+  s_68c6fb60822163::t_038f09d5a7177b 42-45,49-52,70-77,165-167,169-171,181-184
+internal/transport/http/routes/modelconfig.go
+  h_e1f1392360ad67 13,15-20
+internal/config/config_test.go
+  s_68c6fb60822163::t_12de0a310180a3 39-41,44-46,57,59-63,83-91,109-111,113-115,125-128,168-176
+internal/infrastructure/storage/local.go
+  s_68c6fb60822163::t_698e56597c1b16 17-20
+internal/transport/http/response/response_test.go
+  s_68c6fb60822163::t_ad4a2adf05ce4d 144-153,184-186
+  s_68c6fb60822163::t_013b26c8e50242 6-7,10,98-143,154-183,187-189,211-231
+internal/xerr/xerr_test.go
+  s_68c6fb60822163::t_b2424a7edb1b21 5,84-124
+internal/logic/modelconfig/helper.go
+  s_68c6fb60822163::t_f92186e83bb873 5,14,16
+  s_68c6fb60822163::t_85222f08799e5d 1-3,7-8,12,18
+  s_1f0e84774bb562::t_9d22faaf6a6ec8 4,6,9-11,13,15,17
+internal/transport/http/handler/modelconfig.go
+  s_68c6fb60822163::t_11b001ff90dc76 62-68,72-73,77-78,85-87,91-92,95-96,103-105,109-110,114-115
+  s_68c6fb60822163::t_aa57fc9a25c0d1 59-61
+  s_68c6fb60822163::t_b6ef7d7e7374de 69-71
+  s_68c6fb60822163::t_d8f6c58bafe34e 74-76
+  s_68c6fb60822163::t_2faff6e7918504 79-84
+  s_68c6fb60822163::t_278f9a532eeeb8 88-90
+  s_68c6fb60822163::t_44ebf61669363c 93-94
+  s_68c6fb60822163::t_d54ec5e1e54cc9 97-102
+  s_68c6fb60822163::t_83eda4116fec24 106-108
+  s_68c6fb60822163::t_31cf6f037f3e91 111-113
+  s_68c6fb60822163::t_5848b3ef7568d6 116-117
+  s_68c6fb60822163::t_11594998575dee 58
+internal/infrastructure/db/redis/client_test.go
+  s_68c6fb60822163::t_ae4032ef05d997 1-36
+internal/infrastructure/db/neo4j/client.go
+  s_68c6fb60822163::t_f0727cf1d222a6 46-52
+internal/logic/modelconfig/list_models.go
+  s_1f0e84774bb562::t_de6ce0d680fa8d 47,49-50
+  h_e1f1392360ad67 9
+  s_1f0e84774bb562::t_bff4aaa4bf0945 10,38,43
+internal/util/text.go
+  s_68c6fb60822163::t_23ee9a1c0e6219 85-92
+internal/infrastructure/db/postgres/client_test.go
+  s_68c6fb60822163::t_f0727cf1d222a6 95-104,134-135
+  s_68c6fb60822163::t_145f325a707c5c 105-114,136,182-202
+  s_68c6fb60822163::t_322e7e37797f7c 203
+go.sum
+  s_68c6fb60822163::t_2c457a3a630792 9,22-23,35-38,47-51,66-67,69,106-107,115-116,150-153,168-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "26040fb26631bd205702b62585ee43c12defd608",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_1f0e84774bb562": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f041d-8057-7f62-8345-464924a521d4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
