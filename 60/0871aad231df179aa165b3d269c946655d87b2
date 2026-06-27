@@ -1,0 +1,102 @@
+internal/transport/http/routes/chat.go
+  s_d5520a108cc9cc::t_9b75063064de19 12
+  h_e1f1392360ad67 10-11,13-15
+internal/logic/chat/chat_stream.go
+  s_68c6fb60822163::t_4c7b01210d493f 6,10,86-87,89,93-94
+  h_e1f1392360ad67 5,7-9,11,36-84,96-116
+  s_d5520a108cc9cc::t_769f23900647f7 35,88
+  s_d5520a108cc9cc::t_0736c0f0c11e18 90-92
+  s_d5520a108cc9cc::t_bb09345f7fbe1d 34
+  s_d5520a108cc9cc::t_6381622a6332b5 18-19,25-27,30,85
+internal/transport/http/request/chat.go
+  h_e1f1392360ad67 3-7,9-22
+internal/svc/context_test.go
+  s_d5520a108cc9cc::t_ed43898e68325c 60,67,74,81-82
+  s_d5520a108cc9cc::t_80e089252d450b 83
+internal/repository/message.go
+  h_e1f1392360ad67 18
+internal/mapper/chat.go
+  s_d5520a108cc9cc::t_466f8d5fc0846c 33
+  s_d5520a108cc9cc::t_eecbfe4d05eec0 10-11,19-24,26-32,34-45,47-69
+  h_e1f1392360ad67 1-9,12-18,46,70
+  s_d5520a108cc9cc::t_c67f912c0dfb12 25
+internal/domain/event.go
+  s_d5520a108cc9cc::t_5a1427bb7a8730 77-78
+  s_d5520a108cc9cc::t_8e6358f5b3b68d 11-17,40-73
+  h_e1f1392360ad67 1-10,18-25,31-39,74-76
+  s_d5520a108cc9cc::t_ef7df5c5adceb8 26-30
+internal/transport/http/response/sse.go
+  s_68c6fb60822163::t_f0c396758bf54c 1-46
+internal/models/conversation.go
+  h_e1f1392360ad67 21
+AGENTS.md
+  s_d5520a108cc9cc::t_944a1d5bbdae58 4
+cmd/codegen/main_test.go
+  s_68c6fb60822163::t_00cd55c76855b8 123-124,343-452
+  s_68c6fb60822163::t_9be93c22258a80 13,26-28,105-122
+  s_68c6fb60822163::t_9d973a8abcba5f 125
+internal/transport/http/response/sse_test.go
+  s_68c6fb60822163::t_a164010bde206a 1-65
+cmd/codegen/types.go
+  s_68c6fb60822163::t_8815d2fdef7c78 60
+internal/repository/postgres/message.go
+  h_e1f1392360ad67 120-127
+internal/logic/chat/helper.go
+  h_e1f1392360ad67 1-23
+internal/transport/http/handler/chat.go
+  s_d5520a108cc9cc::t_e3b1d6183e51b6 5,9,22,28,33-36,38
+cmd/codegen/main.go
+  s_68c6fb60822163::t_e15e85e6ef9a2d 87-89,136-143
+  s_68c6fb60822163::t_a00a79b55f1aae 144
+cmd/codegen/generate_handler.go
+  s_68c6fb60822163::t_83d9684bfd37d4 139
+cmd/codegen/generate_logic.go
+  s_68c6fb60822163::t_6779fc51f41039 12-14,95-98,105-113
+  s_68c6fb60822163::t_e9559b53bb0c28 114-115
+internal/transport/http/router_test.go
+  s_d5520a108cc9cc::t_a6855c102e647c 99-249
+  s_d5520a108cc9cc::t_689e516a57b253 16,33-34
+internal/transport/http/response/chat.go
+  h_e1f1392360ad67 1-29
+internal/mapper/chat_test.go
+  s_d5520a108cc9cc::t_26480bf37c5b8b 20,33,45,69
+  s_d5520a108cc9cc::t_dd60d4227623bf 14,27,39,52-53
+  s_d5520a108cc9cc::t_405ecba1a46366 1-13,15-19,21-26,28-32,34-38,40-44,46-51,54-68,70-72
+internal/domain/event_test.go
+  s_d5520a108cc9cc::t_345d609c8901aa 1-90
+CLAUDE.md
+  s_d5520a108cc9cc::t_944a1d5bbdae58 4
+cmd/codegen/directive.go
+  s_68c6fb60822163::t_397b9ca1841d46 30-31,94-96,205
+internal/domain/chat.go
+  h_e1f1392360ad67 3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "600871aad231df179aa165b3d269c946655d87b2",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_d5520a108cc9cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0892-f010-7a52-bb80-be2f10228cc9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
