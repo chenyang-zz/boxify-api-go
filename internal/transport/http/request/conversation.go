@@ -9,3 +9,7 @@ package request
 type CreateConversationRequest struct {
 	Title *string `json:"title" binding:"omitempty,min=1,max=256"`
 }
+
+type RenameConversationRequest struct {
+	Title string `json:"title" binding:"required,min=1,max=256"`
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"go/ast"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,36 @@ func TestParseDirectiveWithoutOutputKeepsOutputEmpty(t *testing.T) {
 	}
 	if directive.Output != "" {
 		t.Fatalf("output = %q, want empty", directive.Output)
+	}
+}
+
+func TestParseDirectiveGroupSupportsAtRoutegenProtocol(t *testing.T) {
+	group := commentGroup(
+		"// 创建图书。",
+		"// 保存图书的基础信息。",
+		"// @routegen",
+		"// @auth",
+		"// @userID",
+		"// @input *request.CreateBookRequest",
+		"// @output response.ListResponse[*response.BookResponse]",
+	)
+
+	directive, comments, ok := parseDirectiveGroup(group)
+	if !ok {
+		t.Fatal("parseDirectiveGroup ok = false, want true")
+	}
+	if !directive.Auth || !directive.UserID {
+		t.Fatalf("directive auth/userID = %v/%v, want true/true", directive.Auth, directive.UserID)
+	}
+	if directive.Input != "*request.CreateBookRequest" {
+		t.Fatalf("input = %q", directive.Input)
+	}
+	if directive.Output != "response.ListResponse[*response.BookResponse]" {
+		t.Fatalf("output = %q", directive.Output)
+	}
+	wantComments := []string{"创建图书。", "保存图书的基础信息。"}
+	if strings.Join(comments, "\n") != strings.Join(wantComments, "\n") {
+		t.Fatalf("comments = %#v, want %#v", comments, wantComments)
 	}
 }
 
@@ -103,6 +134,77 @@ func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler, authMidd
 	}
 }
 
+func TestScanRoutesParsesCustomLogicComment(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler) {
+	bookRoutes := api.Group("/books")
+	// 创建图书。
+	// 保存图书的基础信息。
+	// routegen: input=request.CreateBookRequest output=response.BookResponse
+	bookRoutes.POST("", book.Create)
+}
+`)
+
+	routes, err := scanRoutes(root)
+	if err != nil {
+		t.Fatalf("scanRoutes error = %v", err)
+	}
+	if len(routes) != 1 {
+		t.Fatalf("len(routes) = %d, want 1", len(routes))
+	}
+	if got := strings.Join(routes[0].CommentLines, "\n"); got != "创建图书。\n保存图书的基础信息。" {
+		t.Fatalf("comment lines = %q", got)
+	}
+}
+
+func TestScanRoutesParsesAtRoutegenProtocolAndMultilineComment(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler) {
+	bookRoutes := api.Group("/books")
+	// 创建图书。
+	// 保存图书的基础信息。
+	// @routegen
+	// @auth
+	// @userID
+	// @input request.CreateBookRequest
+	// @output response.BookResponse
+	bookRoutes.POST("", book.Create)
+}
+`)
+
+	routes, err := scanRoutes(root)
+	if err != nil {
+		t.Fatalf("scanRoutes error = %v", err)
+	}
+	if len(routes) != 1 {
+		t.Fatalf("len(routes) = %d, want 1", len(routes))
+	}
+	route := routes[0]
+	if !route.Directive.Auth || !route.Directive.UserID {
+		t.Fatalf("directive auth/userID = %v/%v, want true/true", route.Directive.Auth, route.Directive.UserID)
+	}
+	if route.Directive.Input != "request.CreateBookRequest" || route.Directive.Output != "response.BookResponse" {
+		t.Fatalf("directive = %+v", route.Directive)
+	}
+	if got := strings.Join(route.CommentLines, "\n"); got != "创建图书。\n保存图书的基础信息。" {
+		t.Fatalf("comment lines = %q", got)
+	}
+}
+
 func TestGenerateCreatesMissingHandlerAndLogic(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
@@ -145,8 +247,11 @@ func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler, authMidd
 		t.Fatalf("logic file contains generated header:\n%s", logicFile)
 	}
 	for _, want := range []string{
+		"// CreateLogic contains the create use case.",
 		"type CreateLogic struct",
+		"// NewCreateLogic creates a CreateLogic.",
 		`xlog.Component("logic.book.create")`,
+		"// Create handles the create use case.",
 		"func (l *CreateLogic) Create(userID uuid.UUID, input *request.CreateBookRequest) (*response.BookResponse, error)",
 		"return nil, nil",
 	} {
@@ -156,6 +261,100 @@ func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler, authMidd
 	}
 	assertReportContains(t, report, FileAdded, "internal/transport/http/handler/book.go")
 	assertReportContains(t, report, FileAdded, "internal/logic/book/create.go")
+}
+
+func TestGenerateUsesCustomLogicMethodComment(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler) {
+	bookRoutes := api.Group("/books")
+	// 创建图书。
+	// 保存图书的基础信息。
+	// routegen: input=request.CreateBookRequest output=response.BookResponse
+	bookRoutes.POST("", book.Create)
+}
+`)
+
+	if _, err := Generate(root); err != nil {
+		t.Fatalf("Generate error = %v", err)
+	}
+
+	logicFile := readFile(t, root, "internal/logic/book/create.go")
+	for _, want := range []string{
+		"// CreateLogic contains the create use case.",
+		"// NewCreateLogic creates a CreateLogic.",
+		"// Create 创建图书。\n// 保存图书的基础信息。",
+	} {
+		if !strings.Contains(logicFile, want) {
+			t.Fatalf("logic file missing %q:\n%s", want, logicFile)
+		}
+	}
+}
+
+func TestGenerateUsesAtRoutegenMultilineLogicMethodComment(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler) {
+	bookRoutes := api.Group("/books")
+	// 创建图书。
+	// 保存图书的基础信息。
+	// @routegen
+	// @input request.CreateBookRequest
+	// @output response.BookResponse
+	bookRoutes.POST("", book.Create)
+}
+`)
+
+	if _, err := Generate(root); err != nil {
+		t.Fatalf("Generate error = %v", err)
+	}
+
+	logicFile := readFile(t, root, "internal/logic/book/create.go")
+	if !strings.Contains(logicFile, "// Create 创建图书。\n// 保存图书的基础信息。") {
+		t.Fatalf("logic file missing multiline custom comment:\n%s", logicFile)
+	}
+}
+
+func TestGenerateDoesNotDuplicateMethodNameInCustomLogicComment(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler) {
+	bookRoutes := api.Group("/books")
+	// Create 创建图书。
+	// routegen: input=request.CreateBookRequest output=response.BookResponse
+	bookRoutes.POST("", book.Create)
+}
+`)
+
+	if _, err := Generate(root); err != nil {
+		t.Fatalf("Generate error = %v", err)
+	}
+
+	logicFile := readFile(t, root, "internal/logic/book/create.go")
+	if !strings.Contains(logicFile, "// Create 创建图书。") {
+		t.Fatalf("logic file missing custom comment:\n%s", logicFile)
+	}
+	if strings.Contains(logicFile, "// Create Create") {
+		t.Fatalf("logic file duplicated method name:\n%s", logicFile)
+	}
 }
 
 func TestGenerateUsesQueryBindingForGETInput(t *testing.T) {
@@ -768,4 +967,12 @@ func readFile(t *testing.T, root, path string) string {
 		t.Fatalf("ReadFile error = %v", err)
 	}
 	return string(data)
+}
+
+func commentGroup(lines ...string) *ast.CommentGroup {
+	comments := make([]*ast.Comment, 0, len(lines))
+	for _, line := range lines {
+		comments = append(comments, &ast.Comment{Text: line})
+	}
+	return &ast.CommentGroup{List: comments}
 }

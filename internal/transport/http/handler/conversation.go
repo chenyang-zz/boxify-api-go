@@ -50,3 +50,26 @@ func (h ConversationHandler) ListConversations(c *gin.Context) {
 	}
 	response.OK(c, out)
 }
+
+func (h ConversationHandler) RenameConversation(c *gin.Context) {
+	var body request.RenameConversationRequest
+	if err := c.ShouldBindUri(&body); err != nil {
+		response.FromError(c, xerr.Validation(err))
+		return
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.FromError(c, xerr.Validation(err))
+		return
+	}
+	userID, err := util.UserIDFromContext(c.Request.Context())
+	if err != nil {
+		response.FromError(c, err)
+		return
+	}
+	out, err := conversationlogic.NewRenameConversationLogic(c.Request.Context(), h.svc).RenameConversation(userID, &body)
+	if err != nil {
+		response.FromError(c, err)
+		return
+	}
+	response.OK(c, out)
+}
