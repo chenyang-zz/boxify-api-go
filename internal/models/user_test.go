@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestUserTableName(t *testing.T) {
@@ -126,5 +128,129 @@ func TestRefreshTokenGormTags(t *testing.T) {
 				t.Fatalf("%s gorm tag = %q, want to contain %q", fieldName, tag, want)
 			}
 		}
+	}
+}
+
+func TestBeforeCreateAssignsUUIDWhenIDIsNil(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "conversation",
+			run: func(t *testing.T) {
+				row := &Conversation{}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID == uuid.Nil {
+					t.Fatal("ID remained nil")
+				}
+			},
+		},
+		{
+			name: "user",
+			run: func(t *testing.T) {
+				row := &User{}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID == uuid.Nil {
+					t.Fatal("ID remained nil")
+				}
+			},
+		},
+		{
+			name: "refresh token",
+			run: func(t *testing.T) {
+				row := &RefreshToken{}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID == uuid.Nil {
+					t.Fatal("ID remained nil")
+				}
+			},
+		},
+		{
+			name: "model config",
+			run: func(t *testing.T) {
+				row := &ModelConfig{}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID == uuid.Nil {
+					t.Fatal("ID remained nil")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
+	}
+}
+
+func TestBeforeCreatePreservesExistingUUID(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T)
+	}{
+		{
+			name: "conversation",
+			run: func(t *testing.T) {
+				id := uuid.New()
+				row := &Conversation{ID: id}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID != id {
+					t.Fatalf("ID = %s, want %s", row.ID, id)
+				}
+			},
+		},
+		{
+			name: "user",
+			run: func(t *testing.T) {
+				id := uuid.New()
+				row := &User{ID: id}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID != id {
+					t.Fatalf("ID = %s, want %s", row.ID, id)
+				}
+			},
+		},
+		{
+			name: "refresh token",
+			run: func(t *testing.T) {
+				id := uuid.New()
+				row := &RefreshToken{ID: id}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID != id {
+					t.Fatalf("ID = %s, want %s", row.ID, id)
+				}
+			},
+		},
+		{
+			name: "model config",
+			run: func(t *testing.T) {
+				id := uuid.New()
+				row := &ModelConfig{ID: id}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID != id {
+					t.Fatalf("ID = %s, want %s", row.ID, id)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, tt.run)
 	}
 }

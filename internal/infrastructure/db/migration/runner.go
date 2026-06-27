@@ -35,7 +35,12 @@ func (r *Runner) Up(ctx context.Context) error {
 	if r == nil || r.db == nil {
 		return xerr.BadRequest("GORM migration runner 未初始化")
 	}
-	if err := r.db.WithContext(ctx).AutoMigrate(&models.User{}, &models.RefreshToken{}, &models.ModelConfig{}); err != nil {
+	if err := r.db.WithContext(ctx).AutoMigrate(
+		&models.User{},
+		&models.RefreshToken{},
+		&models.ModelConfig{},
+		&models.Conversation{},
+	); err != nil {
 		return xerr.Wrapf(err, "执行 GORM migration 失败")
 	}
 	return nil

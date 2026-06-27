@@ -33,6 +33,7 @@ type ServiceContext struct {
 	RefreshTokenRepo repository.RefreshTokenRepository
 	MemoryGraphRepo  repository.MemoryGraphRepository
 	ModelConfigRepo  repository.ModelConfigRepository
+	ConversationRepo repository.ConversationRepository
 
 	SecretCipher *security.SecretCipher
 	TokenIssuer  *security.TokenIssuer
@@ -59,6 +60,7 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 	userRepo := repositorypostgres.NewUserRepository(db)
 	refreshTokenRepo := repositorypostgres.NewRefreshTokenRepository(db)
 	modelConfigRepo := repositorypostgres.NewModelConfigRepository(db)
+	conversationRepo := repositorypostgres.NewConversationRepository(db)
 
 	svcCtx := &ServiceContext{
 		Config: cfg,
@@ -68,6 +70,7 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		UserRepo:         userRepo,
 		RefreshTokenRepo: refreshTokenRepo,
 		ModelConfigRepo:  modelConfigRepo,
+		ConversationRepo: conversationRepo,
 
 		SecretCipher: cipher,
 		TokenIssuer:  security.NewTokenIssuer(cfg.JWT.Secret, accessTokenTTL),
