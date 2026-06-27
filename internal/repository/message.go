@@ -11,11 +11,11 @@ import (
 type MessageRepository interface {
 	Create(ctx context.Context, userID uuid.UUID, message *models.Message) (*models.Message, error)
 	List(ctx context.Context, userID uuid.UUID) ([]*models.Message, error)
-	
 	FindByID(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) (*models.Message, error)
 	Update(ctx context.Context, userID uuid.UUID, message *models.Message) (*models.Message, error)
 	UpdateFields(ctx context.Context, userID uuid.UUID, messageID uuid.UUID, message *models.Message, fields *MessageUpdateFields) (*models.Message, error)
 	Delete(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) error
+	Count(ctx context.Context, conversationID uuid.UUID) (int64, error)
 }
 
 type MessageUpdateFields struct {

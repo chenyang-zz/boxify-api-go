@@ -84,6 +84,9 @@ func GenerateRoutes(root string) (Report, error) {
 	if len(routes) == 0 {
 		return report, nil
 	}
+	if err := validateRoutes(routes); err != nil {
+		return report, err
+	}
 
 	handlers, err := scanHandlers(root)
 	if err != nil {
@@ -129,4 +132,13 @@ func GenerateRoutes(root string) (Report, error) {
 		}
 	}
 	return report, nil
+}
+
+func validateRoutes(routes []Route) error {
+	for _, route := range routes {
+		if route.Directive.SSE && route.Directive.Event == "" {
+			return fmt.Errorf("codegen: %s.%s uses @sse but missing @event <GoType>", route.HandlerType, route.HandlerMethod)
+		}
+	}
+	return nil
 }

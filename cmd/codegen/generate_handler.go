@@ -136,8 +136,7 @@ func handlerMethodSnippet(route Route, requestDTOs map[string]RequestDTO) (strin
 		b.WriteString("\t\tresponse.FromError(c, err)\n")
 		b.WriteString("\t\treturn\n")
 		b.WriteString("\t}\n")
-		b.WriteString("\t_ = events\n")
-		b.WriteString("\tresponse.OK(c, map[string]any{})\n")
+		b.WriteString("\tresponse.StreamEvents(c, events)\n")
 		b.WriteString("}\n")
 		return b.String(), nil
 	}

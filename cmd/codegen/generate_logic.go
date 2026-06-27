@@ -9,6 +9,9 @@ import (
 func generateLogic(root string, route Route, report *Report) error {
 	methodArgs, imports := logicMethodArgs(route)
 	output := route.Directive.Output
+	if route.Directive.SSE {
+		output = "<-chan " + strings.TrimSpace(route.Directive.Event)
+	}
 	body := fmt.Sprintf(`// %[1]sLogic contains the %[7]s use case.
 type %[1]sLogic struct {
 	ctx    context.Context
@@ -89,10 +92,25 @@ func logicMethodArgs(route Route) ([]string, []string) {
 		args = append(args, "input *"+route.Directive.Input)
 		imports = append(imports, fmt.Sprintf(`"%s/internal/transport/http/request"`, modulePath))
 	}
+	if route.Directive.SSE {
+		imports = append(imports, logicImportsForType(route.Directive.Event)...)
+		return args, imports
+	}
 	if strings.Contains(route.Directive.Output, "response.") {
 		imports = append(imports, fmt.Sprintf(`"%s/internal/transport/http/response"`, modulePath))
 	}
 	return args, imports
+}
+
+func logicImportsForType(goType string) []string {
+	var imports []string
+	if strings.Contains(goType, "domain.") {
+		imports = append(imports, fmt.Sprintf(`"%s/internal/domain"`, modulePath))
+	}
+	if strings.Contains(goType, "response.") {
+		imports = append(imports, fmt.Sprintf(`"%s/internal/transport/http/response"`, modulePath))
+	}
+	return imports
 }
 
 func logicReturnSignature(goType string) string {

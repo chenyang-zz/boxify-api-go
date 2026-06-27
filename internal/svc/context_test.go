@@ -57,26 +57,29 @@ func TestServiceContextCanHoldLocalStorage(t *testing.T) {
 }
 
 func TestBuildStorageReturnsErrorForIncompleteCOSConfig(t *testing.T) {
-	_, err := svc.BuildStorage(config.StorageConfig{Backend: "cos"})
+	_, _, err := svc.BuildStorage(config.StorageConfig{Backend: "cos"})
 	if err == nil || !strings.Contains(err.Error(), "COS 存储配置无效") {
 		t.Fatalf("BuildStorage error = %v, want cos config error", err)
 	}
 }
 
 func TestBuildStorageReturnsErrorForUnknownBackend(t *testing.T) {
-	_, err := svc.BuildStorage(config.StorageConfig{Backend: "unknown"})
+	_, _, err := svc.BuildStorage(config.StorageConfig{Backend: "unknown"})
 	if err == nil || !strings.Contains(err.Error(), "存储 backend 配置无效") {
 		t.Fatalf("BuildStorage error = %v, want backend error", err)
 	}
 }
 
 func TestBuildStorageReturnsLocalStoreByDefault(t *testing.T) {
-	store, err := svc.BuildStorage(config.StorageConfig{Backend: "local", Dir: t.TempDir()})
+	store, signer, err := svc.BuildStorage(config.StorageConfig{Backend: "local", Dir: t.TempDir()})
 	if err != nil {
 		t.Fatalf("BuildStorage error = %v", err)
 	}
 	if store == nil {
 		t.Fatal("store = nil")
+	}
+	if signer != nil {
+		t.Fatalf("signer = %T, want nil for local storage", signer)
 	}
 }
 

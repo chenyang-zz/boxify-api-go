@@ -27,6 +27,8 @@ func parseDirective(line string) (Directive, bool) {
 			directive.Input = strings.TrimPrefix(field, "input=")
 		case strings.HasPrefix(field, "output="):
 			directive.Output = strings.TrimPrefix(field, "output=")
+		case strings.HasPrefix(field, "event="):
+			directive.Event = strings.TrimPrefix(field, "event=")
 		}
 	}
 	return directive, true
@@ -89,6 +91,9 @@ func parseDirectiveGroup(group *ast.CommentGroup) (Directive, []string, bool) {
 		case "sse":
 			enabled = true
 			directive.SSE = true
+		case "event":
+			enabled = true
+			directive.Event = value
 		case "description":
 			enabled = true
 			directive.Description = append([]string{value}, descriptionContinuationLines(group.List[i+1:])...)
@@ -197,7 +202,7 @@ func isRoutegenAtDirective(line string) bool {
 		return false
 	}
 	switch key {
-	case "routegen", "auth", "userID", "user_id", "sse", "description", "summary", "input", "output", "response":
+	case "routegen", "auth", "userID", "user_id", "sse", "event", "description", "summary", "input", "output", "response":
 		return true
 	default:
 		return strings.HasPrefix(key, "routegen.")

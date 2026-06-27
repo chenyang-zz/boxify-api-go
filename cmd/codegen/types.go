@@ -57,6 +57,7 @@ var httpMethods = map[string]struct{}{
 type Directive struct {
 	Input       string
 	Output      string
+	Event       string
 	Description []string
 	Summary     string
 	Auth        bool

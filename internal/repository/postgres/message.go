@@ -117,3 +117,11 @@ func (r *MessageRepository) Delete(ctx context.Context, userID uuid.UUID, messag
 	}
 	return nil
 }
+
+func (r *MessageRepository) Count(ctx context.Context, conversationID uuid.UUID) (int64, error) {
+	result := r.db.WithContext(ctx).Where("conversation_id = ?", conversationID).Create(&models.Message{})
+	if result.Error != nil {
+		return 0, xerr.Wrapf(result.Error, "查询消息数量失败")
+	}
+	return result.RowsAffected, nil
+}

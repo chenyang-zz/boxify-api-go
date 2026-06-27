@@ -7,5 +7,10 @@ import (
 
 func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler, authMiddleware gin.HandlerFunc) {
 	chatRoutes := api.Group("/chat", authMiddleware)
-	chatRoutes.POST("/stream", chat.Stream)
+	// @auth(user_id)
+	// @sse
+	// @event response.SSEEvent
+	// @description 流式聊天
+	// @input request.ChatStreamRequest
+	chatRoutes.POST("/stream", chat.ChatStream)
 }

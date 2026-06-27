@@ -13,6 +13,7 @@ import (
 	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
+	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/svc"
 	httptransport "github.com/boxify/api-go/internal/transport/http"
 	"github.com/boxify/api-go/internal/xerr"
@@ -29,6 +30,8 @@ func newTestRouter(t *testing.T, enableDebugPanicRoute ...bool) http.Handler {
 		UserRepo:         newTestUserRepository(),
 		RefreshTokenRepo: newTestRefreshTokenRepository(),
 		ModelConfigRepo:  &testModelConfigRepository{},
+		ConversationRepo: newTestConversationRepository(),
+		MessageRepo:      newTestMessageRepository(),
 		SecretCipher:     cipher,
 		TokenIssuer:      security.NewTokenIssuer("test-secret", time.Hour),
 	}
@@ -91,6 +94,157 @@ func (r *testModelConfigRepository) FindByID(ctx context.Context, userID uuid.UU
 		}
 	}
 	return nil, xerr.NotFound("模型配置不存在")
+}
+
+type testConversationRepository struct {
+	rows []*models.Conversation
+}
+
+func newTestConversationRepository() *testConversationRepository {
+	return &testConversationRepository{}
+}
+
+func (r *testConversationRepository) Create(ctx context.Context, userID uuid.UUID, row *models.Conversation) (*models.Conversation, error) {
+	if row.ID == uuid.Nil {
+		row.ID = uuid.New()
+	}
+	row.UserID = userID
+	r.rows = append(r.rows, row)
+	return row, nil
+}
+
+func (r *testConversationRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Conversation, error) {
+	out := make([]*models.Conversation, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row.UserID == userID {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (r *testConversationRepository) FindByID(ctx context.Context, userID uuid.UUID, conversationID uuid.UUID) (*models.Conversation, error) {
+	for _, row := range r.rows {
+		if row.ID == conversationID && row.UserID == userID {
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("会话不存在")
+}
+
+func (r *testConversationRepository) Update(ctx context.Context, userID uuid.UUID, row *models.Conversation) (*models.Conversation, error) {
+	for i, existing := range r.rows {
+		if existing.ID == row.ID && existing.UserID == userID {
+			row.UserID = userID
+			r.rows[i] = row
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("会话不存在")
+}
+
+func (r *testConversationRepository) UpdateFields(ctx context.Context, userID uuid.UUID, conversationID uuid.UUID, row *models.Conversation, fields *repository.ConversationUpdateFields) (*models.Conversation, error) {
+	existing, err := r.FindByID(ctx, userID, conversationID)
+	if err != nil {
+		return nil, err
+	}
+	for _, column := range fields.Columns() {
+		if column == "title" {
+			existing.Title = row.Title
+		}
+	}
+	return existing, nil
+}
+
+func (r *testConversationRepository) Delete(ctx context.Context, userID uuid.UUID, conversationID uuid.UUID) error {
+	for i, row := range r.rows {
+		if row.ID == conversationID && row.UserID == userID {
+			r.rows = append(r.rows[:i], r.rows[i+1:]...)
+			return nil
+		}
+	}
+	return xerr.NotFound("会话不存在")
+}
+
+type testMessageRepository struct {
+	rows []*models.Message
+}
+
+func newTestMessageRepository() *testMessageRepository {
+	return &testMessageRepository{}
+}
+
+func (r *testMessageRepository) Create(ctx context.Context, userID uuid.UUID, row *models.Message) (*models.Message, error) {
+	if row.ID == uuid.Nil {
+		row.ID = uuid.New()
+	}
+	r.rows = append(r.rows, row)
+	return row, nil
+}
+
+func (r *testMessageRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Message, error) {
+	return append([]*models.Message(nil), r.rows...), nil
+}
+
+func (r *testMessageRepository) FindByID(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) (*models.Message, error) {
+	for _, row := range r.rows {
+		if row.ID == messageID {
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("消息不存在")
+}
+
+func (r *testMessageRepository) Update(ctx context.Context, userID uuid.UUID, row *models.Message) (*models.Message, error) {
+	for i, existing := range r.rows {
+		if existing.ID == row.ID {
+			r.rows[i] = row
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("消息不存在")
+}
+
+func (r *testMessageRepository) UpdateFields(ctx context.Context, userID uuid.UUID, messageID uuid.UUID, row *models.Message, fields *repository.MessageUpdateFields) (*models.Message, error) {
+	existing, err := r.FindByID(ctx, userID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	for _, column := range fields.Columns() {
+		switch column {
+		case "conversation_id":
+			existing.ConversationID = row.ConversationID
+		case "role":
+			existing.Role = row.Role
+		case "sender_person_id":
+			existing.SenderPersonID = row.SenderPersonID
+		case "sender_user_id":
+			existing.SenderUserID = row.SenderUserID
+		case "meta_data":
+			existing.MetaData = row.MetaData
+		}
+	}
+	return existing, nil
+}
+
+func (r *testMessageRepository) Delete(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) error {
+	for i, row := range r.rows {
+		if row.ID == messageID {
+			r.rows = append(r.rows[:i], r.rows[i+1:]...)
+			return nil
+		}
+	}
+	return xerr.NotFound("消息不存在")
+}
+
+func (r *testMessageRepository) Count(ctx context.Context, conversationID uuid.UUID) (int64, error) {
+	var count int64
+	for _, row := range r.rows {
+		if row.ConversationID == conversationID {
+			count++
+		}
+	}
+	return count, nil
 }
 
 type testUserRepository struct {

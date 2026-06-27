@@ -40,14 +40,3 @@ type Tool interface {
 	Schema() ToolSchema
 	Run(ctx context.Context, toolCtx ToolContext, input ToolInput) (ToolResult, error)
 }
-
-type AgentEvent struct {
-	Type      string         `json:"type"`
-	Text      string         `json:"text,omitempty"`
-	Tool      string         `json:"tool,omitempty"`
-	Query     string         `json:"query,omitempty"`
-	Status    string         `json:"status,omitempty"`
-	Citations []Citation     `json:"citations,omitempty"`
-	Stats     map[string]any `json:"stats,omitempty"`
-	LatencyMS int64          `json:"latency_ms,omitempty"`
-}

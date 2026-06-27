@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseDirective(t *testing.T) {
-	directive, ok := parseDirective("// routegen: auth user_id input=request.CreateBookRequest output=response.BookResponse")
+	directive, ok := parseDirective("// routegen: auth user_id sse input=request.CreateBookRequest output=response.BookResponse event=domain.AgentEvent")
 	if !ok {
 		t.Fatal("parseDirective ok = false, want true")
 	}
@@ -22,6 +22,9 @@ func TestParseDirective(t *testing.T) {
 	}
 	if directive.Output != "response.BookResponse" {
 		t.Fatalf("output = %q", directive.Output)
+	}
+	if !directive.SSE || directive.Event != "domain.AgentEvent" {
+		t.Fatalf("sse/event = %v/%q, want true/domain.AgentEvent", directive.SSE, directive.Event)
 	}
 }
 
@@ -96,6 +99,27 @@ func TestParseDirectiveGroupSupportsNewAnnotationProtocol(t *testing.T) {
 	wantDescription := []string{"重命名会话", "修改当前用户拥有的会话标题。", "标题不能为空。"}
 	if strings.Join(comments, "\n") != strings.Join(wantDescription, "\n") {
 		t.Fatalf("comments = %#v, want %#v", comments, wantDescription)
+	}
+}
+
+func TestParseDirectiveGroupSupportsEventAnnotation(t *testing.T) {
+	group := commentGroup(
+		"// @auth(user_id)",
+		"// @sse",
+		"// @event domain.AgentEvent",
+		"// @description 流式聊天",
+		"// @input request.ChatStreamRequest",
+	)
+
+	directive, comments, ok := parseDirectiveGroup(group)
+	if !ok {
+		t.Fatal("parseDirectiveGroup ok = false, want true")
+	}
+	if !directive.SSE || directive.Event != "domain.AgentEvent" {
+		t.Fatalf("sse/event = %v/%q, want true/domain.AgentEvent", directive.SSE, directive.Event)
+	}
+	if strings.Join(comments, "\n") != "流式聊天" {
+		t.Fatalf("comments = %#v, want description", comments)
 	}
 }
 
@@ -314,6 +338,116 @@ func RegisterBookRoutes(api *gin.RouterGroup, book handler.BookHandler, authMidd
 	}
 	assertReportContains(t, report, FileAdded, "internal/transport/http/handler/book.go")
 	assertReportContains(t, report, FileAdded, "internal/logic/book/create.go")
+}
+
+func TestGenerateFailsForSSEWithoutEvent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/chat.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler, authMiddleware gin.HandlerFunc) {
+	chatRoutes := api.Group("/chat", authMiddleware)
+	// @auth(user_id)
+	// @sse
+	// @input request.ChatStreamRequest
+	chatRoutes.POST("/stream", chat.ChatStream)
+}
+`)
+
+	_, err := GenerateRoutes(root)
+	if err == nil {
+		t.Fatal("GenerateRoutes error = nil, want missing @event error")
+	}
+	if !strings.Contains(err.Error(), "uses @sse but missing @event <GoType>") {
+		t.Fatalf("error = %v, want missing @event hint", err)
+	}
+}
+
+func TestGenerateCreatesSSEHandlerAndLogicWithEvent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/chat.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler, authMiddleware gin.HandlerFunc) {
+	chatRoutes := api.Group("/chat", authMiddleware)
+	// @auth(user_id)
+	// @sse
+	// @event domain.AgentEvent
+	// @description 流式聊天
+	// @input request.ChatStreamRequest
+	chatRoutes.POST("/stream", chat.ChatStream)
+}
+`)
+
+	if _, err := GenerateRoutes(root); err != nil {
+		t.Fatalf("GenerateRoutes error = %v", err)
+	}
+
+	handlerFile := readFile(t, root, "internal/transport/http/handler/chat.go")
+	for _, want := range []string{
+		"events, err := chatlogic.NewChatStreamLogic(c.Request.Context(), h.svc).ChatStream(userID, &body)",
+		"response.StreamEvents(c, events)",
+	} {
+		if !strings.Contains(handlerFile, want) {
+			t.Fatalf("handler file missing %q:\n%s", want, handlerFile)
+		}
+	}
+	for _, forbidden := range []string{"_ = events", "response.OK(c, map[string]any{})"} {
+		if strings.Contains(handlerFile, forbidden) {
+			t.Fatalf("handler file should not contain %q:\n%s", forbidden, handlerFile)
+		}
+	}
+
+	logicFile := readFile(t, root, "internal/logic/chat/chat_stream.go")
+	for _, want := range []string{
+		`"github.com/boxify/api-go/internal/domain"`,
+		"func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStreamRequest) (<-chan domain.AgentEvent, error)",
+		"return nil, nil",
+	} {
+		if !strings.Contains(logicFile, want) {
+			t.Fatalf("logic file missing %q:\n%s", want, logicFile)
+		}
+	}
+}
+
+func TestGenerateCreatesSSELogicWithResponseEvent(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/chat.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler) {
+	chatRoutes := api.Group("/chat")
+	// @sse
+	// @event response.ChatEvent
+	chatRoutes.GET("/events", chat.Events)
+}
+`)
+
+	if _, err := GenerateRoutes(root); err != nil {
+		t.Fatalf("GenerateRoutes error = %v", err)
+	}
+
+	logicFile := readFile(t, root, "internal/logic/chat/events.go")
+	for _, want := range []string{
+		`"github.com/boxify/api-go/internal/transport/http/response"`,
+		"func (l *EventsLogic) Events() (<-chan response.ChatEvent, error)",
+	} {
+		if !strings.Contains(logicFile, want) {
+			t.Fatalf("logic file missing %q:\n%s", want, logicFile)
+		}
+	}
 }
 
 func TestGenerateUsesCustomLogicMethodComment(t *testing.T) {
