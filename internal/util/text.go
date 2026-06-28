@@ -90,6 +90,14 @@ func AssignIfNotEmpty(dst *string, src *string) {
 	*dst = *src
 }
 
+// AssignIfNotNil 在 src 非 nil 时，将 src 的值赋给 dst。
+func AssignIfNotNil[T comparable](dst *T, src *T) {
+	if dst == nil || src == nil {
+		return
+	}
+	*dst = *src
+}
+
 func normalizeText(value string) string {
 	return NormalizeRequired(value)
 }

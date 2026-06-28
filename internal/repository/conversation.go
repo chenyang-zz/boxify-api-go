@@ -41,8 +41,8 @@ func (f *ConversationUpdateFields) IsGroup() *ConversationUpdateFields {
 	return f.add("is_group")
 }
 
-func (f *ConversationUpdateFields) MemberPersonIDs() *ConversationUpdateFields {
-	return f.add("member_person_ids")
+func (f *ConversationUpdateFields) MemberPersonaIDs() *ConversationUpdateFields {
+	return f.add("member_persona_ids")
 }
 
 func (f *ConversationUpdateFields) EnableTools() *ConversationUpdateFields {

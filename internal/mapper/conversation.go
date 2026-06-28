@@ -17,17 +17,17 @@ func ConversationToResponse(row *models.Conversation) *response.ConversationResp
 		return nil
 	}
 	res := &response.ConversationResponse{
-		ID:              row.ID,
-		Title:           row.Title,
-		IsGroup:         row.IsGroup,
-		MemberPersonIDs: row.MemberPersonIDs,
-		EnableTools:     row.EnableTools,
-		CreatedAt:       row.CreatedAt,
-		UpdatedAt:       row.UpdatedAt,
+		ID:               row.ID,
+		Title:            row.Title,
+		IsGroup:          row.IsGroup,
+		MemberPersonaIDs: row.MemberPersonaIDs,
+		EnableTools:      row.EnableTools,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
 	}
 
-	if res.MemberPersonIDs == nil {
-		res.MemberPersonIDs = []string{}
+	if res.MemberPersonaIDs == nil {
+		res.MemberPersonaIDs = []string{}
 	}
 
 	return res
@@ -61,8 +61,8 @@ func MessageToResponse(row *models.Message, imagesMap map[uuid.UUID][]string, ra
 		CreatedAt: row.CreatedAt,
 	}
 
-	if row.SenderPersonID != uuid.Nil {
-		res.SenderPersonID = &row.SenderPersonID
+	if row.SenderPersonaID != nil && *row.SenderPersonaID != uuid.Nil {
+		res.SenderPersonaID = row.SenderPersonaID
 	}
 	if metadata.SenderName != "" {
 		res.SenderName = &row.MetaData.SenderName

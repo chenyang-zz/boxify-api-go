@@ -3,13 +3,13 @@ package chat
 import (
 	"context"
 	"strings"
+	"time"
 
 	"log/slog"
 
 	"github.com/boxify/api-go/internal/core/llm"
 	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
-	realtimememory "github.com/boxify/api-go/internal/infrastructure/realtime/memory"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -82,9 +82,8 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 		return nil, err
 	}
 
-	broker := l.realtimeBroker()
 	topic := realtime.ConversationTopic(conversation.ID)
-	subscription, err := broker.Subscribe(l.ctx, topic)
+	subscription, err := l.svcCtx.Realtime.Subscribe(l.ctx, topic)
 	if err != nil {
 		return nil, err
 	}
@@ -98,28 +97,26 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 			return
 		case events <- domain.NewMetaEvent(conversation.ID, conversation.Title):
 		}
-		_ = realtime.Forward(l.ctx, subscription, events, realtime.ForwardOptions{})
+		err = realtime.Forward(l.ctx, subscription, events, realtime.ForwardOptions{})
+		if err != nil {
+			l.log.WarnContext(l.ctx, "转发事件失败", slog.String("error", err.Error()))
+		}
 	}()
 
-	go l.runChatTurn(context.WithoutCancel(l.ctx), broker, topic)
+	go func() {
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			default:
+				time.Sleep(2 * time.Second)
+				_ = l.svcCtx.Realtime.Publish(l.ctx, topic, domain.NewTokenEvent("345"))
+			}
+
+		}
+
+	}()
 	return events, nil
-}
-
-func (l *ChatStreamLogic) realtimeBroker() realtime.Broker {
-	if l.svcCtx != nil && l.svcCtx.Realtime != nil {
-		return l.svcCtx.Realtime
-	}
-	return realtimememory.New()
-}
-
-func (l *ChatStreamLogic) runChatTurn(ctx context.Context, broker realtime.Broker, topic string) {
-	if err := broker.Publish(ctx, topic, domain.NewTokenEvent("345")); err != nil {
-		l.log.WarnContext(ctx, "发布 token 事件失败", slog.String("error", err.Error()))
-		return
-	}
-	if err := broker.Publish(ctx, topic, domain.NewDoneEvent("789")); err != nil {
-		l.log.WarnContext(ctx, "发布 done 事件失败", slog.String("error", err.Error()))
-	}
 }
 
 func (l *ChatStreamLogic) ensureConversation(userID uuid.UUID, conversationIDStr string, message string) (*models.Conversation, error) {

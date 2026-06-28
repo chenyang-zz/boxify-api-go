@@ -1456,6 +1456,21 @@ type Book struct {
 
 	assertReportContains(t, report, FileAdded, "internal/repository/book.go")
 	assertReportContains(t, report, FileAdded, "internal/repository/postgres/book.go")
+	assertReportContains(t, report, FileAdded, "internal/models/hooks.go")
+
+	hooksFile := readFile(t, root, "internal/models/hooks.go")
+	for _, want := range []string{
+		"package models",
+		`"github.com/google/uuid"`,
+		`"gorm.io/gorm"`,
+		"func ensureUUID(id *uuid.UUID)",
+		"func (b *Book) BeforeCreate(tx *gorm.DB) error",
+		"ensureUUID(&b.ID)",
+	} {
+		if !strings.Contains(hooksFile, want) {
+			t.Fatalf("hooks file missing %q:\n%s", want, hooksFile)
+		}
+	}
 }
 
 func TestGenerateRepositoryRequiresUserScopedUUIDModel(t *testing.T) {
@@ -1553,6 +1568,17 @@ type Message struct {
 
 	assertReportContains(t, report, FileAdded, "internal/repository/message.go")
 	assertReportContains(t, report, FileAdded, "internal/repository/postgres/message.go")
+	assertReportContains(t, report, FileAdded, "internal/models/hooks.go")
+
+	hooksFile := readFile(t, root, "internal/models/hooks.go")
+	for _, want := range []string{
+		"func (m *Message) BeforeCreate(tx *gorm.DB) error",
+		"ensureUUID(&m.ID)",
+	} {
+		if !strings.Contains(hooksFile, want) {
+			t.Fatalf("hooks file missing %q:\n%s", want, hooksFile)
+		}
+	}
 }
 
 func TestGenerateRepositorySkipsExistingFiles(t *testing.T) {
@@ -1584,6 +1610,87 @@ type Book struct {
 	}
 	assertReportContains(t, report, FileSkipped, "internal/repository/book.go")
 	assertReportContains(t, report, FileSkipped, "internal/repository/postgres/book.go")
+}
+
+func TestGenerateRepositoryAppendsMissingHook(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/models/book.go", `package models
+
+import "github.com/google/uuid"
+
+type Book struct {
+	ID     uuid.UUID `+"`gorm:\"column:id;type:uuid;primaryKey\"`"+`
+	UserID uuid.UUID `+"`gorm:\"column:user_id;type:uuid;not null;index\"`"+`
+	Title  string    `+"`gorm:\"column:title\"`"+`
+}
+`)
+	writeFile(t, root, "internal/models/hooks.go", `package models
+
+func existingHelper() {}
+`)
+
+	report, err := GenerateRepository(RepositoryOptions{Root: root, Model: "Book"})
+	if err != nil {
+		t.Fatalf("GenerateRepository error = %v", err)
+	}
+
+	hooksFile := readFile(t, root, "internal/models/hooks.go")
+	for _, want := range []string{
+		`"github.com/google/uuid"`,
+		`"gorm.io/gorm"`,
+		"func existingHelper() {}",
+		"func ensureUUID(id *uuid.UUID)",
+		"func (b *Book) BeforeCreate(tx *gorm.DB) error",
+		"ensureUUID(&b.ID)",
+	} {
+		if !strings.Contains(hooksFile, want) {
+			t.Fatalf("hooks file missing %q:\n%s", want, hooksFile)
+		}
+	}
+	assertReportContains(t, report, FileModified, "internal/models/hooks.go")
+}
+
+func TestGenerateRepositorySkipsExistingHook(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/models/book.go", `package models
+
+import "github.com/google/uuid"
+
+type Book struct {
+	ID     uuid.UUID `+"`gorm:\"column:id;type:uuid;primaryKey\"`"+`
+	UserID uuid.UUID `+"`gorm:\"column:user_id;type:uuid;not null;index\"`"+`
+	Title  string    `+"`gorm:\"column:title\"`"+`
+}
+`)
+	writeFile(t, root, "internal/models/hooks.go", `package models
+
+import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+func ensureUUID(id *uuid.UUID) {
+	if *id == uuid.Nil {
+		*id = uuid.New()
+	}
+}
+
+func (b *Book) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&b.ID)
+	return nil
+}
+`)
+
+	report, err := GenerateRepository(RepositoryOptions{Root: root, Model: "Book"})
+	if err != nil {
+		t.Fatalf("GenerateRepository error = %v", err)
+	}
+
+	hooksFile := readFile(t, root, "internal/models/hooks.go")
+	if strings.Count(hooksFile, "BeforeCreate") != 1 {
+		t.Fatalf("hooks file should contain one BeforeCreate:\n%s", hooksFile)
+	}
+	assertReportContains(t, report, FileSkipped, "internal/models/hooks.go")
 }
 
 func assertReportContains(t *testing.T, report Report, kind FileChangeKind, path string) {

@@ -184,6 +184,18 @@ func TestBeforeCreateAssignsUUIDWhenIDIsNil(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "message",
+			run: func(t *testing.T) {
+				row := &Message{}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID == uuid.Nil {
+					t.Fatal("ID remained nil")
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -240,6 +252,19 @@ func TestBeforeCreatePreservesExistingUUID(t *testing.T) {
 			run: func(t *testing.T) {
 				id := uuid.New()
 				row := &ModelConfig{ID: id}
+				if err := row.BeforeCreate(nil); err != nil {
+					t.Fatalf("BeforeCreate error = %v", err)
+				}
+				if row.ID != id {
+					t.Fatalf("ID = %s, want %s", row.ID, id)
+				}
+			},
+		},
+		{
+			name: "message",
+			run: func(t *testing.T) {
+				id := uuid.New()
+				row := &Message{ID: id}
 				if err := row.BeforeCreate(nil); err != nil {
 					t.Fatalf("BeforeCreate error = %v", err)
 				}

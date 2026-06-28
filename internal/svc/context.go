@@ -3,10 +3,12 @@ package svc
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/boxify/api-go/internal/config"
+	"github.com/boxify/api-go/internal/core/prompt"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	dbneo4j "github.com/boxify/api-go/internal/infrastructure/db/neo4j"
 	dbpostgres "github.com/boxify/api-go/internal/infrastructure/db/postgres"
@@ -40,9 +42,14 @@ type ServiceContext struct {
 	ConversationRepo    repository.ConversationRepository
 	MessageRepo         repository.MessageRepository
 	MessageFeedbackRepo repository.MessageFeedbackRepository
+	AgentConfigRepo     repository.AgentConfigRepository
+	AgentPersonaRepo    repository.AgentPersonaRepository
+	AgentTaskRepo       repository.AgentTaskRepository
 
 	SecretCipher *security.SecretCipher
 	TokenIssuer  *security.TokenIssuer
+
+	PromptManager *prompt.Manager
 
 	closeOnce sync.Once
 	closeErr  error
@@ -69,6 +76,9 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 	conversationRepo := repositorypostgres.NewConversationRepository(db)
 	messageRepo := repositorypostgres.NewMessageRepository(db)
 	messageFeedbackRepo := repositorypostgres.NewMessageFeedbackRepository(db)
+	agentConfigRepo := repositorypostgres.NewAgentConfigRepository(db)
+	agentPersonaRepo := repositorypostgres.NewAgentPersonaRepository(db)
+	agentTaskRepo := repositorypostgres.NewAgentTaskRepository(db)
 
 	svcCtx := &ServiceContext{
 		Config: cfg,
@@ -81,9 +91,14 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		ConversationRepo:    conversationRepo,
 		MessageRepo:         messageRepo,
 		MessageFeedbackRepo: messageFeedbackRepo,
+		AgentConfigRepo:     agentConfigRepo,
+		AgentPersonaRepo:    agentPersonaRepo,
+		AgentTaskRepo:       agentTaskRepo,
 
 		SecretCipher: cipher,
 		TokenIssuer:  security.NewTokenIssuer(cfg.JWT.Secret, accessTokenTTL),
+
+		PromptManager: prompt.NewManager(filepath.Join("internal", "prompts")),
 	}
 
 	redisClient, err := infraredis.NewClient(ctx, infraredis.Config{

@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -15,17 +16,19 @@ import (
 const defaultOpenAIBaseURL = "https://api.openai.com/v1"
 
 type openaiLLMClient struct {
-	client         openai.Client
-	apiKey         string
-	model          string
-	embeddingModel string
+	client             openai.Client
+	apiKey             string
+	model              string
+	embeddingModel     string
+	defaultTemperature *float64
 }
 
 type openAIConfig struct {
-	httpClient     *http.Client
-	apiKey         string
-	baseURL        string
-	embeddingModel string
+	httpClient         *http.Client
+	apiKey             string
+	baseURL            string
+	embeddingModel     string
+	defaultTemperature *float64
 }
 
 type OpenAIOption func(*openAIConfig)
@@ -33,9 +36,22 @@ type OpenAIOption func(*openAIConfig)
 func WithBaseURL(baseURL string) OpenAIOption {
 	return func(c *openAIConfig) {
 		if strings.TrimSpace(baseURL) != "" {
-			c.baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+			c.baseURL = normalizeOpenAIBaseURL(baseURL)
 		}
 	}
+}
+
+func normalizeOpenAIBaseURL(baseURL string) string {
+	normalized := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	parsed, err := url.Parse(normalized)
+	if err != nil || parsed == nil {
+		return normalized
+	}
+	if strings.EqualFold(parsed.Hostname(), "api.openai.com") && parsed.Path == "" {
+		parsed.Path = "/v1"
+		return parsed.String()
+	}
+	return normalized
 }
 
 func WithEmbeddingModel(model string) OpenAIOption {
@@ -43,6 +59,12 @@ func WithEmbeddingModel(model string) OpenAIOption {
 		if strings.TrimSpace(model) != "" {
 			c.embeddingModel = strings.TrimSpace(model)
 		}
+	}
+}
+
+func WithTemperature(value float64) OpenAIOption {
+	return func(c *openAIConfig) {
+		c.defaultTemperature = &value
 	}
 }
 
@@ -67,10 +89,11 @@ func NewOpenaiLLMClient(apiKey string, model string, opts ...OpenAIOption) corel
 		option.WithHTTPClient(cfg.httpClient),
 	}
 	return &openaiLLMClient{
-		client:         openai.NewClient(clientOptions...),
-		apiKey:         cfg.apiKey,
-		model:          model,
-		embeddingModel: cfg.embeddingModel,
+		client:             openai.NewClient(clientOptions...),
+		apiKey:             cfg.apiKey,
+		model:              model,
+		embeddingModel:     cfg.embeddingModel,
+		defaultTemperature: cfg.defaultTemperature,
 	}
 }
 
@@ -121,6 +144,9 @@ func (c *openaiLLMClient) chatParams(messages []*corellm.Message, opts ...corell
 	params := openai.ChatCompletionNewParams{
 		Model:    openai.ChatModel(c.model),
 		Messages: toOpenAIMessages(messages),
+	}
+	if c.defaultTemperature != nil {
+		params.Temperature = openai.Float(*c.defaultTemperature)
 	}
 	chatOpts := corellm.NewChatOptions(opts...)
 	if chatOpts.Temperature != nil {

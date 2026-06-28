@@ -216,8 +216,8 @@ func (r *testMessageRepository) UpdateFields(ctx context.Context, userID uuid.UU
 			existing.ConversationID = row.ConversationID
 		case "role":
 			existing.Role = row.Role
-		case "sender_person_id":
-			existing.SenderPersonID = row.SenderPersonID
+		case "sender_persona_id":
+			existing.SenderPersonaID = row.SenderPersonaID
 		case "sender_user_id":
 			existing.SenderUserID = row.SenderUserID
 		case "meta_data":

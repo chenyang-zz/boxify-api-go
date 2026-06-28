@@ -81,6 +81,55 @@ func TestOpenAIClientInvokeSendsOptionalChatParams(t *testing.T) {
 	}
 }
 
+func TestOpenAIClientInvokeUsesDefaultTemperature(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"pong"}}]}`))
+	}))
+	defer server.Close()
+
+	client := infra.NewOpenaiLLMClient("sk-test", "chat-model",
+		infra.WithBaseURL(server.URL+"/v1"),
+		infra.WithTemperature(0.6),
+	)
+	if _, err := client.Invoke(context.Background(), []*corellm.Message{{Role: corellm.UserRole, Content: "ping"}}); err != nil {
+		t.Fatalf("Invoke error = %v", err)
+	}
+	if requestBody["temperature"] != float64(0.6) {
+		t.Fatalf("request body = %#v", requestBody)
+	}
+}
+
+func TestOpenAIClientInvokeTemperatureOptionOverridesDefault(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"pong"}}]}`))
+	}))
+	defer server.Close()
+
+	client := infra.NewOpenaiLLMClient("sk-test", "chat-model",
+		infra.WithBaseURL(server.URL+"/v1"),
+		infra.WithTemperature(0.6),
+	)
+	if _, err := client.Invoke(context.Background(),
+		[]*corellm.Message{{Role: corellm.UserRole, Content: "ping"}},
+		corellm.WithTemperature(0.2),
+	); err != nil {
+		t.Fatalf("Invoke error = %v", err)
+	}
+	if requestBody["temperature"] != float64(0.2) {
+		t.Fatalf("request body = %#v", requestBody)
+	}
+}
+
 func TestOpenAIClientStreamReadsSSEDeltaContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -115,7 +164,10 @@ func TestOpenAIClientStreamSendsOptionalChatParams(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := infra.NewOpenaiLLMClient("sk-test", "chat-model", infra.WithBaseURL(server.URL+"/v1"))
+	client := infra.NewOpenaiLLMClient("sk-test", "chat-model",
+		infra.WithBaseURL(server.URL+"/v1"),
+		infra.WithTemperature(0.6),
+	)
 	stream, err := client.Stream(context.Background(),
 		[]*corellm.Message{{Role: corellm.UserRole, Content: "say"}},
 		corellm.WithTemperature(0.2),

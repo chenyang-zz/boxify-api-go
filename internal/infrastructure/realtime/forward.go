@@ -17,8 +17,7 @@ func Forward(ctx context.Context, sub Subscription, out chan<- domain.Event, opt
 	stopEvents := opts.StopEvents
 	if len(stopEvents) == 0 {
 		stopEvents = map[string]struct{}{
-			domain.EventTypeDone:  {},
-			domain.EventTypeError: {},
+			domain.EventTypeDone: {},
 		}
 	}
 

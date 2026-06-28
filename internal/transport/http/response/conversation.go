@@ -13,13 +13,13 @@ import (
 )
 
 type ConversationResponse struct {
-	ID              uuid.UUID `json:"id"`
-	Title           string    `json:"title"`
-	IsGroup         bool      `json:"is_group"`
-	MemberPersonIDs []string  `json:"member_person_i_ds"`
-	EnableTools     bool      `json:"enable_tools"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID               uuid.UUID `json:"id"`
+	Title            string    `json:"title"`
+	IsGroup          bool      `json:"is_group"`
+	MemberPersonaIDs []string  `json:"member_persona_ids"`
+	EnableTools      bool      `json:"enable_tools"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type MessageMetaData struct {
@@ -28,13 +28,13 @@ type MessageMetaData struct {
 }
 
 type MessageResponse struct {
-	ID             uuid.UUID        `json:"id"`
-	Role           string           `json:"role"`
-	Content        string           `json:"content"`
-	MetaData       *MessageMetaData `json:"meta_data"`
-	Images         []string         `json:"images"`
-	SenderPersonID *uuid.UUID       `json:"sender_person_id"`
-	SenderName     *string          `json:"sender_name"`
-	Feedback       *string          `json:"feedback"`
-	CreatedAt      time.Time        `json:"created_at"`
+	ID              uuid.UUID        `json:"id"`
+	Role            string           `json:"role"`
+	Content         string           `json:"content"`
+	MetaData        *MessageMetaData `json:"meta_data"`
+	Images          []string         `json:"images"`
+	SenderPersonaID *uuid.UUID       `json:"sender_persona_id"`
+	SenderName      *string          `json:"sender_name"`
+	Feedback        *string          `json:"feedback"`
+	CreatedAt       time.Time        `json:"created_at"`
 }

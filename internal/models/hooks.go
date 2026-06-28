@@ -30,3 +30,23 @@ func (m *ModelConfig) BeforeCreate(tx *gorm.DB) error {
 	ensureUUID(&m.ID)
 	return nil
 }
+
+func (m *Message) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&m.ID)
+	return nil
+}
+
+func (a *AgentConfig) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&a.ID)
+	return nil
+}
+
+func (a *AgentPersona) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&a.ID)
+	return nil
+}
+
+func (a *AgentTask) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&a.ID)
+	return nil
+}

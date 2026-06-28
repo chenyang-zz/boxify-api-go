@@ -42,6 +42,9 @@ func (r *Runner) Up(ctx context.Context) error {
 		&models.Conversation{},
 		&models.Message{},
 		&models.MessageFeedback{},
+		&models.AgentConfig{},
+		&models.AgentPersona{},
+		&models.AgentTask{},
 	); err != nil {
 		return xerr.Wrapf(err, "执行 GORM migration 失败")
 	}

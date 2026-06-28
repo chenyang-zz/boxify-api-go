@@ -8,33 +8,38 @@ package prompt
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
 	"html/template"
+	"os"
+	"path/filepath"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/boxify/api-go/internal/xerr"
 )
 
 type Manager struct {
-	fs            embed.FS
+	root          string
 	MemoryPrompts *MemoryPrompts
+	AgentPrompts  *AgentPrompts
 }
 
-func NewManager(fs embed.FS) *Manager {
+func NewManager(root string) *Manager {
 	m := &Manager{
-		fs: fs,
+		root: root,
 	}
 	memoryPrompts := NewMemoryPrompts(m)
+	agentPrompts := NewAgentPrompts(m)
 
 	m.MemoryPrompts = memoryPrompts
+	m.AgentPrompts = agentPrompts
+
 	return m
 }
 
 func (m *Manager) Render(name string, data any) (string, error) {
-	path := fmt.Sprintf("prompts/%s.tmpl", name)
+	path := filepath.Join(m.root, fmt.Sprintf("%s.tmpl", name))
 
-	content, err := m.fs.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", xerr.Wrapf(err, "read prompt %s failed: %v", path, err)
 	}

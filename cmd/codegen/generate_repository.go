@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
 	"go/format"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,6 +44,9 @@ func GenerateRepository(opts RepositoryOptions) (Report, error) {
 		return report, err
 	}
 	if err := generatePostgresRepository(opts.Root, info, label, scope, &report); err != nil {
+		return report, err
+	}
+	if err := generateModelHook(opts.Root, info, &report); err != nil {
 		return report, err
 	}
 	return report, nil
@@ -367,6 +373,95 @@ func updatableModelFields(info ModelInfo) []ModelField {
 		out = append(out, field)
 	}
 	return out
+}
+
+func generateModelHook(root string, info ModelInfo, report *Report) error {
+	path := filepath.Join(root, "internal", "models", "hooks.go")
+	hook := modelBeforeCreateHook(info)
+	if !fileExists(path) {
+		imports := []string{
+			`"github.com/google/uuid"`,
+			`"gorm.io/gorm"`,
+		}
+		body := modelEnsureUUIDSnippet() + "\n" + hook
+		return writeNewGeneratedFile(path, generatedFile("models", imports, body, false), report)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if hasBeforeCreateHook(data, info.Name) {
+		report.Add(FileSkipped, path)
+		return nil
+	}
+
+	next := string(data)
+	if !strings.Contains(next, "func ensureUUID(id *uuid.UUID)") {
+		next = strings.TrimRight(next, "\n") + "\n\n" + modelEnsureUUIDSnippet()
+	}
+	next = strings.TrimRight(next, "\n") + "\n\n" + hook
+	withImports, err := ensureImports([]byte(next), []string{
+		`"github.com/google/uuid"`,
+		`"gorm.io/gorm"`,
+	})
+	if err != nil {
+		return err
+	}
+	formatted, err := format.Source(withImports)
+	if err != nil {
+		return fmt.Errorf("format model hooks file %s: %w\n%s", path, err, string(withImports))
+	}
+	if string(data) == string(formatted) {
+		report.Add(FileUnchanged, path)
+		return nil
+	}
+	report.Add(FileModified, path)
+	return os.WriteFile(path, formatted, 0o644)
+}
+
+func modelEnsureUUIDSnippet() string {
+	return `func ensureUUID(id *uuid.UUID) {
+	if *id == uuid.Nil {
+		*id = uuid.New()
+	}
+}
+`
+}
+
+func modelBeforeCreateHook(info ModelInfo) string {
+	receiver := modelHookReceiver(info.Name)
+	return fmt.Sprintf(`func (%[1]s *%[2]s) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&%[1]s.ID)
+	return nil
+}
+`, receiver, info.Name)
+}
+
+func modelHookReceiver(modelName string) string {
+	if modelName == "" {
+		return "m"
+	}
+	runes := []rune(modelName)
+	return strings.ToLower(string(runes[0]))
+}
+
+func hasBeforeCreateHook(src []byte, modelName string) bool {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "", src, 0)
+	if err != nil {
+		return strings.Contains(string(src), "*"+modelName+") BeforeCreate")
+	}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name == nil || fn.Name.Name != "BeforeCreate" || fn.Recv == nil || len(fn.Recv.List) == 0 {
+			continue
+		}
+		if receiverTypeName(fn.Recv) == modelName {
+			return true
+		}
+	}
+	return false
 }
 
 func writeNewGeneratedFile(path, content string, report *Report) error {

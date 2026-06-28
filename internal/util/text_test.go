@@ -133,6 +133,46 @@ func TestAssignIfNotEmpty(t *testing.T) {
 	}
 }
 
+func TestAssignIfNotNilSkipsNilPointers(t *testing.T) {
+	dst := "old"
+	util.AssignIfNotNil(&dst, (*string)(nil))
+	if dst != "old" {
+		t.Fatalf("AssignIfNotNil nil src changed dst to %q", dst)
+	}
+
+	util.AssignIfNotNil((*string)(nil), ptr("new"))
+}
+
+func TestAssignIfNotNilAssignsZeroValues(t *testing.T) {
+	text := "old"
+	empty := ""
+	util.AssignIfNotNil(&text, &empty)
+	if text != "" {
+		t.Fatalf("AssignIfNotNil string = %q, want empty string", text)
+	}
+
+	enabled := true
+	disabled := false
+	util.AssignIfNotNil(&enabled, &disabled)
+	if enabled {
+		t.Fatal("AssignIfNotNil bool = true, want false")
+	}
+
+	count := 42
+	zeroCount := 0
+	util.AssignIfNotNil(&count, &zeroCount)
+	if count != 0 {
+		t.Fatalf("AssignIfNotNil int = %d, want 0", count)
+	}
+
+	temperature := 0.7
+	zeroTemperature := 0.0
+	util.AssignIfNotNil(&temperature, &zeroTemperature)
+	if temperature != 0 {
+		t.Fatalf("AssignIfNotNil float = %v, want 0", temperature)
+	}
+}
+
 func ptr(value string) *string {
 	return &value
 }
