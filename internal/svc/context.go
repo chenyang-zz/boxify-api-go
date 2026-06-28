@@ -11,6 +11,8 @@ import (
 	dbneo4j "github.com/boxify/api-go/internal/infrastructure/db/neo4j"
 	dbpostgres "github.com/boxify/api-go/internal/infrastructure/db/postgres"
 	infraredis "github.com/boxify/api-go/internal/infrastructure/db/redis"
+	"github.com/boxify/api-go/internal/infrastructure/realtime"
+	realtimeredis "github.com/boxify/api-go/internal/infrastructure/realtime/redis"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
 	"github.com/boxify/api-go/internal/repository"
@@ -26,6 +28,7 @@ type ServiceContext struct {
 	GormDB        *gorm.DB
 	Neo4j         *dbneo4j.Client
 	Redis         *infraredis.Client
+	Realtime      realtime.Broker
 	Elasticsearch *infraes.Client
 	Storage       storage.Store
 	URLSigner     storage.URLSigner
@@ -94,6 +97,7 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		return nil, err
 	}
 	svcCtx.Redis = redisClient
+	svcCtx.Realtime = BuildRealtime(redisClient)
 
 	esClient, err := infraes.NewClient(infraes.Config{
 		URL:      cfg.Elasticsearch.URL,
@@ -165,6 +169,13 @@ func (s *ServiceContext) Close(ctx context.Context) error {
 		s.closeErr = errors.Join(errs...)
 	})
 	return s.closeErr
+}
+
+func BuildRealtime(redisClient *infraredis.Client) realtime.Broker {
+	if redisClient == nil || redisClient.Raw() == nil {
+		return nil
+	}
+	return realtimeredis.New(redisClient.Raw())
 }
 
 func shouldInitNeo4j(cfg config.Neo4jConfig) bool {

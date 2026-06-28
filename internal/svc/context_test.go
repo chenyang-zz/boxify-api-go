@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/boxify/api-go/internal/config"
+	infraredis "github.com/boxify/api-go/internal/infrastructure/db/redis"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
 	"github.com/boxify/api-go/internal/svc"
 )
@@ -80,6 +81,19 @@ func TestBuildStorageReturnsLocalStoreByDefault(t *testing.T) {
 	}
 	if signer != nil {
 		t.Fatalf("signer = %T, want nil for local storage", signer)
+	}
+}
+
+func TestBuildRealtimeReturnsRedisBrokerForRedisClient(t *testing.T) {
+	redisClient, err := infraredis.NewClient(context.Background(), infraredis.Config{Addr: "localhost:6379"})
+	if err != nil {
+		t.Fatalf("NewClient error = %v", err)
+	}
+	defer redisClient.Close()
+
+	broker := svc.BuildRealtime(redisClient)
+	if broker == nil {
+		t.Fatal("BuildRealtime returned nil broker")
 	}
 }
 

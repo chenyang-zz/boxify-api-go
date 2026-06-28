@@ -9,6 +9,7 @@ import (
 	"github.com/boxify/api-go/internal/core/llm"
 	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
+	realtimememory "github.com/boxify/api-go/internal/infrastructure/realtime/memory"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -105,10 +106,10 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 }
 
 func (l *ChatStreamLogic) realtimeBroker() realtime.Broker {
-	if l.svcCtx != nil && l.svcCtx.Redis != nil && l.svcCtx.Redis.Raw() != nil {
-		return realtime.NewRedisBroker(l.svcCtx.Redis.Raw())
+	if l.svcCtx != nil && l.svcCtx.Realtime != nil {
+		return l.svcCtx.Realtime
 	}
-	return realtime.NewMemoryBroker()
+	return realtimememory.New()
 }
 
 func (l *ChatStreamLogic) runChatTurn(ctx context.Context, broker realtime.Broker, topic string) {
