@@ -1,0 +1,138 @@
+internal/repository/postgres/mcp_server.go
+  h_e1f1392360ad67 1-120
+CLAUDE.md
+  s_0eefe63d6228b1::t_3b9e90f9be4cba 4
+internal/models/mcp_server_test.go
+  s_0eefe63d6228b1::t_8b4947863a1af5 1-2,4-48
+  s_0eefe63d6228b1::t_a6e12c0cbb1db5 49-83
+  s_0eefe63d6228b1::t_23b99b635bd34d 3
+internal/transport/http/handler/mcpserver.go
+  h_e1f1392360ad67 114,116,129
+internal/transport/http/request/mcp.go
+  s_0eefe63d6228b1::t_4cc16efaa2c194 54
+  s_0eefe63d6228b1::t_721eca885a1eb8 55
+  h_e1f1392360ad67 1-23,30,37-48,50-53,56
+  s_0eefe63d6228b1::t_942ab1a6457171 24-29,31-36,49
+internal/transport/http/routes/routes_compile_test.go
+  s_0eefe63d6228b1::t_9aac6b3185ca71 34-35,37-50,54-55
+  s_0eefe63d6228b1::t_b7f5ce648bc759 36,51-53
+  s_0eefe63d6228b1::t_8684a4786370b4 17,20-33
+internal/logic/mcpserver/get_mcp_server_list.go
+  s_0eefe63d6228b1::t_0d19742cc6d2eb 38-43
+  s_0eefe63d6228b1::t_8656397dcfd8b9 5-37,44-48
+  s_0eefe63d6228b1::t_fa20be79b2745d 2-4
+  s_0eefe63d6228b1::t_2a688a8abd0938 49
+  s_0eefe63d6228b1::t_8d5e516db84c5b 1
+cmd/codegen/main_test.go
+  s_68c6fb60822163::t_099c2d03f8be2c 1634-1658,1661-1667
+  h_e1f1392360ad67 1659-1660
+  s_68c6fb60822163::t_003c807c2f065f 145-162
+  s_68c6fb60822163::t_5e1b050172ca08 471-502
+internal/logic/mcpserver/create_mcp_server.go
+  s_0eefe63d6228b1::t_a6183745228d23 43-46,52,70-76
+  h_e1f1392360ad67 1-42,47-51,53-69,77
+cmd/codegen/file.go
+  s_68c6fb60822163::t_b9d2cb4ea26aee 268-271,273-274,281-294
+  s_68c6fb60822163::t_6ad795c78298b6 295
+internal/repository/mcp_server.go
+  h_e1f1392360ad67 1-94
+internal/mapper/mcp.go
+  h_e1f1392360ad67 1-14,17-29,31-39
+  s_0eefe63d6228b1::t_fbaef6ddf51efe 16
+  s_0eefe63d6228b1::t_d1fc236f322a44 15,30
+AGENTS.md
+  s_df0bba90c91a6e::t_4cec3ddc623b74 44-46
+  s_df0bba90c91a6e::t_424405cde9cc7c 47
+  s_0eefe63d6228b1::t_3b9e90f9be4cba 4
+internal/models/mcp_server.go
+  s_0eefe63d6228b1::t_90b8cad51ec2bd 30-34,38-42,45-50,52-54,56-57,60-65,67-81
+  s_0eefe63d6228b1::t_5b963910072510 84-87,89-113
+  s_0eefe63d6228b1::t_69c3bf81122a39 115-129
+  h_e1f1392360ad67 10-12,24-29,35-37,43-44,51,55,58-59,66,82,88
+internal/transport/http/response/mcp.go
+  h_e1f1392360ad67 1-35
+internal/logic/mcpserver/mcpserver_test.go
+  s_0eefe63d6228b1::t_4b2e57fc7843d4 416-420,425-426,430,434
+  s_0eefe63d6228b1::t_248e50d06a7ac3 466,470,495,499,512,516
+  s_0eefe63d6228b1::t_ded8ed5b72568c 1-7,9-18,20-41,43-120,124,204,210-217,219-228,233-245,283,286-319,321-326,331-334,336-352,356,360,364-412,414-415,433,435,437,443,528,530
+  s_0eefe63d6228b1::t_dcd6fbed2f8325 128,168,231,277,329
+  s_0eefe63d6228b1::t_a15be196d4a6d1 446-465,467-469,471-494,496-498,500-511,513-515,517-522
+  s_0eefe63d6228b1::t_a3496647056ceb 8,19,42,121-123,125-127,129-167,169-203,205-209,218,229-230,232,246-276,278-282,284-285,320,327-328,330,335,353-355,357-359,361-363,413,421-424,427-429,431-432,436,438-442,444-445,523-527,529
+internal/logic/mcpserver/delete_mcp_server.go
+  s_0eefe63d6228b1::t_68c0595ac5b6c7 25,30-35
+  s_0eefe63d6228b1::t_b962e8e7756ba8 22-24
+  s_0eefe63d6228b1::t_b708012e99a629 26-29
+  s_0eefe63d6228b1::t_8980e56085b125 36
+  s_0eefe63d6228b1::t_0aa213899c64b3 1-21
+internal/logic/mcpserver/update_mcp_server.go
+  s_0eefe63d6228b1::t_b18226e8e266fe 5-12,40-62,64-79
+  s_0eefe63d6228b1::t_c5b54186dfc3e4 30,63,80-84
+  s_0eefe63d6228b1::t_3c637e2ae3c8a1 35-39
+  s_0eefe63d6228b1::t_123087a86f7ff1 2-4
+  s_0eefe63d6228b1::t_14b58e36ae9367 13-15,27-29
+  s_0eefe63d6228b1::t_21845c0e75dd9e 31-34
+  s_0eefe63d6228b1::t_cd9b174cfed533 85
+  s_0eefe63d6228b1::t_b162cc2937b0fb 1,16-26
+internal/logic/mcpserver/troggle_mcp_server.go
+  h_e1f1392360ad67 5-6,33-34
+  s_0eefe63d6228b1::t_a74319fe8e4766 40
+  s_0eefe63d6228b1::t_b8baf107fdc486 35
+  s_0eefe63d6228b1::t_e1cc8c7f51dbc6 7-10,30,36-39,41-56
+  s_0eefe63d6228b1::t_e71cd58ba47f7d 11-13,27-29
+  s_0eefe63d6228b1::t_691f487b0ccec4 57
+  s_0eefe63d6228b1::t_12cac07f2a24c3 1-4,14-26,31-32
+internal/transport/http/routes/mcp.go
+  s_0eefe63d6228b1::t_d346255214c263 53
+  h_e1f1392360ad67 1-33,35-52,54-55
+  s_0eefe63d6228b1::t_4d441c014f7911 34
+internal/infrastructure/db/migration/runner.go
+  h_e1f1392360ad67 48
+internal/mapper/mcp_test.go
+  s_0eefe63d6228b1::t_26ab299a899c7d 20,30-32
+  s_0eefe63d6228b1::t_863b429c053f10 13-14
+  s_0eefe63d6228b1::t_eef07739e6b417 1-12,15-19,21-29,33-34
+internal/logic/mcpserver/helper.go
+  s_0eefe63d6228b1::t_836bee83b60ce3 4,22-69,71,74-83
+  s_0eefe63d6228b1::t_5738bbef494410 1-3,5-21,70,72-73,84
+internal/transport/http/router.go
+  h_e1f1392360ad67 40,52
+internal/svc/context.go
+  h_e1f1392360ad67 50,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "e059b2f3457bfc054852431d268016f20b8fda36",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_0eefe63d6228b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0e92-4ca2-7353-bc39-bdf152928895",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_df0bba90c91a6e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13a2-db16-7c91-bdb4-859b209ce6bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
