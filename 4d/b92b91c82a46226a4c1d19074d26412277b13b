@@ -1,0 +1,51 @@
+internal/infrastructure/llm/anthropic.go
+  s_27137d28470f81::t_7d77343b2032c0 1-191
+internal/infrastructure/llm/factory.go
+  s_27137d28470f81::t_7d77343b2032c0 1-31
+internal/logic/agentconfig/optimize_prompt.go
+  s_27137d28470f81::t_4eb6259b71bc69 60-68,78
+internal/core/llm/manager_test.go
+  s_27137d28470f81::t_5ebbeaa7401824 1-113
+internal/svc/context.go
+  s_27137d28470f81::t_4eb6259b71bc69 11,55,105,200-207
+  s_27137d28470f81::t_a31204f13b127a 17
+  s_27137d28470f81::t_dd4ddb6ca8b5dc 208-209
+internal/transport/http/request/modelconfig.go
+  s_27137d28470f81::t_4eb6259b71bc69 9
+go.mod
+  s_27137d28470f81::t_98bb879abb1c08 8
+  s_27137d28470f81::t_456219e31e3b34 32-33,52,68,74,84
+internal/domain/model.go
+  s_27137d28470f81::t_4eb6259b71bc69 12-13
+internal/infrastructure/llm/anthropic_test.go
+  s_27137d28470f81::t_5ebbeaa7401824 1-135
+internal/core/llm/manager.go
+  s_27137d28470f81::t_7d77343b2032c0 1-72
+internal/transport/http/router_test.go
+  s_27137d28470f81::t_e953f92a199abd 14,55
+  s_27137d28470f81::t_bc6dd8759e6d48 36,49-54,56-73
+  s_27137d28470f81::t_587c5f67a107ee 74
+go.sum
+  s_27137d28470f81::t_ee54f14ea5cdb8 12-15,20-21,41-42,84-85,131-132,149-150,192-193,215-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "4db92b91c82a46226a4c1d19074d26412277b13b",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_27137d28470f81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0f12-545a-78d0-ab2d-15c12c6058b4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
