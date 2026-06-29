@@ -50,3 +50,18 @@ func (a *AgentTask) BeforeCreate(tx *gorm.DB) error {
 	ensureUUID(&a.ID)
 	return nil
 }
+
+func (k *KnowledgeBase) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&k.ID)
+	return nil
+}
+
+func (s *Skill) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&s.ID)
+	return nil
+}
+
+func (m *MCPServer) BeforeCreate(tx *gorm.DB) error {
+	ensureUUID(&m.ID)
+	return nil
+}
