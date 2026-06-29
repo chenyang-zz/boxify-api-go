@@ -16,6 +16,8 @@ type MCPServerRepository struct {
 	db *gorm.DB
 }
 
+
+
 func NewMCPServerRepository(db *gorm.DB) repository.MCPServerRepository {
 	return &MCPServerRepository{db: db}
 }
@@ -101,4 +103,18 @@ func (r *MCPServerRepository) Delete(ctx context.Context, userID uuid.UUID, mCPS
 		return xerr.NotFound("MCP服务不存在")
 	}
 	return nil
+}
+
+func (r *MCPServerRepository) FindByName(ctx context.Context, userID uuid.UUID, Name string) (*models.MCPServer, error) {
+	mCPServer := &models.MCPServer{}
+	err := r.db.WithContext(ctx).
+		Where("name = ? AND user_id = ?", Name, userID).
+		First(mCPServer).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, xerr.NotFound("MCP服务不存在")
+	}
+	if err != nil {
+		return nil, xerr.Wrapf(err, "查询MCP服务失败")
+	}
+	return mCPServer, nil
 }

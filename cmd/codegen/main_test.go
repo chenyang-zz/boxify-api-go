@@ -142,6 +142,24 @@ func TestParseDirectiveGroupSupportsAuthWithoutUserIDAndResponseNormalization(t 
 	}
 }
 
+func TestSnakeCaseKeepsAcronymsTogether(t *testing.T) {
+	tests := map[string]string{
+		"AgentConfig":           "agent_config",
+		"CreateConversation":    "create_conversation",
+		"GetMCPServerList":      "get_mcp_server_list",
+		"HTTPRequest":           "http_request",
+		"MCPServer":             "mcp_server",
+		"MCPServerHandler":      "mcp_server_handler",
+		"ModelConfig":           "model_config",
+		"UriMCPServerIDRequest": "uri_mcp_server_id_request",
+	}
+	for input, want := range tests {
+		if got := snakeCase(input); got != want {
+			t.Fatalf("snakeCase(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestScanRoutesParsesRouteDirectiveAndHandlerType(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, root, "internal/transport/http/routes/book.go", `package routes
@@ -447,6 +465,38 @@ func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler) {
 		if !strings.Contains(logicFile, want) {
 			t.Fatalf("logic file missing %q:\n%s", want, logicFile)
 		}
+	}
+}
+
+func TestGenerateRouteUsesAcronymAwareLogicFilename(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/transport/http/routes/mcp.go", `package routes
+
+import (
+	"github.com/boxify/api-go/internal/transport/http/handler"
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterMCPServerRoutes(api *gin.RouterGroup, mcp handler.MCPServerHandler, authMiddleware gin.HandlerFunc) {
+	mcpRoutes := api.Group("/mcp", authMiddleware)
+	// @auth(user_id)
+	// @response ListResponse[*response.MCPServerResponse]
+	mcpRoutes.GET("/", mcp.GetMCPServerList)
+}
+`)
+
+	report, err := GenerateRoutes(root)
+	if err != nil {
+		t.Fatalf("GenerateRoutes error = %v", err)
+	}
+
+	assertReportContains(t, report, FileAdded, "internal/logic/mcpserver/get_mcp_server_list.go")
+	logicFile := readFile(t, root, "internal/logic/mcpserver/get_mcp_server_list.go")
+	if !strings.Contains(logicFile, "func (l *GetMCPServerListLogic) GetMCPServerList(userID uuid.UUID) (*response.ListResponse[*response.MCPServerResponse], error)") {
+		t.Fatalf("logic file has unexpected signature:\n%s", logicFile)
+	}
+	if _, err := os.Stat(filepath.Join(root, "internal/logic/mcpserver/get_m_c_p_server_list.go")); err == nil {
+		t.Fatal("generated old acronym-split logic filename")
 	}
 }
 
@@ -1577,6 +1627,40 @@ type Message struct {
 	} {
 		if !strings.Contains(hooksFile, want) {
 			t.Fatalf("hooks file missing %q:\n%s", want, hooksFile)
+		}
+	}
+}
+
+func TestGenerateRepositoryUsesAcronymAwareFilenames(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "internal/models/mcp_server.go", `package models
+
+import "github.com/google/uuid"
+
+type MCPServer struct {
+	ID     uuid.UUID `+"`gorm:\"column:id;type:uuid;primaryKey\"`"+`
+	UserID uuid.UUID `+"`gorm:\"column:user_id;type:uuid;not null;index\"`"+`
+	Name   string    `+"`gorm:\"column:name\"`"+`
+}
+`)
+
+	report, err := GenerateRepository(RepositoryOptions{Root: root, Model: "MCPServer", Label: "MCP 服务"})
+	if err != nil {
+		t.Fatalf("GenerateRepository error = %v", err)
+	}
+
+	assertReportContains(t, report, FileAdded, "internal/repository/mcp_server.go")
+	assertReportContains(t, report, FileAdded, "internal/repository/postgres/mcp_server.go")
+	repoFile := readFile(t, root, "internal/repository/mcp_server.go")
+	if !strings.Contains(repoFile, "type MCPServerRepository interface") {
+		t.Fatalf("repository file missing MCPServerRepository:\n%s", repoFile)
+	}
+	for _, path := range []string{
+		"internal/repository/mcp_server.go",
+		"internal/repository/postgres/mcp_server.go",
+	} {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); err == nil {
+			t.Fatalf("generated old acronym-split repository file %s", path)
 		}
 	}
 }

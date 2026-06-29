@@ -265,12 +265,31 @@ func lowerFirst(value string) string {
 }
 
 func snakeCase(value string) string {
+	if value == "" {
+		return ""
+	}
+	runes := []rune(value)
 	var b bytes.Buffer
-	for i, r := range value {
-		if i > 0 && unicode.IsUpper(r) {
+	for i, r := range runes {
+		if i > 0 && shouldSplitSnakeCase(runes, i) {
 			b.WriteByte('_')
 		}
 		b.WriteRune(unicode.ToLower(r))
 	}
 	return b.String()
+}
+
+func shouldSplitSnakeCase(runes []rune, i int) bool {
+	current := runes[i]
+	previous := runes[i-1]
+	if !unicode.IsUpper(current) {
+		return false
+	}
+	if unicode.IsLower(previous) || unicode.IsDigit(previous) {
+		return true
+	}
+	if unicode.IsUpper(previous) && i+1 < len(runes) && unicode.IsLower(runes[i+1]) {
+		return true
+	}
+	return false
 }

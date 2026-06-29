@@ -47,6 +47,7 @@ type ServiceContext struct {
 	AgentConfigRepo     repository.AgentConfigRepository
 	AgentPersonaRepo    repository.AgentPersonaRepository
 	AgentTaskRepo       repository.AgentTaskRepository
+	MCPServerRepo       repository.MCPServerRepository
 
 	SecretCipher *security.SecretCipher
 	TokenIssuer  *security.TokenIssuer
@@ -146,6 +147,7 @@ func bindPostgresRepositories(s *ServiceContext, db *gorm.DB) {
 	s.AgentConfigRepo = repositorypostgres.NewAgentConfigRepository(db)
 	s.AgentPersonaRepo = repositorypostgres.NewAgentPersonaRepository(db)
 	s.AgentTaskRepo = repositorypostgres.NewAgentTaskRepository(db)
+	s.MCPServerRepo = repositorypostgres.NewMCPServerRepository(db)
 }
 
 func (s *ServiceContext) WithTx(ctx context.Context, fn func(txSvc *ServiceContext) error) error {
