@@ -1,0 +1,116 @@
+internal/transport/http/response/knowledgebase.go
+  h_e1f1392360ad67 1-27
+internal/transport/http/router_test.go
+  s_bed6061d2f5706::t_6bd9d43a614b4f 36,279-357,539-540,542-573
+  s_bed6061d2f5706::t_afe3bb4b76f8ee 31-35,37-39
+  s_bed6061d2f5706::t_fa048daf8826bf 541,574-623
+internal/transport/http/handler/knowledgebase.go
+  s_bed6061d2f5706::t_db64ea3f0d8adf 32,37,41,46,51,55,65,70,74,88,93,97,107,129,133-138
+  s_bed6061d2f5706::t_681a1f37e509ea 29-31
+  s_bed6061d2f5706::t_849cb44eaa1432 33-36
+  s_bed6061d2f5706::t_97d17f48255338 38-40
+  s_bed6061d2f5706::t_e2b0bae3bc0edd 42-45
+  s_bed6061d2f5706::t_0089a16e989cff 47-50
+  s_bed6061d2f5706::t_70e6eeeeffa7b3 52-54
+  s_bed6061d2f5706::t_927d4494758766 56-58,62-64
+  s_bed6061d2f5706::t_ad40d2ec3daba3 66-69
+  s_bed6061d2f5706::t_41084d909fa533 71-73
+  s_bed6061d2f5706::t_42eb15fdcc1f63 75-77,85-87
+  s_bed6061d2f5706::t_d715912f9bedf2 89-92
+  s_bed6061d2f5706::t_35cab8de3d652d 94-96
+  s_bed6061d2f5706::t_f916f231293458 98-100,104-106
+  s_bed6061d2f5706::t_17aa740978bff0 108-110,126-128
+  s_bed6061d2f5706::t_c08e3efc3a1002 130-132
+  s_bed6061d2f5706::t_80b335dd59c976 139
+  s_bed6061d2f5706::t_f4a3b6ca0d523e 1-28,59-61,78-84,101-103,111-125
+internal/transport/http/request/knowledgebase.go
+  h_e1f1392360ad67 1-11,13-16,18-22,24-28,30
+  s_bed6061d2f5706::t_1b311235a3a128 12,17,23,29
+internal/transport/http/routes/knowledgebase.go
+  h_e1f1392360ad67 1-53
+internal/models/knowledge_base.go
+  s_bed6061d2f5706::t_5f679214895e31 29
+internal/mapper/knowledgebase.go
+  s_bed6061d2f5706::t_8baf7915174b30 1-25
+internal/logic/knowledgebase/create_knowledge_base.go
+  s_bed6061d2f5706::t_36854529aeb849 5-56
+  s_bed6061d2f5706::t_67581f53303d85 2-4
+  s_bed6061d2f5706::t_292a910391c5a1 57
+  s_bed6061d2f5706::t_3c9d3cf756a45c 1
+internal/models/user_test.go
+  s_bed6061d2f5706::t_2de4c2d9e8f3a9 88-117,165,230-241,250,320-324
+  s_bed6061d2f5706::t_6cbfc02268de8d 325-327
+  s_bed6061d2f5706::t_773a9d207c89c3 328-332
+internal/logic/knowledgebase/helper.go
+  s_bed6061d2f5706::t_b78f0505ce83dc 1-18
+internal/transport/http/router.go
+  h_e1f1392360ad67 41,54
+internal/infrastructure/db/migration/runner.go
+  s_bed6061d2f5706::t_caf0451c2d670b 49
+internal/svc/context.go
+  h_e1f1392360ad67 52,155
+AGENTS.md
+  s_bed6061d2f5706::t_3224ff852958f6 4
+internal/infrastructure/db/migration/runner_test.go
+  s_bed6061d2f5706::t_8aeb990490d3f2 6,17-27,29,113-126
+internal/logic/knowledgebase/get_knowledge_base.go
+  s_bed6061d2f5706::t_a80467e41181a3 5-40,44
+  h_e1f1392360ad67 41-43
+  s_bed6061d2f5706::t_cec0b5e932d8a0 2-4
+  s_bed6061d2f5706::t_dc41390cd895dd 45
+CLAUDE.md
+  s_bed6061d2f5706::t_3224ff852958f6 4
+internal/logic/knowledgebase/knowledgebase_test.go
+  s_bed6061d2f5706::t_4ee91995ab08bd 1-169,221-277,279-280,282-285,287-288,291-297,301-302
+  s_bed6061d2f5706::t_75a03085c48c4a 170-220,278,281,286,289-290,298-300
+internal/logic/knowledgebase/get_knowledge_base_list.go
+  s_bed6061d2f5706::t_a602efed7626d6 5-7,40,45-48,52-55
+  s_bed6061d2f5706::t_84a67e3ce92197 8-21,27,35-36,41-44,56-80
+  h_e1f1392360ad67 49-51
+  s_bed6061d2f5706::t_a4b9fecaf152d5 2-4
+  s_bed6061d2f5706::t_51dd40e19b72f3 22-26
+  s_bed6061d2f5706::t_4ed62a0a83f0ef 28-30,32-34
+  s_bed6061d2f5706::t_0c033eef36519a 37-39
+internal/logic/knowledgebase/update_knowledge_base.go
+  s_bed6061d2f5706::t_56f8612982dd4a 5-67,71-76
+  h_e1f1392360ad67 68-70
+  s_bed6061d2f5706::t_59945cfe9780e6 2-4
+  s_bed6061d2f5706::t_f91933564ab956 77
+internal/logic/knowledgebase/delete_knowledge_base.go
+  s_bed6061d2f5706::t_187a46da58e900 5-42,46-52
+  h_e1f1392360ad67 43-45
+  s_bed6061d2f5706::t_44b14f0b4fbedf 2-4
+  s_bed6061d2f5706::t_46d0040a088c9c 53-54
+internal/logic/knowledgebase/enabled_chat.go
+  h_e1f1392360ad67 49-51
+  s_bed6061d2f5706::t_37b68597f253d0 5-6,8-10,14,31,36,38-40,42-44,48,52-56
+  s_bed6061d2f5706::t_3a0e479243551b 7,13,35,37,41,45-47,57
+  s_bed6061d2f5706::t_6aa5b10080ffd9 2-4
+  s_bed6061d2f5706::t_2d24031a210383 11-12
+  s_bed6061d2f5706::t_690d5a42ea07c5 15-17,28-30
+  s_bed6061d2f5706::t_c48c43631ba3cb 32-34
+  s_bed6061d2f5706::t_5cab6aed5dcfcf 58
+internal/repository/knowledge_base.go
+  s_bed6061d2f5706::t_e7374af3332747 43-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "14ba1e26b2a95ffdbd71f6a468cba4ed580c21a2",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_bed6061d2f5706": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1817-2478-7702-8e5a-fc4304ca0bc4",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
