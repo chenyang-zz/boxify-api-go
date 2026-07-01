@@ -1,0 +1,68 @@
+internal/core/jsonx/parser.go
+  s_a5f282227fb606::t_f5cddc12d64831 3-7,14-26
+  s_a5f282227fb606::t_59ca84b37d1d3f 27
+internal/core/rag/imagedescribe/describe.go
+  s_a5f282227fb606::t_9449bbb5469a19 10,91-94
+  s_a5f282227fb606::t_46b59f05ebeae7 1-9,11-23,25-29,31-41,44-46,48-54,57-80,82-90,95-108
+  s_a5f282227fb606::t_f5cddc12d64831 24,43,47,55-56,81
+  s_a5f282227fb606::t_06d0473dde8025 30
+  h_e1f1392360ad67 42
+internal/core/valuex/values_test.go
+  s_a5f282227fb606::t_d707164dae7e25 1-55
+internal/core/rag/imagedescribe/types.go
+  s_a5f282227fb606::t_f5cddc12d64831 17
+  s_a5f282227fb606::t_46b59f05ebeae7 1-16,18-27
+internal/core/rag/search/search.go
+  s_a5f282227fb606::t_f9eba222970d2c 9
+  s_a5f282227fb606::t_9449bbb5469a19 10,122,150,171,173,190,193,195,333,342
+internal/core/jsonx/parser_test.go
+  s_a5f282227fb606::t_9f9345ec2c0039 25,43-56
+  s_a5f282227fb606::t_298c8f8d69e34a 57
+internal/core/rag/imagedescribe/describe_test.go
+  s_a5f282227fb606::t_8f23ebf252ee55 1-27,29-30,32-56,58-81,83-101,103-119,121-138,140-155,157-159,161-162,182-256
+  s_a5f282227fb606::t_9f9345ec2c0039 28,31,57,82,102,120,139,156,160,163-181
+internal/core/rag/imagecompress/compressor.go
+  s_a5f282227fb606::t_efc4fd799c45ca 9
+  s_a5f282227fb606::t_7914cceac5e128 1-8,10-35,37-67,69-85,87-96,98-117,119-138
+  h_e1f1392360ad67 36,68,86,97,118
+internal/core/rag/imagecompress/types.go
+  s_a5f282227fb606::t_7914cceac5e128 1-14
+internal/core/valuex/values.go
+  s_a5f282227fb606::t_d707164dae7e25 1-56
+go.mod
+  s_a5f282227fb606::t_e28d352c0ca742 26
+internal/core/rag/imagecompress/compressor_test.go
+  s_a5f282227fb606::t_7c192621ba0f52 1-188
+internal/core/rag/search/search_test.go
+  s_a5f282227fb606::t_f9eba222970d2c 9
+  s_a5f282227fb606::t_9449bbb5469a19 10,76-77
+internal/core/rag/imagecompress/options.go
+  s_a5f282227fb606::t_7914cceac5e128 1-50
+internal/core/rag/imagedescribe/options.go
+  s_a5f282227fb606::t_f5cddc12d64831 3-6,23,48-55
+  s_a5f282227fb606::t_06d0473dde8025 63-66
+  s_a5f282227fb606::t_46b59f05ebeae7 1-2,7-22,24-47,56-62
+go.sum
+  s_a5f282227fb606::t_2ce79d1cef6d22 262-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "a9b4a585ce2fd0f46a9c08c6769fd16eeaa9de5d",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
