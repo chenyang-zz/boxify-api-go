@@ -1,0 +1,19 @@
+README.md
+  s_b002ef0d85820e::t_894f33885e3204 1-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "83430d89c273fa193416f64b446a0858edad9002",
+  "prompts": {},
+  "sessions": {
+    "s_b002ef0d85820e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_b002ef0d85820e",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
