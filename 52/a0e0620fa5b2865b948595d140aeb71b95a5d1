@@ -1,0 +1,83 @@
+cmd/codegen/main_test.go
+  s_68c6fb60822163::t_1544cda81c7342 166,177
+  s_68c6fb60822163::t_c808b404c42aa3 1589-1590,1598-1599,1640-1641
+  s_68c6fb60822163::t_85e227e48ecd12 5-6,1465-1588,1591-1597,1600-1630,1632-1639,1642-1658
+  s_68c6fb60822163::t_937c9f67124ba4 165,167-176,178-195
+  s_68c6fb60822163::t_49a2d8ee3829af 1631
+  s_68c6fb60822163::t_f982247522435e 1659
+cmd/codegen/generate_repository.go
+  s_68c6fb60822163::t_d5625243347cba 30-32
+  s_68c6fb60822163::t_c540290cfdac48 20-22
+  s_68c6fb60822163::t_c19e90ab4534d1 75-81,115-126,128,268-271,277-283,298-305,331,333-336
+  s_68c6fb60822163::t_cb9f4d6508419a 19,323-326,374-376
+  s_68c6fb60822163::t_1c73aac686dcba 149
+  s_68c6fb60822163::t_77cc421f8d030e 377
+cmd/codegen/templates/repository_interface.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-44
+cmd/codegen/file.go
+  s_68c6fb60822163::t_41c11abe0adad5 5,50-53,59-61,65,88-91,213-216,222-246,255-258,266-276,282
+  s_68c6fb60822163::t_541667bf5f172d 62-64
+AGENTS.md
+  s_df0bba90c91a6e::t_e0ea5d1751be71 52-55
+cmd/codegen/README.md
+  s_68c6fb60822163::t_bc8b55aa5dad1e 1-79
+cmd/codegen/templates/model_hooks.gotmpl
+  s_68c6fb60822163::t_b404f8f6e4b674 1-6
+  s_68c6fb60822163::t_ef24df9692d66a 7
+cmd/codegen/templates/handler_method.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-2
+Makefile
+  s_68c6fb60822163::t_ed081cf02f8498 10,14
+cmd/codegen/template.go
+  s_68c6fb60822163::t_fac893fa28aac4 1-23
+cmd/codegen/templates/logic.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-21
+cmd/codegen/templates/repository_postgres.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-88
+cmd/codegen/generate_logic.go
+  s_68c6fb60822163::t_855fd146573a32 15-27
+cmd/codegen/main.go
+  s_68c6fb60822163::t_f100ccd32a90c6 176-178
+  s_68c6fb60822163::t_b3e058bb8d4316 4,7,12-13,26-30,44-48,53-64,66-71,75-80,90-94,99-110,113-119,124-148,152,154-156,160-168,232-241
+  s_68c6fb60822163::t_49035222bddd66 169-171
+  s_68c6fb60822163::t_685ba0103f8005 242
+cmd/codegen/templates/model_before_create.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-4
+cmd/codegen/inspect.go
+  s_68c6fb60822163::t_133f11d4294ab6 1-7,9-88,92-99,101-109,131-181,185-208,212-223
+  s_68c6fb60822163::t_0471119b6aa33b 182-184,209-211
+  s_68c6fb60822163::t_b4f44b5238daac 89-91,110-118
+  s_68c6fb60822163::t_ec58800befe49c 8
+  s_68c6fb60822163::t_85ea9903547360 100,119-130
+cmd/codegen/types.go
+  s_68c6fb60822163::t_e798c4a542e831 11-25,29-34,38-47,53,67-81,92-114,123-129,173-199,205
+  s_68c6fb60822163::t_c808b404c42aa3 51-52,54-55,200-204
+cmd/codegen/generate_handler.go
+  s_68c6fb60822163::t_bc8da88be8ca60 20-26,138,146,154-162
+cmd/codegen/templates/handler_type.gotmpl
+  s_68c6fb60822163::t_ef24df9692d66a 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "52a0e0620fa5b2865b948595d140aeb71b95a5d1",
+  "prompts": {},
+  "sessions": {
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_df0bba90c91a6e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13a2-db16-7c91-bdb4-859b209ce6bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
