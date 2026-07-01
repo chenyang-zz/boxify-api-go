@@ -1,0 +1,169 @@
+internal/logic/document/re_parse_document.go
+  s_d5520a108cc9cc::t_5c36c9f0788b4e 52-56
+  s_d5520a108cc9cc::t_aa0fad2504b72b 7,41
+internal/worker/tasks/parse_document_test.go
+  s_d5520a108cc9cc::t_d4dff6ecfcd1ff 1-8,10-123,126-129,131-145,148-151,153-163,165-167,169,171-173
+  s_d5520a108cc9cc::t_639211b77d9058 9,125,147,164
+  s_d5520a108cc9cc::t_283a2eea0fcc6e 124,130,146,152,168,170
+cmd/worker/main.go
+  s_d5520a108cc9cc::t_e35929ac73f22d 11,20-24
+  s_d5520a108cc9cc::t_54e5c85a324e20 9-10,39,46-50
+  s_d5520a108cc9cc::t_bfb2e03c995c80 37
+  s_d5520a108cc9cc::t_5bf62a90cc4f13 12-13,18,25-28,30-36,40-44
+internal/domain/document.go
+  s_d5520a108cc9cc::t_fd811fca1a1fcd 1-8
+internal/domain/task_test.go
+  s_d5520a108cc9cc::t_3041809764e0e4 1-62
+internal/logic/document/upload_document.go
+  s_d5520a108cc9cc::t_1522dde321612d 7,75
+  s_d5520a108cc9cc::t_6cdf1a6be7650d 88-92
+internal/svc/context.go
+  s_d5520a108cc9cc::t_d52a70ddaacce1 20,39,225,229
+  s_d5520a108cc9cc::t_a36b79f6aba8b0 19,110,200-204,226-228,230-234
+  s_d5520a108cc9cc::t_0206601bf579b7 235-236
+cmd/codegen/README.md
+  s_68c6fb60822163::t_943cab88c245eb 65,78-79
+  s_68c6fb60822163::t_6737d003e8d46d 17-20,33-34,63-64,66-77,80-82
+  s_68c6fb60822163::t_d9b1431673f171 83
+internal/worker/tasks/registry.go
+  s_d5520a108cc9cc::t_60bba7d97db841 1-3,5-13,15-16,19-20,22,25,27-29
+  s_d5520a108cc9cc::t_53dac06c7e7784 4,17-18,21,23-24,26
+  s_d5520a108cc9cc::t_869609b8fa7446 14
+configs/config.yml.example
+  s_68c6fb60822163::t_943cab88c245eb 10-11
+  s_68c6fb60822163::t_be33ec267adf15 8-9,12-14
+go.mod
+  s_68c6fb60822163::t_efe6f86560e635 10,22-23
+  s_68c6fb60822163::t_eb59ced5d414c3 34,37-38,54-58,71,75,95,113,115
+  s_68c6fb60822163::t_2dc82686389fd7 48,83-84,89
+internal/infrastructure/queue/client.go
+  s_d5520a108cc9cc::t_ae0288f67e33d1 6,9-11,14-23,27-28,31-34,37-43,47-49,53-61,63
+  s_d5520a108cc9cc::t_3c6dd4ffc82f5d 24-26,29-30,50-51,62
+  s_d5520a108cc9cc::t_5872ad67efb93e 52
+AGENTS.md
+  s_d5520a108cc9cc::t_571b8283e64c6a 4
+internal/worker/tasks/parse_document.go
+  s_d5520a108cc9cc::t_85578adf613912 7,13,15,23-34,40,44,47-50,55-60,62,70,72,77,79-82,90,94,99-107,124,126-132,139-140
+  s_d5520a108cc9cc::t_ca9062977e655e 17
+  s_d5520a108cc9cc::t_0bd60143fb8581 35-36,108-121
+  s_d5520a108cc9cc::t_153053c78eae39 1-6,8-12,14,16,18-22,37-39,41-43,45-46,51-54,61,63-69,71,73-76,78,83-89,91-93,95-98,122-123,125,133-138,141-161
+internal/config/config_test.go
+  s_68c6fb60822163::t_f6c741553f7542 55-56,59-60,108-109,131-135,166-171,203-228
+  s_68c6fb60822163::t_f15c04ed4a54a1 57-58,107
+internal/transport/http/router.go
+  s_68c6fb60822163::t_3f863de6758ec9 4-7,10,19-20,39,71-80,90,92
+  s_68c6fb60822163::t_fa2837a5dbbe03 83-85
+  s_68c6fb60822163::t_12bc4a3fd90079 81-82,86-89,91,93-95,97-101
+  s_68c6fb60822163::t_f5f498f953816f 96
+  s_68c6fb60822163::t_e1ae42e66669d5 102
+internal/transport/http/router_test.go
+  s_68c6fb60822163::t_03b1d8c23ae27b 801-809
+  s_68c6fb60822163::t_1c8dd0b46413b5 33,36-37
+  s_68c6fb60822163::t_f5c376c914ff2d 34-35,778-779,786,799,819-820,825
+  s_68c6fb60822163::t_059cca0ed8aea3 107,772-777,780-785,787-798,800,810-818,821-824,826-831
+  s_d5520a108cc9cc::t_916e7c67c71fa2 101-102
+  s_68c6fb60822163::t_13222e7cdd41c3 15,30-32,38-42,49
+  s_d5520a108cc9cc::t_cd4dc2b45bac21 17,60,99-100,103-105
+  s_68c6fb60822163::t_ce01498e004af6 29
+  s_68c6fb60822163::t_03ecd691e66b7a 108
+  s_d5520a108cc9cc::t_e121a6e9c6a4fc 106
+cmd/codegen/file.go
+  s_68c6fb60822163::t_cc7096829c42b5 70-95
+Makefile
+  s_d5520a108cc9cc::t_b6a57e4675acc4 1,6-7
+  s_68c6fb60822163::t_5228f11b45c211 18-20
+  s_d5520a108cc9cc::t_aa3762417bb6b1 8
+CLAUDE.md
+  s_d5520a108cc9cc::t_571b8283e64c6a 4
+cmd/scheduler/main.go
+  s_d5520a108cc9cc::t_61de354de1af19 8-9,21,27
+  s_d5520a108cc9cc::t_0ad26715a3009b 10,16-20
+  s_d5520a108cc9cc::t_e4d5cac99154f7 22-26
+internal/infrastructure/queue/redis/config.go
+  s_d5520a108cc9cc::t_3b0a8ea617228c 1-19
+internal/infrastructure/queue/redis/producer.go
+  s_d5520a108cc9cc::t_37e167a5e42803 1-56
+internal/logic/document/helper.go
+  s_d5520a108cc9cc::t_c463f7ff06a32a 4,8-10,98,100-102,108-119,121-124
+  s_d5520a108cc9cc::t_23ce6368d0fc01 7,16-18,120
+  s_d5520a108cc9cc::t_9f802c9b2ddc1e 99,103-107
+docs/openapi.json
+  s_68c6fb60822163::t_b7031b6f9bb310 1-4555
+cmd/codegen/main_test.go
+  s_68c6fb60822163::t_d89400fe67e6a8 1577,1580,1650,1692
+  s_68c6fb60822163::t_367c1ce5460fd1 235,261-262
+  s_68c6fb60822163::t_556e9d1accc5a2 1522-1576,1578-1579,1581-1649,1651-1691,1693-1694,1834-1866
+  s_68c6fb60822163::t_586cf5dd18128f 1867
+internal/logic/document/document_test.go
+  s_d5520a108cc9cc::t_2d25d50d1b66ff 246-248,251,255-256,323-326,490-508
+  s_d5520a108cc9cc::t_40e252de9fddc7 14,245,249-250,252-254,257-263,293-294,336,373,390-406,478,480
+  s_d5520a108cc9cc::t_b9f97837ea24a2 8,88-90
+  s_d5520a108cc9cc::t_a7a44a1cd9bd2d 13,314,320,414-415,484
+internal/infrastructure/queue/redis/codec.go
+  s_d5520a108cc9cc::t_eae46c79c7dcd1 1-7,9-44,46-71,73-76,78-84
+  s_d5520a108cc9cc::t_23e355b5a4c419 8,45,72,77
+cmd/codegen/generate_docs.go
+  s_68c6fb60822163::t_12523d2a4b107a 270,274,279-289
+  s_68c6fb60822163::t_7122056a25e1a6 1-16,18-269,271-273,275-278,290-567
+  s_68c6fb60822163::t_400d9b850c42b2 17
+cmd/codegen/inspect.go
+  s_68c6fb60822163::t_b625d5c3ae3568 189-192,197-199,210-218,240-270
+cmd/codegen/main.go
+  s_68c6fb60822163::t_3a9fe981680fd3 26-27,135-172
+  s_68c6fb60822163::t_4f267b001e2efe 196
+cmd/codegen/directive.go
+  s_68c6fb60822163::t_3df217f001cf51 32-33,114-116,210
+cmd/codegen/scan_routes.go
+  s_68c6fb60822163::t_85880bc73912ae 55,57-62,85,99-163
+  s_68c6fb60822163::t_56d7655f87f56f 164
+internal/infrastructure/queue/tasks_test.go
+  s_d5520a108cc9cc::t_2786d6b39a7dd3 9,29-31,35-38
+  s_d5520a108cc9cc::t_dd06136e159bbd 4,7,12-16,18-28,32-34,39-41,43-44
+internal/svc/context_test.go
+  s_d5520a108cc9cc::t_bdedb7a90f065e 11,219-220
+  s_d5520a108cc9cc::t_67f3f83004822f 15,192-204,215-218,221-226
+  s_d5520a108cc9cc::t_70c5e8c5386f9c 227
+internal/domain/document_test.go
+  s_d5520a108cc9cc::t_133873ded15a9e 1-18
+internal/domain/task.go
+  s_d5520a108cc9cc::t_3909c39d8aa6aa 1-19,22-26,29-41,49-65
+internal/infrastructure/queue/redis/router.go
+  s_d5520a108cc9cc::t_399a1055875c7a 1-30
+internal/infrastructure/queue/redis/task_test.go
+  s_d5520a108cc9cc::t_81c19577fb5867 1-91
+internal/worker/tasks/placeholder.go
+  s_d5520a108cc9cc::t_79a0f883bfc453 8,11-18,20
+  s_d5520a108cc9cc::t_bce5461e27f052 1-6,9-10,22-24
+  s_d5520a108cc9cc::t_c7fbb7b9bd9aaf 7,19,21
+internal/config/config.go
+  s_68c6fb60822163::t_fdb6b18ed02387 159
+  s_68c6fb60822163::t_c80cbe49b60bff 16,39-46,129,134,143,145-147,187-191,240-264
+cmd/codegen/types.go
+  s_68c6fb60822163::t_5b8441e98fa13b 130-139,146
+go.sum
+  s_68c6fb60822163::t_3c450f36361fc1 3-4,11-14,40,46-47,58-61,71-85,127-128,135,138-139,144-147,169-173,190-191,207,216-221,242,258-259,262-269,274-275,278-283,287-294,299-301,304,308-309,312-314,316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0182f111bbcae8307a68aa2b6d8ea9c2fa3b2c43",
+  "prompts": {},
+  "sessions": {
+    "s_68c6fb60822163": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eef3b-556e-7b21-8e7d-a378edabe8e9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_d5520a108cc9cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0892-f010-7a52-bb80-be2f10228cc9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
