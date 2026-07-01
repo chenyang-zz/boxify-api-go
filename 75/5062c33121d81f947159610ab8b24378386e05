@@ -1,0 +1,23 @@
+internal/core/valuex/values.go
+  s_a5f282227fb606::t_c55c2cf7f1fe55 3-6,60-83
+internal/core/rag/webcrawl/extractor.go
+  s_a5f282227fb606::t_ab9941ac16689c 9,55
+internal/core/valuex/values_test.go
+  s_a5f282227fb606::t_45077e153da21f 56-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "755062c33121d81f947159610ab8b24378386e05",
+  "prompts": {},
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
