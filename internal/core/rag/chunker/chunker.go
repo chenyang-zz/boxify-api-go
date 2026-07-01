@@ -7,13 +7,13 @@ import (
 )
 
 type Chunker struct {
-	ChunkOptions
+	Options
 	tkm *tiktoken.Tiktoken
 }
 
-func NewChunker(opts ...ChunkOption) *Chunker {
+func NewChunker(opts ...Option) *Chunker {
 	chunker := &Chunker{
-		ChunkOptions: ChunkOptions{
+		Options: Options{
 			ChildChunkTokens:  defaultChildChunkTokens,
 			ParentChunkTokens: defaultParentChunkTokens,
 			ChildOverlapRatio: defaultChildOverlapRatio,
@@ -22,7 +22,7 @@ func NewChunker(opts ...ChunkOption) *Chunker {
 		},
 	}
 	for _, opt := range opts {
-		opt(&chunker.ChunkOptions)
+		opt(&chunker.Options)
 	}
 	tkm, err := tiktoken.GetEncoding(chunker.TokenEncodingName)
 	if err != nil {

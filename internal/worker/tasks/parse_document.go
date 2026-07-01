@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/boxify/api-go/internal/core/rag"
+	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
@@ -84,7 +84,7 @@ func (h *ParseDocumentTask) Handle(ctx context.Context, task *domain.Task) error
 		}
 		return err
 	}
-	chunks := rag.ChunkText(text, 1200)
+	chunks := ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)).Chunk(text)
 	if len(chunks) == 0 {
 		err := errors.New("解析结果为空")
 		_ = h.markParseFailed(ctx, doc, err)

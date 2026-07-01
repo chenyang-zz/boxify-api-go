@@ -1,13 +1,10 @@
 package chunker
 
 import (
-	"context"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestNewChunkerAppliesOptions(t *testing.T) {
@@ -124,16 +121,5 @@ func TestMergeToChunkSplitsLongSentence(t *testing.T) {
 		if tokens := c.CountTokens(chunk); tokens > targetTokens {
 			t.Fatalf("chunk %d token count = %d, want <= %d", i, tokens, targetTokens)
 		}
-	}
-}
-
-func TestNoopSearcherReturnsEmptyResult(t *testing.T) {
-	// 验证默认空检索器不返回 citation，也不产生错误。
-	got, err := NoopSearcher{}.Search(context.Background(), uuid.New(), "query", []string{"kb-1"}, 3)
-	if err != nil {
-		t.Fatalf("Search() error = %v, want nil", err)
-	}
-	if got != nil {
-		t.Fatalf("Search() = %#v, want nil", got)
 	}
 }

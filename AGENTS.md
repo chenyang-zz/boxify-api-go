@@ -53,3 +53,16 @@ This project is indexed by GitNexus as **boxify-api-go** (6276 symbols, 24945 re
 ## Go Style
 
 - Prefer using pointers wherever pointers can reasonably be used.
+
+## Core Package Template
+
+Use `internal/core/rag/search` as the implementation template for new packages under `internal/core`.
+
+- Split package responsibilities into focused files: `types.go` for interfaces/request/result types, `options.go` for defaults and functional options, one main implementation file for behavior, and `*_test.go` for package-level behavior tests.
+- Keep core packages business-neutral. Define small dependency interfaces inside the core package, accept dependencies through constructors, and let callers provide business filters, decoders, or adapters.
+- Constructors should return pointers, initialize complete defaults first, then apply functional options. Options should ignore invalid zero values when preserving defaults is safer.
+- Separate package-level options from per-call request options when both long-lived configuration and request-specific overrides exist.
+- Prefer generic result/source types when the core behavior is reusable but callers need typed metadata.
+- Keep exported methods small and orchestration-focused. Move query building, normalization, filtering, sorting, decoding, and fallback behavior into private helper functions.
+- Key implementation steps must include Chinese comments explaining what they do, especially non-obvious algorithms, fallback behavior, score normalization, filtering, and external-service query construction.
+- Tests should use local fakes for dependencies, cover defaults/options, dependency errors, request overrides, helper edge cases, fallback paths, and result shaping. Every test function must include a Chinese comment explaining what the test verifies.

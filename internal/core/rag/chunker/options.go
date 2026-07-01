@@ -17,7 +17,7 @@ const (
 
 var defaultSentenceRegex = regexp.MustCompile(`[^。！？.!?\n]+[。！？.!?\n]?`)
 
-type ChunkOptions struct {
+type Options struct {
 	ChildChunkTokens  int
 	ParentChunkTokens int
 	ChildOverlapRatio float64
@@ -25,34 +25,34 @@ type ChunkOptions struct {
 	TokenEncodingName string
 }
 
-type ChunkOption func(*ChunkOptions)
+type Option func(*Options)
 
-func WithChildChunkTokens(childChunkTokens int) ChunkOption {
-	return func(opts *ChunkOptions) {
+func WithChildChunkTokens(childChunkTokens int) Option {
+	return func(opts *Options) {
 		opts.ChildChunkTokens = childChunkTokens
 	}
 }
 
-func WithParentChunkTokens(parentChunkTokens int) ChunkOption {
-	return func(opts *ChunkOptions) {
+func WithParentChunkTokens(parentChunkTokens int) Option {
+	return func(opts *Options) {
 		opts.ParentChunkTokens = parentChunkTokens
 	}
 }
 
-func WithChildOverlapRatio(childOverlapRatio float64) ChunkOption {
-	return func(opts *ChunkOptions) {
+func WithChildOverlapRatio(childOverlapRatio float64) Option {
+	return func(opts *Options) {
 		opts.ChildOverlapRatio = childOverlapRatio
 	}
 }
 
-func WithSentenceRegex(sentenceRegex *regexp.Regexp) ChunkOption {
-	return func(opts *ChunkOptions) {
+func WithSentenceRegex(sentenceRegex *regexp.Regexp) Option {
+	return func(opts *Options) {
 		opts.SentenceRegex = sentenceRegex
 	}
 }
 
-func WithTokenEncodingName(tokenEncodingName string) ChunkOption {
-	return func(opts *ChunkOptions) {
+func WithTokenEncodingName(tokenEncodingName string) Option {
+	return func(opts *Options) {
 		opts.TokenEncodingName = tokenEncodingName
 	}
 }
