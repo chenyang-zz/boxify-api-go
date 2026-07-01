@@ -1,0 +1,21 @@
+internal/core/rag/imagedescribe/options.go
+  s_a5f282227fb606::t_4771c49e6b9144 5,14
+  s_a5f282227fb606::t_e45c6651e8998b 7
+  s_a5f282227fb606::t_1aa4e0137fc3ec 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "9d9340f96bc12b09c2bce2536db58995ca5d372b",
+  "prompts": {},
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
