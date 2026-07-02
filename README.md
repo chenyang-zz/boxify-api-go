@@ -1,6 +1,6 @@
-# Boxify API — Go
+# Cove API — Go
 
-Boxify 是一个 AI 助手平台的后端服务，提供基于 LLM 的对话、RAG 知识检索、文档处理、记忆管理、Agent 编排、MCP 集成及实时事件流等功能。
+Cove 是一个 AI 助手平台的后端服务，提供基于 LLM 的对话、RAG 知识检索、文档处理、记忆管理、Agent 编排、MCP 集成及实时事件流等功能。
 
 ## 技术栈
 
