@@ -2,12 +2,14 @@ package document
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
+	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/xerr"
 	"github.com/google/uuid"
 )
@@ -96,6 +98,7 @@ func truncatePreview(text string) (string, bool) {
 	return string(runes[:previewMaxChars]), true
 }
 
+// 队列提交文档解析任务
 func enqueueParseDocumentTask(ctx context.Context, producer queue.Producer, userID uuid.UUID, documentID uuid.UUID) error {
 	if producer == nil {
 		return xerr.Internal("任务队列未初始化", nil)
@@ -111,6 +114,7 @@ func enqueueParseDocumentTask(ctx context.Context, producer queue.Producer, user
 	return nil
 }
 
+// 标记文档解析任务分发失败
 func markDocumentParseDispatchFailed(ctx context.Context, repo repository.DocumentRepository, userID uuid.UUID, documentID uuid.UUID, cause error) {
 	if repo == nil || cause == nil {
 		return
@@ -121,4 +125,33 @@ func markDocumentParseDispatchFailed(ctx context.Context, repo repository.Docume
 		Progress: 0,
 		ErrorMsg: &message,
 	}, repository.NewDocumentUpdateFields().Status().Progress().ErrorMsg())
+}
+
+// 最努力地删除文档检索 chunk
+func deleteDocumentChunksBestEffort(ctx context.Context, svcCtx *svc.ServiceContext, log *slog.Logger, userID uuid.UUID, documentID uuid.UUID) {
+	if svcCtx == nil || svcCtx.RAGChunkRepo == nil {
+		return
+	}
+	if err := svcCtx.RAGChunkRepo.DeleteByDocument(ctx, userID, documentID); err != nil && log != nil {
+		log.WarnContext(ctx, "清理文档检索 chunk 失败（忽略）",
+			slog.String("user_id", userID.String()),
+			slog.String("document_id", documentID.String()),
+			slog.String("error", err.Error()),
+		)
+	}
+}
+
+// 最努力地更新文档检索 chunk 的知识库归属
+func updateDocumentChunksKnowledgeBaseBestEffort(ctx context.Context, svcCtx *svc.ServiceContext, log *slog.Logger, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) {
+	if svcCtx == nil || svcCtx.RAGChunkRepo == nil {
+		return
+	}
+	if err := svcCtx.RAGChunkRepo.UpdateKnowledgeBase(ctx, userID, documentID, kbID); err != nil && log != nil {
+		log.WarnContext(ctx, "更新文档检索 chunk 知识库归属失败（忽略）",
+			slog.String("user_id", userID.String()),
+			slog.String("document_id", documentID.String()),
+			slog.String("kb_id", kbID.String()),
+			slog.String("error", err.Error()),
+		)
+	}
 }

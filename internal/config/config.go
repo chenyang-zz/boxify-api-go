@@ -96,7 +96,8 @@ type LLMConfig struct {
 }
 
 type RagConfig struct {
-	EmbeddingDim int `yaml:"embedding_dim"`
+	EmbeddingDim int    `yaml:"embedding_dim"`
+	ChunkIndex   string `yaml:"chunk_index"`
 }
 
 type MemoryConfig struct {
@@ -165,7 +166,7 @@ func defaultConfig() Config {
 		SecretKey:     "0123456789abcdef0123456789abcdef",
 		Storage:       StorageConfig{Backend: "local", Dir: "./storage"},
 		LLM:           LLMConfig{Provider: "openai", BaseURL: "https://api.openai.com/v1"},
-		Rag:           RagConfig{EmbeddingDim: 1024},
+		Rag:           RagConfig{EmbeddingDim: 1024, ChunkIndex: "boxify_chunks"},
 		Memory: MemoryConfig{
 			NameSimGate:                      0.8,
 			LLMMergeConfidence:               0.8,
@@ -216,6 +217,7 @@ func applyEnv(cfg *Config) {
 	cfg.LLM.EmbeddingModel = env("LLM_EMBEDDING_MODEL", cfg.LLM.EmbeddingModel)
 	cfg.LLM.BaseURL = env("LLM_BASE_URL", cfg.LLM.BaseURL)
 	cfg.LLM.APIKey = env("LLM_API_KEY", cfg.LLM.APIKey)
+	cfg.Rag.ChunkIndex = env("RAG_CHUNK_INDEX", cfg.Rag.ChunkIndex)
 }
 
 func env(key, fallback string) string {

@@ -13,11 +13,10 @@ import (
 // Searcher 执行向量召回和 BM25 召回的混合检索。
 //
 // Searcher 不理解业务字段；业务过滤通过 FilterBuilder 或 WithFilters 注入，
-// 业务元数据通过 SourceDecoder 解码到 Result.Source。
+// 业务元数据通过 SourceDecoder 解码到 Output.Source。
 type Searcher[T any] struct {
 	Options
 	es            ESClient
-	embedder      Embedder
 	sourceDecoder SourceDecoder[T]
 }
 
@@ -28,8 +27,8 @@ type NoopSearcher[T any] struct{}
 
 // NewSearcher 创建带默认配置的混合检索器。
 //
-// esClient 或 embedder 为 nil 时构造仍会成功，后续 Search 会返回明确错误。
-func NewSearcher[T any](esClient ESClient, embedder Embedder, opts ...Option) *Searcher[T] {
+// esClient 或默认 embedder 为 nil 时构造仍会成功，后续 Search 会按请求级配置返回或报错。
+func NewSearcher[T any](esClient ESClient, opts ...Option) *Searcher[T] {
 	searcher := &Searcher[T]{
 		Options: Options{
 			Index:         defaultIndex,
@@ -39,8 +38,7 @@ func NewSearcher[T any](esClient ESClient, embedder Embedder, opts ...Option) *S
 			BM25Weight:    defaultBM25Weight,
 			FilterBuilder: defaultFilterBuilder,
 		},
-		es:       esClient,
-		embedder: embedder,
+		es: esClient,
 	}
 	for _, opt := range opts {
 		opt(&searcher.Options)
@@ -52,23 +50,27 @@ func NewSearcher[T any](esClient ESClient, embedder Embedder, opts ...Option) *S
 }
 
 // Search 返回空检索结果。
-func (NoopSearcher[T]) Search(ctx context.Context, query string, opts ...RequestOption) ([]Result[T], error) {
+func (NoopSearcher[T]) Search(ctx context.Context, query string, opts ...InputOption) ([]Output[T], error) {
 	return nil, nil
 }
 
 // Search 执行混合检索：向量召回 + BM25 召回，然后按权重融合排序。
 // 当 MinVectorScore 存在时，先过滤向量相关度不足的候选，再继续融合和重排。
-func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...RequestOption) ([]Result[T], error) {
+func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...InputOption) ([]Output[T], error) {
 	if s == nil || s.es == nil {
 		return nil, errors.New("rag search ES client is nil")
 	}
-	if s.embedder == nil {
-		return nil, errors.New("rag search embedder is nil")
-	}
 
-	req := Request{Query: strings.TrimSpace(query)}
+	req := Input{Query: strings.TrimSpace(query)}
 	for _, opt := range opts {
 		opt(&req)
+	}
+	embedder := req.embedder
+	if embedder == nil {
+		embedder = s.Embedder
+	}
+	if embedder == nil {
+		return nil, errors.New("rag search embedder is nil")
 	}
 
 	// 请求级 topK 和 recallSize 覆盖默认配置；未传时使用包内默认值或 Searcher 配置。
@@ -86,7 +88,7 @@ func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...RequestO
 		return nil, err
 	}
 
-	queryVector, err := s.embedder.EmbedOne(ctx, req.Query, s.EmbeddingDim)
+	queryVector, err := embedder.EmbedOne(ctx, req.Query, s.EmbeddingDim)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +156,8 @@ func (s *Searcher[T]) rerank(ctx context.Context, query string, candidateIDs []s
 }
 
 // resultsForIDs 组装检索结果；命中 child 时优先返回 parent 内容，给上层提供更完整上下文。
-func (s *Searcher[T]) resultsForIDs(ctx context.Context, ids []string, hits map[string]map[string]any, scores map[string]float64) ([]Result[T], error) {
-	results := make([]Result[T], 0, len(ids))
+func (s *Searcher[T]) resultsForIDs(ctx context.Context, ids []string, hits map[string]map[string]any, scores map[string]float64) ([]Output[T], error) {
+	results := make([]Output[T], 0, len(ids))
 	for _, id := range ids {
 		src := hits[id]
 		content, err := s.resolveParentContent(ctx, src)
@@ -169,7 +171,7 @@ func (s *Searcher[T]) resultsForIDs(ctx context.Context, ids []string, hits map[
 				return nil, err
 			}
 		}
-		results = append(results, Result[T]{
+		results = append(results, Output[T]{
 			ID:      id,
 			Content: content,
 			Score:   round4(scores[id]),
@@ -266,7 +268,7 @@ func Normalize(scores map[string]float64) map[string]float64 {
 }
 
 // defaultFilterBuilder 只透传调用方提供的 ES filter，避免核心包绑定业务字段。
-func defaultFilterBuilder(ctx context.Context, req Request) ([]any, error) {
+func defaultFilterBuilder(ctx context.Context, req Input) ([]any, error) {
 	return req.Filters, nil
 }
 

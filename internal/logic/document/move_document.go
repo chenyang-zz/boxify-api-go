@@ -54,5 +54,6 @@ func (l *MoveDocumentLogic) MoveDocument(userID uuid.UUID, input *request.MoveDo
 		slog.String("document_id", documentID.String()),
 		slog.String("kb_id", kbID.String()),
 	)
+	updateDocumentChunksKnowledgeBaseBestEffort(l.ctx, l.svcCtx, l.log, userID, documentID, kbID)
 	return mapper.DocumentToResponse(row, nil), nil
 }

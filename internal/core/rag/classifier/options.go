@@ -2,6 +2,7 @@ package classifier
 
 import (
 	"github.com/boxify/api-go/internal/core/jsonx"
+	corellm "github.com/boxify/api-go/internal/core/llm"
 	coreprompt "github.com/boxify/api-go/internal/core/prompt"
 	ragprompt "github.com/boxify/api-go/internal/core/rag/prompt"
 )
@@ -23,11 +24,34 @@ type Options struct {
 	MaxTokens    int64
 	SnippetRunes int
 	Parser       jsonx.Parser
+	client       TextClient
 	promptTmpl   bool
 }
 
 // Option 修改 Classifier 的长期配置。
 type Option func(*Options)
+
+// WithClient 设置分类器默认使用的文本模型客户端。
+//
+// client 为 nil 时会被忽略，调用方可以在 Classify 时通过 WithInputClient 注入请求级客户端。
+func WithClient(client corellm.Client) Option {
+	return func(opts *Options) {
+		if client != nil {
+			opts.client = llmTextClient{client: client}
+		}
+	}
+}
+
+// WithTextClient 设置分类器默认使用的最小文本模型客户端。
+//
+// client 为 nil 时会被忽略；它和 WithClient 同时使用时，后传的 option 生效。
+func WithTextClient(client TextClient) Option {
+	return func(opts *Options) {
+		if client != nil {
+			opts.client = client
+		}
+	}
+}
 
 // WithPrompt 设置外部传入的最终提示词文本。
 //
@@ -73,6 +97,28 @@ func WithParser(parser jsonx.Parser) Option {
 	return func(opts *Options) {
 		if parser != nil {
 			opts.Parser = parser
+		}
+	}
+}
+
+// WithInputClient 设置单次分类请求使用的文本模型客户端。
+//
+// 请求级 client 优先于构造级默认 client；client 为 nil 时会被忽略。
+func WithInputClient(client corellm.Client) InputOption {
+	return func(input *Input) {
+		if client != nil {
+			input.client = llmTextClient{client: client}
+		}
+	}
+}
+
+// WithInputTextClient 设置单次分类请求使用的最小文本模型客户端。
+//
+// 请求级 client 优先于构造级默认 client；它和 WithInputClient 同时使用时，后传的 option 生效。
+func WithInputTextClient(client TextClient) InputOption {
+	return func(input *Input) {
+		if client != nil {
+			input.client = client
 		}
 	}
 }

@@ -11,6 +11,10 @@ import (
 	corellm "github.com/boxify/api-go/internal/core/llm"
 	coremcp "github.com/boxify/api-go/internal/core/mcp"
 	"github.com/boxify/api-go/internal/core/prompt"
+	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
+	ragclassifier "github.com/boxify/api-go/internal/core/rag/classifier"
+	ragparser "github.com/boxify/api-go/internal/core/rag/documentparse"
+	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	dbneo4j "github.com/boxify/api-go/internal/infrastructure/db/neo4j"
 	dbpostgres "github.com/boxify/api-go/internal/infrastructure/db/postgres"
@@ -22,7 +26,9 @@ import (
 	realtimeredis "github.com/boxify/api-go/internal/infrastructure/realtime/redis"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
+	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
+	repositoryes "github.com/boxify/api-go/internal/repository/es"
 	"github.com/boxify/api-go/internal/repository/graph"
 	repositorypostgres "github.com/boxify/api-go/internal/repository/postgres"
 	"github.com/boxify/api-go/internal/xerr"
@@ -56,6 +62,11 @@ type ServiceContext struct {
 	DocumentRepo        repository.DocumentRepository
 	ImageRepo           repository.ImageRepository
 	TagRepo             repository.TagRepository
+	RAGChunkRepo        repository.RAGChunkRepository
+	RAGSearcher         *ragsearch.Searcher[models.RAGChunkSource]
+	RAGClassifier       *ragclassifier.Classifier
+	RAGDocumentParser   *ragparser.Parser
+	RAGChunker          *ragchunker.Chunker
 
 	SecretCipher *security.SecretCipher
 	TokenIssuer  *security.TokenIssuer
@@ -120,6 +131,17 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		return nil, err
 	}
 	svcCtx.Elasticsearch = esClient
+	ragChunkRepo := repositoryes.NewRAGChunkRepository(esClient, cfg.Rag.ChunkIndex)
+	svcCtx.RAGChunkRepo = ragChunkRepo
+	svcCtx.RAGSearcher = ragsearch.NewSearcher[models.RAGChunkSource](
+		esClient,
+		ragsearch.WithIndex(cfg.Rag.ChunkIndex),
+		ragsearch.WithEmbeddingDim(cfg.Rag.EmbeddingDim),
+		ragsearch.WithSourceDecoder[models.RAGChunkSource](ragChunkRepo.DecodeSource),
+	)
+	svcCtx.RAGDocumentParser = ragparser.NewParser()
+	svcCtx.RAGChunker = ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200))
+	svcCtx.RAGClassifier = ragclassifier.NewClassifier()
 
 	store, urlSigner, err := BuildStorage(cfg.Storage)
 	if err != nil {

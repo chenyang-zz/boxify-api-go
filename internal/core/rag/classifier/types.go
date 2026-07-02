@@ -4,7 +4,7 @@ import "context"
 
 // TextClient 定义内容分类所需的最小文本模型能力。
 //
-// Classify 接收最终提示词和生成参数，返回模型原文；调用方负责把具体 LLM SDK 适配到该接口。
+// Classify 接收最终提示词和生成参数，返回模型原文；classifier 包会把 core llm client 适配到该接口。
 type TextClient interface {
 	Classify(ctx context.Context, prompt string, temperature float64, maxTokens int64) (string, error)
 }
@@ -15,6 +15,7 @@ type TextClient interface {
 type Input struct {
 	Content      string
 	ExistingTags []string
+	client       TextClient
 }
 
 // Result 表示内容分类结果。
@@ -23,3 +24,6 @@ type Input struct {
 type Result struct {
 	Tags []string
 }
+
+// InputOption 修改单次分类请求配置。
+type InputOption func(*Input)

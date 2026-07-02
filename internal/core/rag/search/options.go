@@ -19,6 +19,7 @@ type Options struct {
 	VectorWeight  float64
 	BM25Weight    float64
 	KnnOversample int
+	Embedder      Embedder
 	Reranker      Reranker
 	FilterBuilder FilterBuilder
 	sourceDecoder any
@@ -75,6 +76,15 @@ func WithKnnOversample(knnOversample int) Option {
 	return func(opts *Options) {
 		if knnOversample > 0 {
 			opts.KnnOversample = knnOversample
+		}
+	}
+}
+
+// WithEmbedder 设置默认向量化客户端。
+func WithEmbedder(embedder Embedder) Option {
+	return func(opts *Options) {
+		if embedder != nil {
+			opts.Embedder = embedder
 		}
 	}
 }

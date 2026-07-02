@@ -20,8 +20,9 @@ type Classifier struct {
 
 // NewClassifier 创建内容分类器。
 //
-// client 为 nil 时构造仍会成功，后续 Classify 会返回明确错误，便于测试或延迟注入。
-func NewClassifier(client TextClient, opts ...Option) *Classifier {
+// 默认不携带文本模型客户端；调用方可以通过 WithClient 设置长期 client，
+// 或在 Classify 时通过 WithInputClient 注入请求级 client。
+func NewClassifier(opts ...Option) *Classifier {
 	classifier := &Classifier{
 		Options: Options{
 			Prompt:       defaultPrompt,
@@ -31,13 +32,13 @@ func NewClassifier(client TextClient, opts ...Option) *Classifier {
 			Parser:       defaultParser(),
 			promptTmpl:   true,
 		},
-		client: client,
 	}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&classifier.Options)
 		}
 	}
+	classifier.client = classifier.Options.client
 	return classifier
 }
 
@@ -45,8 +46,17 @@ func NewClassifier(client TextClient, opts ...Option) *Classifier {
 //
 // 模型调用失败或输出解析失败时返回空标签且 error 为 nil，避免分类辅助能力阻断主流程。
 // client 或 Parser 未配置时返回错误。
-func (c *Classifier) Classify(ctx context.Context, input Input) (*Result, error) {
-	if c == nil || c.client == nil {
+func (c *Classifier) Classify(ctx context.Context, input Input, opts ...InputOption) (*Result, error) {
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&input)
+		}
+	}
+	client := input.client
+	if client == nil && c != nil {
+		client = c.client
+	}
+	if c == nil || client == nil {
 		return nil, errors.New("rag classifier text client is nil")
 	}
 	if c.Parser == nil {
@@ -59,7 +69,7 @@ func (c *Classifier) Classify(ctx context.Context, input Input) (*Result, error)
 	}
 
 	// 分类是辅助能力：模型调用失败不能阻断文档主流程。
-	answer, err := c.client.Classify(ctx, prompt, c.Temperature, c.MaxTokens)
+	answer, err := client.Classify(ctx, prompt, c.Temperature, c.MaxTokens)
 	if err != nil {
 		return &Result{Tags: []string{}}, nil
 	}

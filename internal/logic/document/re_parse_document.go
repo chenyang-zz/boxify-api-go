@@ -49,6 +49,7 @@ func (l *ReParseDocumentLogic) ReParseDocument(userID uuid.UUID, input *request.
 		slog.String("user_id", userID.String()),
 		slog.String("document_id", documentID.String()),
 	)
+	deleteDocumentChunksBestEffort(l.ctx, l.svcCtx, l.log, userID, documentID)
 	if err := enqueueParseDocumentTask(l.ctx, l.svcCtx.TaskProducer, userID, documentID); err != nil {
 		markDocumentParseDispatchFailed(l.ctx, l.svcCtx.DocumentRepo, userID, documentID, err)
 		return nil, err

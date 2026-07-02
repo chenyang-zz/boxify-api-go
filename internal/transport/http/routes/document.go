@@ -66,7 +66,7 @@ func RegisterDocumentRoutes(api *gin.RouterGroup, document handler.DocumentHandl
 	// @auth(user_id)
 	// @description 检索文档
 	// @input request.SearchDocumentsRequest
-	documentGroup.POST("/:doc_id/search", document.SearchDocuments)
+	documentGroup.POST("/search", document.SearchDocuments)
 
 	// @auth(user_id)
 	// @description 移动文档到指定知识库

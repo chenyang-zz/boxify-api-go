@@ -13,15 +13,26 @@ import (
 )
 
 func TestClientPingAndRequests(t *testing.T) {
+	// 验证 ES client 会按 Elasticsearch API 发送基础读写、索引和批量删除请求。
 	var gotAuth string
 	var gotIndexBody map[string]any
 	var gotSearchBody map[string]any
+	var gotCreateIndexBody map[string]any
+	var gotDeleteByQueryBody map[string]any
+	var gotUpdateByQueryBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
 		gotAuth = r.Header.Get("Authorization")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/":
 			_, _ = w.Write([]byte(`{"version":{"number":"8.0.0"}}`))
+		case r.Method == http.MethodHead && r.URL.Path == "/docs":
+			w.WriteHeader(http.StatusOK)
+		case r.Method == http.MethodPut && r.URL.Path == "/docs":
+			if err := json.NewDecoder(r.Body).Decode(&gotCreateIndexBody); err != nil {
+				t.Fatalf("decode create index body: %v", err)
+			}
+			_, _ = w.Write([]byte(`{"acknowledged":true}`))
 		case r.Method == http.MethodPut && r.URL.Path == "/docs/_doc/1":
 			if err := json.NewDecoder(r.Body).Decode(&gotIndexBody); err != nil {
 				t.Fatalf("decode index body: %v", err)
@@ -34,6 +45,16 @@ func TestClientPingAndRequests(t *testing.T) {
 				t.Fatalf("decode search body: %v", err)
 			}
 			_, _ = w.Write([]byte(`{"hits":{"total":{"value":1}}}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/docs/_delete_by_query":
+			if err := json.NewDecoder(r.Body).Decode(&gotDeleteByQueryBody); err != nil {
+				t.Fatalf("decode delete by query body: %v", err)
+			}
+			_, _ = w.Write([]byte(`{"deleted":2}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/docs/_update_by_query":
+			if err := json.NewDecoder(r.Body).Decode(&gotUpdateByQueryBody); err != nil {
+				t.Fatalf("decode update by query body: %v", err)
+			}
+			_, _ = w.Write([]byte(`{"updated":2}`))
 		case r.Method == http.MethodDelete && r.URL.Path == "/docs/_doc/1":
 			_, _ = w.Write([]byte(`{"result":"deleted"}`))
 		default:
@@ -60,6 +81,22 @@ func TestClientPingAndRequests(t *testing.T) {
 		t.Fatalf("authorization = %q, want %q", gotAuth, wantAuth)
 	}
 
+	exists, err := client.IndexExists(ctx, "docs")
+	if err != nil {
+		t.Fatalf("IndexExists error = %v", err)
+	}
+	if !exists {
+		t.Fatal("IndexExists = false, want true")
+	}
+
+	createResp, err := client.CreateIndex(ctx, "docs", map[string]any{"mappings": map[string]any{"properties": map[string]any{"content": map[string]any{"type": "text"}}}})
+	if err != nil {
+		t.Fatalf("CreateIndex error = %v", err)
+	}
+	if createResp["acknowledged"] != true || gotCreateIndexBody["mappings"] == nil {
+		t.Fatalf("create index resp/body = %#v %#v", createResp, gotCreateIndexBody)
+	}
+
 	indexResp, err := client.Index(ctx, "docs", "1", map[string]any{"title": "hello"})
 	if err != nil {
 		t.Fatalf("Index error = %v", err)
@@ -84,12 +121,52 @@ func TestClientPingAndRequests(t *testing.T) {
 		t.Fatalf("search resp/body = %#v %#v", searchResp, gotSearchBody)
 	}
 
+	deleteByQueryResp, err := client.DeleteByQuery(ctx, "docs", map[string]any{"query": map[string]any{"term": map[string]any{"document_id": "doc-1"}}})
+	if err != nil {
+		t.Fatalf("DeleteByQuery error = %v", err)
+	}
+	if deleteByQueryResp["deleted"] != json.Number("2") || gotDeleteByQueryBody["query"] == nil {
+		t.Fatalf("delete by query resp/body = %#v %#v", deleteByQueryResp, gotDeleteByQueryBody)
+	}
+
+	updateByQueryResp, err := client.UpdateByQuery(ctx, "docs", map[string]any{"script": map[string]any{"source": "ctx._source.kb_id = params.kb_id"}, "query": map[string]any{"term": map[string]any{"document_id": "doc-1"}}})
+	if err != nil {
+		t.Fatalf("UpdateByQuery error = %v", err)
+	}
+	if updateByQueryResp["updated"] != json.Number("2") || gotUpdateByQueryBody["script"] == nil || gotUpdateByQueryBody["query"] == nil {
+		t.Fatalf("update by query resp/body = %#v %#v", updateByQueryResp, gotUpdateByQueryBody)
+	}
+
 	deleteResp, err := client.Delete(ctx, "docs", "1")
 	if err != nil {
 		t.Fatalf("Delete error = %v", err)
 	}
 	if deleteResp["result"] != "deleted" {
 		t.Fatalf("delete resp = %#v", deleteResp)
+	}
+}
+
+func TestClientIndexExistsReturnsFalseForMissingIndex(t *testing.T) {
+	// 验证 IndexExists 会把 404 映射为 false，而不是普通错误。
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		if r.Method != http.MethodHead || r.URL.Path != "/missing" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client, err := infraes.NewClient(infraes.Config{URL: server.URL})
+	if err != nil {
+		t.Fatalf("NewClient error = %v", err)
+	}
+	exists, err := client.IndexExists(context.Background(), "missing")
+	if err != nil {
+		t.Fatalf("IndexExists error = %v", err)
+	}
+	if exists {
+		t.Fatal("IndexExists = true, want false")
 	}
 }
 

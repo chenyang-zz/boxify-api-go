@@ -3,17 +3,27 @@ package document
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/boxify/api-go/internal/config"
+	corellm "github.com/boxify/api-go/internal/core/llm"
+	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
+	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/domain"
+	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
+	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
+	repositoryes "github.com/boxify/api-go/internal/repository/es"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/transport/http/request"
 	"github.com/boxify/api-go/internal/xerr"
@@ -259,6 +269,107 @@ func (p *fakeDocumentTaskProducer) Enqueue(ctx context.Context, task *domain.Tas
 func (p *fakeDocumentTaskProducer) Close() error {
 	p.closed = true
 	return nil
+}
+
+type fakeSearchLLMFactory struct {
+	client corellm.Client
+}
+
+func (f fakeSearchLLMFactory) NewClient(cfg corellm.ModelConfig) (corellm.Client, error) {
+	return f.client, nil
+}
+
+type fakeSearchLLMClient struct{}
+
+func (c fakeSearchLLMClient) Invoke(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (string, error) {
+	return "", nil
+}
+
+func (c fakeSearchLLMClient) Stream(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (<-chan string, error) {
+	ch := make(chan string)
+	close(ch)
+	return ch, nil
+}
+
+func (c fakeSearchLLMClient) Embed(ctx context.Context, texts []string, dimensions int) ([][]float64, error) {
+	out := make([][]float64, 0, len(texts))
+	for range texts {
+		out = append(out, []float64{0.1, 0.2, 0.3})
+	}
+	return out, nil
+}
+
+func (c fakeSearchLLMClient) EmbedOne(ctx context.Context, text string, dimensions int) ([]float64, error) {
+	return []float64{0.1, 0.2, 0.3}, nil
+}
+
+func newFakeSearchLLMManager() *corellm.Manager {
+	manager := corellm.NewManager()
+	manager.Register("fake", fakeSearchLLMFactory{client: fakeSearchLLMClient{}})
+	return manager
+}
+
+type fakeSearchModelConfigRepository struct {
+	rows []*models.ModelConfig
+}
+
+func (r *fakeSearchModelConfigRepository) Create(ctx context.Context, row *models.ModelConfig) (*models.ModelConfig, error) {
+	return row, nil
+}
+
+func (r *fakeSearchModelConfigRepository) Update(ctx context.Context, row *models.ModelConfig) (*models.ModelConfig, error) {
+	return row, nil
+}
+
+func (r *fakeSearchModelConfigRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (r *fakeSearchModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+	out := make([]*models.ModelConfig, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row.UserID == userID && (modelType == nil || row.Type == string(*modelType)) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeSearchModelConfigRepository) FindByID(ctx context.Context, userID uuid.UUID, configID uuid.UUID) (*models.ModelConfig, error) {
+	return nil, xerr.NotFound("模型配置不存在")
+}
+
+type fakeRAGChunkRepository struct {
+	updatedUserID     uuid.UUID
+	updatedDocumentID uuid.UUID
+	updatedKBID       uuid.UUID
+}
+
+func (r *fakeRAGChunkRepository) EnsureIndex(ctx context.Context, embeddingDim int) error {
+	return nil
+}
+
+func (r *fakeRAGChunkRepository) IndexDocumentChunks(ctx context.Context, document *models.Document, chunks []*ragchunker.Chunk, vectors [][]float64) error {
+	return nil
+}
+
+func (r *fakeRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+	return nil
+}
+
+func (r *fakeRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+	r.updatedUserID = userID
+	r.updatedDocumentID = documentID
+	r.updatedKBID = kbID
+	return nil
+}
+
+func (r *fakeRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+	return nil
+}
+
+func (r *fakeRAGChunkRepository) DecodeSource(src map[string]any) (models.RAGChunkSource, error) {
+	return models.RAGChunkSource{}, nil
 }
 
 func testFileHeader(t *testing.T, name string, content []byte) *multipart.FileHeader {
@@ -529,7 +640,7 @@ func TestDeleteDocumentDeletesStorageBestEffortAndMetadata(t *testing.T) {
 }
 
 func TestMoveDocumentValidatesTargetKnowledgeBaseAndUpdatesOnlyKBID(t *testing.T) {
-	// 验证移动文档会校验目标知识库，并且只更新 kb_id 字段。
+	// 验证移动文档会校验目标知识库，只更新数据库 kb_id，并同步更新 ES chunk 的 kb_id。
 	ctx := context.Background()
 	userID := uuid.New()
 	oldKBID := uuid.New()
@@ -537,8 +648,10 @@ func TestMoveDocumentValidatesTargetKnowledgeBaseAndUpdatesOnlyKBID(t *testing.T
 	row := &models.Document{ID: uuid.New(), UserID: userID, KBID: &oldKBID, FileName: "a.txt", FileExt: ".txt"}
 	docRepo := newFakeDocumentRepository(row)
 	kbRepo := newFakeDocumentKnowledgeBaseRepository(&models.KnowledgeBase{ID: newKBID, UserID: userID, Name: "目标库"})
+	chunkRepo := &fakeRAGChunkRepository{}
+	producer := &fakeDocumentTaskProducer{}
 
-	out, err := NewMoveDocumentLogic(ctx, &svc.ServiceContext{DocumentRepo: docRepo, KnowledgeBaseRepo: kbRepo}).MoveDocument(userID, &request.MoveDocumentRequest{
+	out, err := NewMoveDocumentLogic(ctx, &svc.ServiceContext{DocumentRepo: docRepo, KnowledgeBaseRepo: kbRepo, RAGChunkRepo: chunkRepo, TaskProducer: producer}).MoveDocument(userID, &request.MoveDocumentRequest{
 		UriDocumentIDRequest: request.UriDocumentIDRequest{DocumentID: row.ID.String()},
 		KBID:                 newKBID.String(),
 	})
@@ -550,6 +663,12 @@ func TestMoveDocumentValidatesTargetKnowledgeBaseAndUpdatesOnlyKBID(t *testing.T
 	}
 	if strings.Join(docRepo.fields, ",") != "kb_id" {
 		t.Fatalf("fields = %v, want kb_id only", docRepo.fields)
+	}
+	if chunkRepo.updatedUserID != userID || chunkRepo.updatedDocumentID != row.ID || chunkRepo.updatedKBID != newKBID {
+		t.Fatalf("updated chunk ownership = %s/%s/%s, want %s/%s/%s", chunkRepo.updatedUserID, chunkRepo.updatedDocumentID, chunkRepo.updatedKBID, userID, row.ID, newKBID)
+	}
+	if len(producer.tasks) != 0 {
+		t.Fatalf("queued tasks = %d, want 0 because move should not reparse", len(producer.tasks))
 	}
 }
 
@@ -582,20 +701,138 @@ func TestPreviewDocumentContentRejectsBinaryParserMissing(t *testing.T) {
 	}
 }
 
-func TestImportURLAndSearchAreExplicitNoOps(t *testing.T) {
-	// 验证 URL 导入暂未实现，检索接口在未接入检索逻辑前返回空列表。
+func TestImportURLIsExplicitNoOp(t *testing.T) {
+	// 验证 URL 导入暂未实现。
 	ctx := context.Background()
 	userID := uuid.New()
 
 	if _, err := NewImportDocumentFromUrlLogic(ctx, &svc.ServiceContext{}).ImportDocumentFromUrl(userID, &request.URLImportRequest{Url: "https://example.com"}); err == nil {
 		t.Fatal("ImportDocumentFromUrl error = nil, want not implemented error")
 	}
-	out, err := NewSearchDocumentsLogic(ctx, &svc.ServiceContext{}).SearchDocuments(userID, &request.SearchDocumentsRequest{Query: "hello", TopK: 5})
+}
+
+func TestSearchDocumentsUsesRAGSearchByUserAndTags(t *testing.T) {
+	// 验证文档检索会调用 RAG search，并按 user_id 和 tags 过滤当前用户的全部文档。
+	ctx := context.Background()
+	userID := uuid.New()
+	documentID := uuid.New()
+	kbID := uuid.New()
+	var searchBodies []map[string]any
+	esServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		if r.Method != http.MethodPost || r.URL.Path != "/boxify_chunks/_search" {
+			t.Fatalf("unexpected ES request %s %s", r.Method, r.URL.Path)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode search body: %v", err)
+		}
+		searchBodies = append(searchBodies, body)
+		_, _ = w.Write([]byte(`{"hits":{"hits":[{"_id":"11111111-1111-1111-1111-111111111111","_score":2,"_source":{"chunk_id":"11111111-1111-1111-1111-111111111111","document_id":"` + documentID.String() + `","user_id":"` + userID.String() + `","kb_id":"` + kbID.String() + `","doc_name":"guide.md","source_type":"file","content":"hello chunk"}}]}}`))
+	}))
+	defer esServer.Close()
+	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})
+	if err != nil {
+		t.Fatalf("NewClient error = %v", err)
+	}
+	ragChunkRepo := repositoryes.NewRAGChunkRepository(esClient, "boxify_chunks")
+	cipher, err := security.NewSecretCipher("0123456789abcdef0123456789abcdef")
+	if err != nil {
+		t.Fatalf("NewSecretCipher error = %v", err)
+	}
+	encryptedAPIKey, err := cipher.Encrypt("db-key")
+	if err != nil {
+		t.Fatalf("Encrypt API key error = %v", err)
+	}
+	svcCtx := &svc.ServiceContext{
+		Config:          config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
+		RAGSearcher:     ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex("boxify_chunks"), ragsearch.WithEmbeddingDim(3), ragsearch.WithSourceDecoder[models.RAGChunkSource](ragChunkRepo.DecodeSource)),
+		ModelConfigRepo: &fakeSearchModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, IsDefault: true}}},
+		SecretCipher:    cipher,
+		LLMManager:      newFakeSearchLLMManager(),
+	}
+	out, err := NewSearchDocumentsLogic(ctx, svcCtx).SearchDocuments(userID, &request.SearchDocumentsRequest{Query: "hello", TopK: 5, Tags: []string{"重要"}})
 	if err != nil {
 		t.Fatalf("SearchDocuments error = %v", err)
 	}
-	if len(out.List) != 0 {
-		t.Fatalf("search list len = %d, want 0", len(out.List))
+	if len(out.List) != 1 || out.List[0].SourceID != documentID || out.List[0].KBID == nil || *out.List[0].KBID != kbID || out.List[0].DocName != "guide.md" {
+		t.Fatalf("SearchDocuments list = %#v, want mapped chunk response", out.List)
+	}
+	if len(searchBodies) < 2 {
+		t.Fatalf("ES search calls = %d, want vector and bm25 calls", len(searchBodies))
+	}
+	encoded, err := json.Marshal(searchBodies)
+	if err != nil {
+		t.Fatalf("marshal search bodies: %v", err)
+	}
+	bodyText := string(encoded)
+	if !strings.Contains(bodyText, `"user_id":"`+userID.String()+`"`) || !strings.Contains(bodyText, `"tags":["重要"]`) {
+		t.Fatalf("search filters = %s, want user_id and tags", bodyText)
+	}
+	if strings.Contains(bodyText, "document_id") {
+		t.Fatalf("search filters = %s, want no document_id filter", bodyText)
+	}
+}
+
+func TestSearchDocumentsReturnsErrorWithoutEmbeddingModelConfig(t *testing.T) {
+	// 验证文档检索在用户未配置向量模型时直接返回错误，不访问 ES。
+	ctx := context.Background()
+	userID := uuid.New()
+	esServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected ES request %s %s", r.Method, r.URL.Path)
+	}))
+	defer esServer.Close()
+	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})
+	if err != nil {
+		t.Fatalf("NewClient error = %v", err)
+	}
+	cipher, err := security.NewSecretCipher("0123456789abcdef0123456789abcdef")
+	if err != nil {
+		t.Fatalf("NewSecretCipher error = %v", err)
+	}
+	svcCtx := &svc.ServiceContext{
+		Config:          config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
+		RAGSearcher:     ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex("boxify_chunks"), ragsearch.WithEmbeddingDim(3)),
+		ModelConfigRepo: &fakeSearchModelConfigRepository{},
+		SecretCipher:    cipher,
+		LLMManager:      newFakeSearchLLMManager(),
+	}
+
+	_, err = NewSearchDocumentsLogic(ctx, svcCtx).SearchDocuments(userID, &request.SearchDocumentsRequest{Query: "hello"})
+	if err == nil || !strings.Contains(err.Error(), "未配置向量模型") {
+		t.Fatalf("SearchDocuments error = %v, want missing embedding model config", err)
+	}
+}
+
+func TestSearchDocumentsReturnsErrorWhenEmbeddingAPIKeyDecryptFails(t *testing.T) {
+	// 验证文档检索在向量模型 API Key 解密失败时返回明确错误。
+	ctx := context.Background()
+	userID := uuid.New()
+	esServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("unexpected ES request %s %s", r.Method, r.URL.Path)
+	}))
+	defer esServer.Close()
+	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})
+	if err != nil {
+		t.Fatalf("NewClient error = %v", err)
+	}
+	cipher, err := security.NewSecretCipher("0123456789abcdef0123456789abcdef")
+	if err != nil {
+		t.Fatalf("NewSecretCipher error = %v", err)
+	}
+	svcCtx := &svc.ServiceContext{
+		Config:      config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
+		RAGSearcher: ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex("boxify_chunks"), ragsearch.WithEmbeddingDim(3)),
+		ModelConfigRepo: &fakeSearchModelConfigRepository{rows: []*models.ModelConfig{{
+			UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: "not-encrypted", IsDefault: true,
+		}}},
+		SecretCipher: cipher,
+		LLMManager:   newFakeSearchLLMManager(),
+	}
+
+	_, err = NewSearchDocumentsLogic(ctx, svcCtx).SearchDocuments(userID, &request.SearchDocumentsRequest{Query: "hello"})
+	if err == nil || !strings.Contains(err.Error(), "模型 API Key 解密失败") {
+		t.Fatalf("SearchDocuments error = %v, want decrypt failure", err)
 	}
 }
 

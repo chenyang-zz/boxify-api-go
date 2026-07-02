@@ -13,12 +13,16 @@ import (
 	"time"
 
 	"github.com/boxify/api-go/internal/config"
+	corellm "github.com/boxify/api-go/internal/core/llm"
+	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/domain"
+	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
+	repositoryes "github.com/boxify/api-go/internal/repository/es"
 	"github.com/boxify/api-go/internal/svc"
 	httptransport "github.com/boxify/api-go/internal/transport/http"
 	"github.com/boxify/api-go/internal/xerr"
@@ -45,19 +49,60 @@ func newTestRouterWithConfig(t *testing.T, cfg config.Config, enableDebugPanicRo
 	if err != nil {
 		t.Fatalf("new cipher: %v", err)
 	}
+	if cfg.Rag.ChunkIndex == "" {
+		cfg.Rag.ChunkIndex = "boxify_chunks"
+	}
+	if cfg.Rag.EmbeddingDim == 0 {
+		cfg.Rag.EmbeddingDim = 3
+	}
+	if cfg.LLM.Provider == "" {
+		cfg.LLM = config.LLMConfig{Provider: "fake", Model: "fake-model", APIKey: "fake-key", EmbeddingModel: "fake-embed"}
+	}
+	esServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Elastic-Product", "Elasticsearch")
+		if r.Method == http.MethodGet && r.URL.Path == "/" {
+			_, _ = w.Write([]byte(`{"version":{"number":"8.0.0"}}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/boxify_chunks/_search" {
+			_, _ = w.Write([]byte(`{"hits":{"hits":[]}}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/boxify_chunks/_delete_by_query" {
+			_, _ = w.Write([]byte(`{"deleted":1}`))
+			return
+		}
+		if r.Method == http.MethodPost && r.URL.Path == "/boxify_chunks/_update_by_query" {
+			_, _ = w.Write([]byte(`{"updated":1}`))
+			return
+		}
+		t.Fatalf("unexpected ES request %s %s", r.Method, r.URL.Path)
+	}))
+	t.Cleanup(esServer.Close)
+	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})
+	if err != nil {
+		t.Fatalf("new es client: %v", err)
+	}
+	ragChunkRepo := repositoryes.NewRAGChunkRepository(esClient, cfg.Rag.ChunkIndex)
+	llmManager := newTestLLMManager()
+	modelConfigRepo := &testModelConfigRepository{}
 	svcCtx := &svc.ServiceContext{
 		Config:            cfg,
 		UserRepo:          newTestUserRepository(),
 		RefreshTokenRepo:  newTestRefreshTokenRepository(),
-		ModelConfigRepo:   &testModelConfigRepository{},
+		ModelConfigRepo:   modelConfigRepo,
 		ConversationRepo:  newTestConversationRepository(),
 		MessageRepo:       newTestMessageRepository(),
 		KnowledgeBaseRepo: newTestKnowledgeBaseRepository(),
 		DocumentRepo:      newTestDocumentRepository(),
 		ImageRepo:         newTestImageRepository(),
 		Storage:           newTestDocumentStore(),
+		Elasticsearch:     esClient,
+		RAGChunkRepo:      ragChunkRepo,
+		RAGSearcher:       ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex(cfg.Rag.ChunkIndex), ragsearch.WithEmbeddingDim(cfg.Rag.EmbeddingDim), ragsearch.WithSourceDecoder[models.RAGChunkSource](ragChunkRepo.DecodeSource)),
 		Realtime:          testRealtimeBroker{},
 		TaskProducer:      testTaskProducer{},
+		LLMManager:        llmManager,
 		SecretCipher:      cipher,
 		TokenIssuer:       security.NewTokenIssuer("test-secret", time.Hour),
 	}
@@ -68,6 +113,44 @@ func newTestRouterWithConfig(t *testing.T, cfg config.Config, enableDebugPanicRo
 		deps.EnableDebugPanicRoute = enableDebugPanicRoute[0]
 	}
 	return httptransport.NewRouter(deps)
+}
+
+type testLLMFactory struct{}
+
+func (testLLMFactory) NewClient(cfg corellm.ModelConfig) (corellm.Client, error) {
+	return testLLMClient{}, nil
+}
+
+type testLLMClient struct{}
+
+func (testLLMClient) Invoke(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (string, error) {
+	return "", nil
+}
+
+func (testLLMClient) Stream(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (<-chan string, error) {
+	ch := make(chan string)
+	close(ch)
+	return ch, nil
+}
+
+func (testLLMClient) Embed(ctx context.Context, texts []string, dimensions int) ([][]float64, error) {
+	out := make([][]float64, 0, len(texts))
+	for range texts {
+		out = append(out, []float64{0.1, 0.2, 0.3})
+	}
+	return out, nil
+}
+
+func (testLLMClient) EmbedOne(ctx context.Context, text string, dimensions int) ([]float64, error) {
+	return []float64{0.1, 0.2, 0.3}, nil
+}
+
+func newTestLLMManager() *corellm.Manager {
+	manager := corellm.NewManager()
+	for _, provider := range []string{"fake", "openai", "qwen", "doubao", "deepseek", "zhipu", "qianfan"} {
+		manager.Register(provider, testLLMFactory{})
+	}
+	return manager
 }
 
 type testRealtimeBroker struct{}
@@ -1084,8 +1167,17 @@ func TestDocumentRoutesSupportCoreAuthenticatedFlow(t *testing.T) {
 		t.Fatalf("move status = %d body=%s", move.Code, move.Body.String())
 	}
 
+	model := httptest.NewRecorder()
+	modelReq := httptest.NewRequest(http.MethodPost, "/api/model-configs/create", strings.NewReader(`{"type":"embedding","provider":"openai","name":"Embedding","model_name":"text-embedding-3-small","base_url":"https://api.openai.com/v1","api_key":"sk-test","is_default":true}`))
+	modelReq.Header.Set("Content-Type", "application/json")
+	modelReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(model, modelReq)
+	if model.Code != http.StatusOK {
+		t.Fatalf("create embedding model status = %d body=%s", model.Code, model.Body.String())
+	}
+
 	search := httptest.NewRecorder()
-	searchReq := httptest.NewRequest(http.MethodPost, "/api/document/"+docID+"/search", strings.NewReader(`{"query":"hello","top_k":5}`))
+	searchReq := httptest.NewRequest(http.MethodPost, "/api/document/search", strings.NewReader(`{"query":"hello","top_k":5}`))
 	searchReq.Header.Set("Content-Type", "application/json")
 	searchReq.Header.Set("Authorization", "Bearer dev-token")
 	router.ServeHTTP(search, searchReq)

@@ -83,13 +83,13 @@ func TestNewSearcherAppliesOptions(t *testing.T) {
 	reranker := &fakeReranker{}
 	esClient := &fakeESClient{}
 	embedder := &fakeEmbedder{}
-	filterBuilder := func(ctx context.Context, req Request) ([]any, error) {
+	filterBuilder := func(ctx context.Context, req Input) ([]any, error) {
 		return []any{map[string]any{"term": map[string]any{"tenant": "u-1"}}}, nil
 	}
 
 	searcher := NewSearcher[sourceMeta](
 		esClient,
-		embedder,
+		WithEmbedder(embedder),
 		WithIndex("custom_chunks"),
 		WithEmbeddingDim(2048),
 		WithRecallSize(30),
@@ -101,7 +101,7 @@ func TestNewSearcherAppliesOptions(t *testing.T) {
 		WithSourceDecoder[sourceMeta](decodeSourceMeta),
 	)
 
-	if searcher.es != esClient || searcher.embedder != embedder {
+	if searcher.es != esClient || searcher.Embedder != embedder {
 		t.Fatalf("dependencies were not assigned")
 	}
 	if searcher.Index != "custom_chunks" {
@@ -148,7 +148,7 @@ func TestSearcherReturnsFilterBuilderErrorBeforeDependencies(t *testing.T) {
 	esClient := &fakeESClient{}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	_, err := NewSearcher[sourceMeta](esClient, embedder, WithFilterBuilder(func(ctx context.Context, req Request) ([]any, error) {
+	_, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithFilterBuilder(func(ctx context.Context, req Input) ([]any, error) {
 		return nil, wantErr
 	})).Search(context.Background(), "hello")
 	if !errors.Is(err, wantErr) {
@@ -160,7 +160,7 @@ func TestSearcherReturnsFilterBuilderErrorBeforeDependencies(t *testing.T) {
 }
 
 func TestSearcherUsesRequestOptionsInVectorAndBM25Queries(t *testing.T) {
-	// 验证 Search 的 RequestOption 会同时影响向量召回和 BM25 召回。
+	// 验证 Search 的 InputOption 会同时影响向量召回和 BM25 召回。
 	filter := []any{
 		map[string]any{"term": map[string]any{"tenant": "u-1"}},
 		map[string]any{"terms": map[string]any{"kb_id": []string{"kb-1", "kb-2"}}},
@@ -168,8 +168,8 @@ func TestSearcherUsesRequestOptionsInVectorAndBM25Queries(t *testing.T) {
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	embedder := &fakeEmbedder{vec: []float64{0.1, 0.2}}
 
-	_, err := NewSearcher[sourceMeta](esClient, embedder, WithIndex("chunks"), WithEmbeddingDim(512)).
-		Search(context.Background(), "search text", WithFilters(filter), WithTopK(3), WithRequestRecallSize(7))
+	_, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithIndex("chunks"), WithEmbeddingDim(512)).
+		Search(context.Background(), "search text", WithFilters(filter), WithTopK(3), WithInputRecallSize(7))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -206,8 +206,40 @@ func TestSearcherUsesRequestOptionsInVectorAndBM25Queries(t *testing.T) {
 	}
 }
 
+func TestSearcherUsesInputEmbedderBeforeDefaultEmbedder(t *testing.T) {
+	// 验证请求级 embedder 会覆盖构造级默认 embedder。
+	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
+	defaultEmbedder := &fakeEmbedder{vec: []float64{0.1}}
+	inputEmbedder := &fakeEmbedder{vec: []float64{0.2}}
+
+	_, err := NewSearcher[sourceMeta](esClient, WithEmbedder(defaultEmbedder)).
+		Search(context.Background(), "query", WithInputEmbedder(inputEmbedder))
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if defaultEmbedder.calls != 0 {
+		t.Fatalf("default embedder calls = %d, want 0", defaultEmbedder.calls)
+	}
+	if inputEmbedder.calls != 1 {
+		t.Fatalf("input embedder calls = %d, want 1", inputEmbedder.calls)
+	}
+}
+
+func TestSearcherReturnsErrorWithoutEmbedder(t *testing.T) {
+	// 验证构造级和请求级都没有 embedder 时返回明确错误。
+	esClient := &fakeESClient{}
+
+	_, err := NewSearcher[sourceMeta](esClient).Search(context.Background(), "query")
+	if err == nil || err.Error() != "rag search embedder is nil" {
+		t.Fatalf("Search() error = %v, want rag search embedder is nil", err)
+	}
+	if len(esClient.calls) != 0 {
+		t.Fatalf("es calls = %d, want 0", len(esClient.calls))
+	}
+}
+
 func TestSearcherUsesFilterBuilderAndOptionRecallSize(t *testing.T) {
-	// 验证自定义 filter builder 会收到内部 Request，并且 Request 未设置 recallSize 时使用 searcher option 默认值。
+	// 验证自定义 filter builder 会收到内部 Input，并且 Input 未设置 recallSize 时使用 searcher option 默认值。
 	filter := []any{map[string]any{"term": map[string]any{"tenant": "from-builder"}}}
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
@@ -215,9 +247,9 @@ func TestSearcherUsesFilterBuilderAndOptionRecallSize(t *testing.T) {
 
 	_, err := NewSearcher[sourceMeta](
 		esClient,
-		embedder,
+		WithEmbedder(embedder),
 		WithRecallSize(11),
-		WithFilterBuilder(func(ctx context.Context, req Request) ([]any, error) {
+		WithFilterBuilder(func(ctx context.Context, req Input) ([]any, error) {
 			calls++
 			if req.Query != "query" || req.TopK != 2 {
 				t.Fatalf("request passed to filter builder = %#v", req)
@@ -248,8 +280,8 @@ func TestSearcherUsesConfiguredKnnOversample(t *testing.T) {
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	_, err := NewSearcher[sourceMeta](esClient, embedder, WithKnnOversample(3)).
-		Search(context.Background(), "query", WithRequestRecallSize(8))
+	_, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithKnnOversample(3)).
+		Search(context.Background(), "query", WithInputRecallSize(8))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -278,7 +310,7 @@ func TestSearcherFusesScoresAndDecodesSource(t *testing.T) {
 	}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	got, err := NewSearcher[sourceMeta](esClient, embedder, WithSourceDecoder[sourceMeta](decodeSourceMeta)).
+	got, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithSourceDecoder[sourceMeta](decodeSourceMeta)).
 		Search(context.Background(), "query", WithTopK(3))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
@@ -305,7 +337,7 @@ func TestSearcherReturnsDecoderError(t *testing.T) {
 	}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	_, err := NewSearcher[sourceMeta](esClient, embedder, WithSourceDecoder[sourceMeta](func(src map[string]any) (sourceMeta, error) {
+	_, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithSourceDecoder[sourceMeta](func(src map[string]any) (sourceMeta, error) {
 		return sourceMeta{}, wantErr
 	})).Search(context.Background(), "query", WithTopK(1))
 	if !errors.Is(err, wantErr) {
@@ -314,14 +346,14 @@ func TestSearcherReturnsDecoderError(t *testing.T) {
 }
 
 func TestSearcherUsesZeroSourceWithoutDecoder(t *testing.T) {
-	// 验证未配置 source decoder 时，Result.Source 使用类型零值。
+	// 验证未配置 source decoder 时，Output.Source 使用类型零值。
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 1, source("doc a", ""))),
 		hitsResponse(),
 	}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	got, err := NewSearcher[sourceMeta](esClient, embedder).Search(context.Background(), "query", WithTopK(1))
+	got, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder)).Search(context.Background(), "query", WithTopK(1))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -350,7 +382,7 @@ func TestSearcherFiltersByMinVectorScore(t *testing.T) {
 
 	got, err := NewSearcher[sourceMeta](
 		esClient,
-		embedder,
+		WithEmbedder(embedder),
 		WithVectorWeight(0.4),
 		WithBM25Weight(0.6),
 		WithReranker(reranker),
@@ -378,7 +410,7 @@ func TestSearcherFallsBackToChildContentWhenParentMissing(t *testing.T) {
 	}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	got, err := NewSearcher[sourceMeta](esClient, embedder).Search(context.Background(), "query", WithTopK(1))
+	got, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder)).Search(context.Background(), "query", WithTopK(1))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -396,7 +428,7 @@ func TestSearcherUsesRerankerAndFallsBackOnError(t *testing.T) {
 	}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
-	got, err := NewSearcher[sourceMeta](esClient, embedder, WithReranker(reranker)).Search(context.Background(), "query", WithTopK(2))
+	got, err := NewSearcher[sourceMeta](esClient, WithEmbedder(embedder), WithReranker(reranker)).Search(context.Background(), "query", WithTopK(2))
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
@@ -411,7 +443,7 @@ func TestSearcherUsesRerankerAndFallsBackOnError(t *testing.T) {
 		hitsResponse(hit("a", 2, source("doc a", "")), hit("b", 1, source("doc b", ""))),
 		hitsResponse(),
 	}}
-	fallback, err := NewSearcher[sourceMeta](fallbackES, embedder, WithReranker(&fakeReranker{err: errors.New("rerank failed")})).
+	fallback, err := NewSearcher[sourceMeta](fallbackES, WithEmbedder(embedder), WithReranker(&fakeReranker{err: errors.New("rerank failed")})).
 		Search(context.Background(), "query", WithTopK(2))
 	if err != nil {
 		t.Fatalf("fallback Search() error = %v", err)
@@ -458,7 +490,7 @@ func source(content string, parentID string) map[string]any {
 	return src
 }
 
-func resultIDs(results []Result[sourceMeta]) []string {
+func resultIDs(results []Output[sourceMeta]) []string {
 	ids := make([]string, 0, len(results))
 	for _, result := range results {
 		ids = append(ids, result.ID)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v8"
@@ -53,6 +54,33 @@ func (c *Client) Ping(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client) IndexExists(ctx context.Context, index string) (bool, error) {
+	resp, err := c.raw.Indices.Exists([]string{index}, c.raw.Indices.Exists.WithContext(ctx))
+	if err != nil {
+		return false, xerr.Wrapf(err, "检查 Elasticsearch 索引失败: index=%s", index)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	if resp.IsError() {
+		return false, xerr.Internal("检查 Elasticsearch 索引失败", responseError(resp))
+	}
+	return true, nil
+}
+
+func (c *Client) CreateIndex(ctx context.Context, index string, mapping any) (map[string]any, error) {
+	body, err := jsonBody(mapping)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.raw.Indices.Create(index, c.raw.Indices.Create.WithContext(ctx), c.raw.Indices.Create.WithBody(body))
+	if err != nil {
+		return nil, xerr.Wrapf(err, "创建 Elasticsearch 索引失败: index=%s", index)
+	}
+	return decodeResponse(resp, "创建 Elasticsearch 索引失败")
+}
+
 func (c *Client) Index(ctx context.Context, index, id string, document any) (map[string]any, error) {
 	body, err := jsonBody(document)
 	if err != nil {
@@ -83,6 +111,30 @@ func (c *Client) Search(ctx context.Context, index string, query any) (map[strin
 		return nil, xerr.Wrapf(err, "查询 Elasticsearch 失败: index=%s", index)
 	}
 	return decodeResponse(resp, "查询 Elasticsearch 失败")
+}
+
+func (c *Client) DeleteByQuery(ctx context.Context, index string, query any) (map[string]any, error) {
+	body, err := jsonBody(query)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.raw.DeleteByQuery([]string{index}, body, c.raw.DeleteByQuery.WithContext(ctx))
+	if err != nil {
+		return nil, xerr.Wrapf(err, "批量删除 Elasticsearch 文档失败: index=%s", index)
+	}
+	return decodeResponse(resp, "批量删除 Elasticsearch 文档失败")
+}
+
+func (c *Client) UpdateByQuery(ctx context.Context, index string, query any) (map[string]any, error) {
+	body, err := jsonBody(query)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.raw.UpdateByQuery([]string{index}, c.raw.UpdateByQuery.WithContext(ctx), c.raw.UpdateByQuery.WithBody(body))
+	if err != nil {
+		return nil, xerr.Wrapf(err, "批量更新 Elasticsearch 文档失败: index=%s", index)
+	}
+	return decodeResponse(resp, "批量更新 Elasticsearch 文档失败")
 }
 
 func (c *Client) Delete(ctx context.Context, index, id string) (map[string]any, error) {

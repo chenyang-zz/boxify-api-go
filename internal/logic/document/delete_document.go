@@ -46,6 +46,7 @@ func (l *DeleteDocumentLogic) DeleteDocument(userID uuid.UUID, input *request.Ur
 			)
 		}
 	}
+	deleteDocumentChunksBestEffort(l.ctx, l.svcCtx, l.log, userID, documentID)
 	if err := l.svcCtx.DocumentRepo.Delete(l.ctx, userID, documentID); err != nil {
 		return err
 	}
