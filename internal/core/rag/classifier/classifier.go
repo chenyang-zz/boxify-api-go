@@ -10,11 +10,17 @@ import (
 	"github.com/boxify/api-go/internal/core/valuex"
 )
 
+// Classifier 使用文本模型为内容生成宽泛标签。
+//
+// Classifier 不持有业务状态；调用方可以复用同一个实例处理多次分类请求。
 type Classifier struct {
 	Options
 	client TextClient
 }
 
+// NewClassifier 创建内容分类器。
+//
+// client 为 nil 时构造仍会成功，后续 Classify 会返回明确错误，便于测试或延迟注入。
 func NewClassifier(client TextClient, opts ...Option) *Classifier {
 	classifier := &Classifier{
 		Options: Options{
@@ -35,7 +41,10 @@ func NewClassifier(client TextClient, opts ...Option) *Classifier {
 	return classifier
 }
 
-// Classify 分类
+// Classify 调用文本模型生成最多两个标签。
+//
+// 模型调用失败或输出解析失败时返回空标签且 error 为 nil，避免分类辅助能力阻断主流程。
+// client 或 Parser 未配置时返回错误。
 func (c *Classifier) Classify(ctx context.Context, input Input) (*Result, error) {
 	if c == nil || c.client == nil {
 		return nil, errors.New("rag classifier text client is nil")
@@ -57,7 +66,7 @@ func (c *Classifier) Classify(ctx context.Context, input Input) (*Result, error)
 	return &Result{Tags: c.parseTags(answer)}, nil
 }
 
-// buildPrompt 构建提示词
+// buildPrompt 根据配置构建最终提示词。
 func (c *Classifier) buildPrompt(input Input) (string, error) {
 	if !c.promptTmpl {
 		return c.Prompt, nil
@@ -73,7 +82,7 @@ func (c *Classifier) buildPrompt(input Input) (string, error) {
 	})
 }
 
-// parseTags 解析标签
+// parseTags 从模型原文中提取并规整标签。
 func (c *Classifier) parseTags(answer string) []string {
 	text := extractJSONArray(answer)
 	if text == "" {
@@ -99,7 +108,7 @@ func (c *Classifier) parseTags(answer string) []string {
 	return tags
 }
 
-// extractJSONArray 提取 JSON 数组
+// extractJSONArray 从 markdown 或混合文本中截取 JSON 数组片段。
 func extractJSONArray(answer string) string {
 	text := strings.TrimSpace(answer)
 	if strings.HasPrefix(text, "```") {

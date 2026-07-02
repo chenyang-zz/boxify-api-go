@@ -12,12 +12,17 @@ import (
 
 const defaultTitleMaxRunes = 200
 
+// HTMLExtractor 从 HTML 中抽取标题和可读正文。
 type HTMLExtractor struct {
 	TitleMaxRunes int
 }
 
+// ExtractorOption 修改 HTMLExtractor 的长期配置。
 type ExtractorOption func(*HTMLExtractor)
 
+// NewHTMLExtractor 创建 HTML 正文提取器。
+//
+// 默认会把标题裁剪到 200 个 rune，正文不做长度裁剪。
 func NewHTMLExtractor(opts ...ExtractorOption) *HTMLExtractor {
 	extractor := &HTMLExtractor{
 		TitleMaxRunes: defaultTitleMaxRunes,
@@ -30,6 +35,9 @@ func NewHTMLExtractor(opts ...ExtractorOption) *HTMLExtractor {
 	return extractor
 }
 
+// WithTitleMaxRunes 设置标题最大 rune 数。
+//
+// maxRunes 小于等于 0 时保留默认值。
 func WithTitleMaxRunes(maxRunes int) ExtractorOption {
 	return func(extractor *HTMLExtractor) {
 		if maxRunes > 0 {
@@ -38,7 +46,9 @@ func WithTitleMaxRunes(maxRunes int) ExtractorOption {
 	}
 }
 
-// Extract 提取网页标题和内容
+// Extract 从 HTML 页面中提取标题和正文。
+//
+// 正文为空时返回错误；标题为空时使用页面 URL 作为标题。
 func (e *HTMLExtractor) Extract(ctx context.Context, page Page) (*Output, error) {
 	doc, err := html.Parse(bytes.NewReader(page.HTML))
 	if err != nil {
@@ -55,7 +65,7 @@ func (e *HTMLExtractor) Extract(ctx context.Context, page Page) (*Output, error)
 	return &Output{Title: valuex.TruncateRunesWithSuffix(title, e.TitleMaxRunes, "..."), Content: content, URL: page.URL}, nil
 }
 
-// firstTitle 提取网页标题
+// firstTitle 提取网页第一个 title 文本。
 func firstTitle(root *html.Node) string {
 	var title string
 	var walk func(*html.Node, bool)
@@ -78,7 +88,7 @@ func firstTitle(root *html.Node) string {
 	return normalizeSpace(title)
 }
 
-// readableText 提取网页可读文本
+// readableText 提取网页可读文本。
 func readableText(root *html.Node) string {
 	var parts []string
 	var walk func(*html.Node)
@@ -102,7 +112,7 @@ func readableText(root *html.Node) string {
 	return normalizeSpace(strings.Join(parts, " "))
 }
 
-// normalizeSpace 规范化空格
+// normalizeSpace 规范化空白字符。
 func normalizeSpace(text string) string {
 	return strings.Join(strings.Fields(text), " ")
 }

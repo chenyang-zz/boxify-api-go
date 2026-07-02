@@ -13,10 +13,16 @@ import (
 	xdraw "golang.org/x/image/draw"
 )
 
+// Compressor 压缩图片字节并输出适合模型输入的图片。
+//
+// Compressor 不持有外部资源，初始化后可复用。
 type Compressor struct {
 	Options
 }
 
+// NewCompressor 创建带默认配置的图片压缩器。
+//
+// opts 会按传入顺序覆盖默认值；无效 option 值会被对应 Option 忽略以保留默认配置。
 func NewCompressor(opts ...Option) *Compressor {
 	compressor := &Compressor{
 		Options: Options{
@@ -33,7 +39,10 @@ func NewCompressor(opts ...Option) *Compressor {
 	return compressor
 }
 
-// Compress 压缩图片
+// Compress 在图片超过目标体积时尝试压缩图片。
+//
+// 小图直接返回原始字节。解码或重编码失败时返回原图且 error 为 nil，
+// 让上层可以继续使用原始图片；成功压缩后输出统一为 JPEG。
 func (c *Compressor) Compress(input Input) (*Output, error) {
 	mime := GuessMIME(input.FileExt)
 	out := &Output{
@@ -46,6 +55,7 @@ func (c *Compressor) Compress(input Input) (*Output, error) {
 		return out, nil
 	}
 
+	// 解码失败通常意味着格式暂不支持或数据损坏；压缩器降级返回原图，不把辅助失败升级为业务错误。
 	img, _, err := image.Decode(bytes.NewReader(input.Data))
 	if err != nil {
 		return out, nil
@@ -65,7 +75,9 @@ func (c *Compressor) Compress(input Input) (*Output, error) {
 	return out, nil
 }
 
-// GuessMIME 根据文件扩展名猜测 MIME 类型
+// GuessMIME 根据文件扩展名推断图片 MIME。
+//
+// 未识别扩展名返回 image/jpeg，保证调用方始终能得到可用 MIME。
 func GuessMIME(fileExt string) string {
 	switch strings.TrimPrefix(strings.ToLower(strings.TrimSpace(fileExt)), ".") {
 	case "jpg", "jpeg":

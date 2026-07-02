@@ -10,6 +10,10 @@ import (
 	"github.com/boxify/api-go/internal/core/valuex"
 )
 
+// Searcher 执行向量召回和 BM25 召回的混合检索。
+//
+// Searcher 不理解业务字段；业务过滤通过 FilterBuilder 或 WithFilters 注入，
+// 业务元数据通过 SourceDecoder 解码到 Result.Source。
 type Searcher[T any] struct {
 	Options
 	es            ESClient
@@ -17,8 +21,14 @@ type Searcher[T any] struct {
 	sourceDecoder SourceDecoder[T]
 }
 
+// NoopSearcher 是空检索器实现。
+//
+// Search 始终返回 nil, nil，适合在未启用 RAG 时作为占位依赖。
 type NoopSearcher[T any] struct{}
 
+// NewSearcher 创建带默认配置的混合检索器。
+//
+// esClient 或 embedder 为 nil 时构造仍会成功，后续 Search 会返回明确错误。
 func NewSearcher[T any](esClient ESClient, embedder Embedder, opts ...Option) *Searcher[T] {
 	searcher := &Searcher[T]{
 		Options: Options{
@@ -41,6 +51,7 @@ func NewSearcher[T any](esClient ESClient, embedder Embedder, opts ...Option) *S
 	return searcher
 }
 
+// Search 返回空检索结果。
 func (NoopSearcher[T]) Search(ctx context.Context, query string, opts ...RequestOption) ([]Result[T], error) {
 	return nil, nil
 }
@@ -60,6 +71,7 @@ func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...RequestO
 		opt(&req)
 	}
 
+	// 请求级 topK 和 recallSize 覆盖默认配置；未传时使用包内默认值或 Searcher 配置。
 	topK := req.TopK
 	if topK <= 0 {
 		topK = defaultTopK
@@ -94,6 +106,7 @@ func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...RequestO
 	collectHits(knnResp, hits, vecScores)
 	collectHits(bm25Resp, hits, bmScores)
 
+	// 向量门槛只负责剔除低相关候选，保留后的候选仍继续参与 BM25 融合和重排。
 	if req.MinVectorScore != nil {
 		hits, vecScores, bmScores = filterByMinVectorScore(hits, vecScores, bmScores, *req.MinVectorScore)
 		if len(hits) == 0 {
@@ -221,7 +234,9 @@ func filterByMinVectorScore(hits map[string]map[string]any, vecScores map[string
 	return filteredHits, filteredVecScores, filteredBMScores
 }
 
-// Normalize 把同一路召回分数归一到 0-1，便于向量分数和 BM25 分数融合。
+// Normalize 把同一路召回分数归一到 0 到 1。
+//
+// 空输入返回空 map；所有分数相同时每个条目返回 1，避免融合时全部塌缩为 0。
 func Normalize(scores map[string]float64) map[string]float64 {
 	out := make(map[string]float64, len(scores))
 	if len(scores) == 0 {

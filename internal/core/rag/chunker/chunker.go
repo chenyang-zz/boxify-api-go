@@ -6,11 +6,18 @@ import (
 	"github.com/pkoukk/tiktoken-go"
 )
 
+// Chunker 按 token 上限把文本拆成父子两级 chunk。
+//
+// Chunker 初始化后可复用；它持有 tokenizer 实例，不在分块过程中修改公开配置。
 type Chunker struct {
 	Options
 	tkm *tiktoken.Tiktoken
 }
 
+// NewChunker 创建带默认配置的 Chunker。
+//
+// opts 会按传入顺序覆盖默认值。TokenEncodingName 无法被 tiktoken 加载时会 panic，
+// 这是初始化配置错误，调用方应在启动或测试阶段暴露。
 func NewChunker(opts ...Option) *Chunker {
 	chunker := &Chunker{
 		Options: Options{
@@ -34,15 +41,17 @@ func NewChunker(opts ...Option) *Chunker {
 	return chunker
 }
 
-// Chunk 文本分块 父子分块
+// Chunk 将文本拆成父块和子块。
+//
+// 空白文本返回 nil。父块不使用重叠，子块使用 ChildOverlapRatio 保留局部上下文。
 func (c *Chunker) Chunk(text string) []*Chunk {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return nil
 	}
 
+	// 先按句子构建父块，再在每个父块内部切出子块，保证子块不会跨父块。
 	sentences := c.splitSentence(text)
-
 	parentChunks := c.MergeToChunk(sentences, c.ParentChunkTokens, 0)
 
 	chunks := make([]*Chunk, 0, len(parentChunks))
@@ -58,13 +67,15 @@ func (c *Chunker) Chunk(text string) []*Chunk {
 	return chunks
 }
 
-// CountTokens 计算文本的 token 数
+// CountTokens 返回文本在当前 tokenizer 编码下的 token 数。
 func (c *Chunker) CountTokens(text string) int {
 	tokens := c.tkm.Encode(text, nil, nil)
 	return len(tokens)
 }
 
-// MergeToChunk 合并成 chunk
+// MergeToChunk 按目标 token 上限合并句子。
+//
+// 单句超过 targetTokens 时会拆成长句子子块；overlapRatio 大于 0 时，flush 后保留当前块尾部句子作为下一块上下文。
 func (c *Chunker) MergeToChunk(sentences []string, targetTokens int, overlapRatio float64) []string {
 	chunks := make([]string, 0)
 	cur := make([]string, 0)
@@ -72,7 +83,7 @@ func (c *Chunker) MergeToChunk(sentences []string, targetTokens int, overlapRati
 	for _, sentence := range sentences {
 		sentenceTokens := c.CountTokens(sentence)
 
-		// 如果当前句子的 token 数大于目标 token 数，则单独成 chunk
+		// 单句超过目标上限时，先 flush 已累积内容，再按 token 窗口拆分长句。
 		if sentenceTokens > targetTokens {
 			if len(cur) != 0 {
 				chunks = append(chunks, strings.Join(cur, ""))
@@ -84,7 +95,7 @@ func (c *Chunker) MergeToChunk(sentences []string, targetTokens int, overlapRati
 			continue
 		}
 
-		// 如果当前句子加入后超过目标 token 数，则将当前 chunk 添加到 chunks 中，并重置 cur 和 curTokens
+		// 新句子会导致超限时，先输出当前块，再根据重叠比例保留尾部句子。
 		if sentenceTokens+curTokens > targetTokens && len(cur) != 0 {
 			chunks = append(chunks, strings.Join(cur, ""))
 			if overlapRatio > 0.0 {
@@ -107,7 +118,7 @@ func (c *Chunker) MergeToChunk(sentences []string, targetTokens int, overlapRati
 	return chunks
 }
 
-// splitSentence 按句子分割文本
+// splitSentence 按句子正则分割文本。
 func (c *Chunker) splitSentence(text string) []string {
 	text = strings.TrimSpace(text)
 	matches := c.SentenceRegex.FindAllString(text, -1)
@@ -123,7 +134,7 @@ func (c *Chunker) splitSentence(text string) []string {
 	return chunks
 }
 
-// splitLongSentence 分割长句子
+// splitLongSentence 按 token 窗口分割超过目标上限的长句。
 func (c *Chunker) splitLongSentence(sentence string, targetTokens int, overlapRatio float64) []string {
 	if targetTokens <= 0 {
 		return nil
@@ -134,7 +145,8 @@ func (c *Chunker) splitLongSentence(sentence string, targetTokens int, overlapRa
 	if tokenCount <= targetTokens {
 		return []string{sentence}
 	}
-	// 每次向前推进多少 token
+
+	// overlapRatio 会减少每次推进步长，让相邻长句子子块保留一段 token 上下文。
 	step := targetTokens
 	if overlapRatio > 0 {
 		overlap := max(1, int(float64(targetTokens)*overlapRatio))

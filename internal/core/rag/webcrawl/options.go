@@ -11,6 +11,7 @@ const (
 	defaultRetryCount   = 1
 )
 
+// Options 定义 Crawler 的长期配置。
 type Options struct {
 	HTTPClient   HTTPClient
 	Extractor    Extractor
@@ -20,8 +21,10 @@ type Options struct {
 	RetryCount   int
 }
 
+// Option 修改 Crawler 的长期配置。
 type Option func(*Options)
 
+// WithHTTPClient 设置自定义 HTTP client。
 func WithHTTPClient(client HTTPClient) Option {
 	return func(opts *Options) {
 		if client != nil {
@@ -30,6 +33,7 @@ func WithHTTPClient(client HTTPClient) Option {
 	}
 }
 
+// WithExtractor 设置自定义网页正文提取器。
 func WithExtractor(extractor Extractor) Option {
 	return func(opts *Options) {
 		if extractor != nil {
@@ -38,6 +42,7 @@ func WithExtractor(extractor Extractor) Option {
 	}
 }
 
+// WithURLGuard 设置自定义 URL 安全校验器。
 func WithURLGuard(guard URLGuard) Option {
 	return func(opts *Options) {
 		if guard != nil {
@@ -46,6 +51,7 @@ func WithURLGuard(guard URLGuard) Option {
 	}
 }
 
+// WithTimeout 设置默认 HTTP client 的请求超时时间。
 func WithTimeout(timeout time.Duration) Option {
 	return func(opts *Options) {
 		if timeout > 0 {
@@ -54,6 +60,7 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithMaxRedirects 设置默认 HTTP client 允许的最大重定向次数。
 func WithMaxRedirects(maxRedirects int) Option {
 	return func(opts *Options) {
 		if maxRedirects >= 0 {
@@ -62,6 +69,7 @@ func WithMaxRedirects(maxRedirects int) Option {
 	}
 }
 
+// WithRetryCount 设置抓取瞬时失败后的重试次数。
 func WithRetryCount(retryCount int) Option {
 	return func(opts *Options) {
 		if retryCount >= 0 {
@@ -70,6 +78,7 @@ func WithRetryCount(retryCount int) Option {
 	}
 }
 
+// defaultHTTPClient 构造带超时和重定向安全校验的 HTTP client。
 func defaultHTTPClient(timeout time.Duration, maxRedirects int, guard URLGuard) *http.Client {
 	return &http.Client{
 		Timeout: timeout,

@@ -16,11 +16,17 @@ const (
 	maxSceneRunes       = 64
 )
 
+// Describer 压缩图片并调用视觉模型生成结构化描述。
+//
+// Describer 不绑定具体模型 SDK；调用方通过 VisionClient 适配外部服务。
 type Describer struct {
 	Options
 	client VisionClient
 }
 
+// NewDescriber 创建图片描述器。
+//
+// client 为 nil 时构造仍会成功，后续 Describe 会返回明确错误，便于测试或延迟注入。
 func NewDescriber(client VisionClient, opts ...Option) *Describer {
 	describer := &Describer{
 		Options: Options{
@@ -39,7 +45,10 @@ func NewDescriber(client VisionClient, opts ...Option) *Describer {
 	return describer
 }
 
-// Describe 根据图片内容生成描述。
+// Describe 根据图片内容生成结构化描述。
+//
+// Describe 会先压缩图片，再把 base64 图片和 MIME 传给 VisionClient。
+// VisionClient、Parser 或 Compressor 未配置时返回错误；模型输出不是 JSON 时用原文作为 Description 兜底。
 func (d *Describer) Describe(ctx context.Context, input Input) (*Description, error) {
 	if d == nil || d.client == nil {
 		return nil, errors.New("rag image describer vision client is nil")

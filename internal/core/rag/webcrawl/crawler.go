@@ -9,10 +9,16 @@ import (
 	"strings"
 )
 
+// Crawler 抓取网页并提取可读正文。
+//
+// Crawler 默认包含 URLGuard、HTMLExtractor 和带重定向校验的 HTTP client。
 type Crawler struct {
 	Options
 }
 
+// NewCrawler 创建带默认配置的网页抓取器。
+//
+// opts 会按传入顺序覆盖默认值；未传 HTTPClient 时会根据 Timeout、MaxRedirects 和 URLGuard 构造默认 client。
 func NewCrawler(opts ...Option) *Crawler {
 	crawler := &Crawler{
 		Options: Options{
@@ -34,7 +40,9 @@ func NewCrawler(opts ...Option) *Crawler {
 	return crawler
 }
 
-// Fetch 获取网页标题和内容
+// Fetch 获取网页标题和正文。
+//
+// Fetch 会先校验 URL，再发起 HTTP 请求并调用 Extractor。HTTPClient、URLGuard 或 Extractor 缺失时返回错误。
 func (c *Crawler) Fetch(ctx context.Context, input Input) (*Output, error) {
 	if c == nil || c.HTTPClient == nil {
 		return nil, errors.New("rag web crawler http client is nil")
@@ -52,6 +60,7 @@ func (c *Crawler) Fetch(ctx context.Context, input Input) (*Output, error) {
 
 	var lastErr error
 	for attempt := 0; attempt <= c.RetryCount; attempt++ {
+		// 默认重试只覆盖抓取错误；提取器错误直接返回，让调用方看到解析失败原因。
 		page, err := c.fetchOnce(ctx, rawURL)
 		if err == nil {
 			return c.Extractor.Extract(ctx, page)
@@ -61,7 +70,7 @@ func (c *Crawler) Fetch(ctx context.Context, input Input) (*Output, error) {
 	return nil, lastErr
 }
 
-// fetchOnce 获取网页内容
+// fetchOnce 发起单次 HTTP 请求并返回最终 URL 和 HTML 字节。
 func (c *Crawler) fetchOnce(ctx context.Context, rawURL string) (Page, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
@@ -84,7 +93,7 @@ func (c *Crawler) fetchOnce(ctx context.Context, rawURL string) (Page, error) {
 		return Page{}, err
 	}
 
-	// 获取最终的 URL
+	// 重定向后使用最终 URL，方便上层展示实际抓取来源。
 	finalURL := rawURL
 	if resp.Request != nil && resp.Request.URL != nil {
 		finalURL = resp.Request.URL.String()
@@ -92,7 +101,7 @@ func (c *Crawler) fetchOnce(ctx context.Context, rawURL string) (Page, error) {
 	return Page{URL: finalURL, HTML: body}, nil
 }
 
-// applyBrowserHeaders 设置浏览器请求头
+// applyBrowserHeaders 设置浏览器风格请求头，减少常见站点的简单拦截。
 func applyBrowserHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
