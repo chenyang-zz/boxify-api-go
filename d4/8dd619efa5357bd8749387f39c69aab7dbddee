@@ -1,0 +1,19 @@
+README.md
+  s_8561f1b60d9261::t_3708f03ceb19bb 1,3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "d48dd619efa5357bd8749387f39c69aab7dbddee",
+  "prompts": {},
+  "sessions": {
+    "s_8561f1b60d9261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8561f1b60d9261",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
