@@ -1,0 +1,19 @@
+.gitignore
+  s_05de720e91adb1::t_63bb4f86efd259 1,3,5-10,12-42,44-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "be4dc37beeca3c22b1ef3596a4f4eb83f893957f",
+  "prompts": {},
+  "sessions": {
+    "s_05de720e91adb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_05de720e91adb1",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
