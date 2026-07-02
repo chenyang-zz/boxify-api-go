@@ -1,0 +1,19 @@
+docs/architecture.md
+  s_33ee08d59fc4bf::t_96dea8dcc7a422 5-20,64-66,70-72,75-76,79-80,83-98,100-114,116,118,132,142-158,161-173,175,177-197,199-203,205-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "089b04166bd233ba25b431deaa1f364106d6d146",
+  "prompts": {},
+  "sessions": {
+    "s_33ee08d59fc4bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_33ee08d59fc4bf",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
