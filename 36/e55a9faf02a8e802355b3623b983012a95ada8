@@ -1,0 +1,19 @@
+docs/architecture.md
+  s_c29a3cdc158bb3::t_8909d984705c10 1,3,5,7-43,45,47-50,52-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "36e55a9faf02a8e802355b3623b983012a95ada8",
+  "prompts": {},
+  "sessions": {
+    "s_c29a3cdc158bb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_c29a3cdc158bb3",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
