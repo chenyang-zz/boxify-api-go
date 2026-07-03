@@ -1,0 +1,46 @@
+internal/core/rag/search/search_test.go
+  s_a5f282227fb606::t_b4968fcca96d71 453-454
+  s_a5f282227fb606::t_80e6c9318dc9ca 134-138
+  s_a5f282227fb606::t_d1ed08e401ce4b 56,64,102-108,139,455,474-629
+  s_a5f282227fb606::t_7e1695d285ccd9 630
+internal/core/rag/search/README.md
+  s_a5f282227fb606::t_b6be1e3cf0f5b7 1-145
+internal/core/rag/search/options.go
+  s_a5f282227fb606::t_80e6c9318dc9ca 26-30,114,135,144,154
+  s_a5f282227fb606::t_cdd42188326f8a 10
+  s_a5f282227fb606::t_b6be1e3cf0f5b7 108,111-113,115-119,122-130,133-134,136-139,142-143,145-148,151-153,155-157
+  s_a5f282227fb606::t_2ff0662b8c8fe1 4-9
+  s_a5f282227fb606::t_7d1e31f8d6ca52 18-25,31-32
+  s_a5f282227fb606::t_86bffe41aef00c 16,99-101,109-110,120-121,131-132,140-141,149-150
+  s_a5f282227fb606::t_2710459c2b5e69 158
+internal/core/rag/search/types.go
+  s_a5f282227fb606::t_b6be1e3cf0f5b7 35-36,39-40,62-68,115,118-126,129-135,138-146,149-157,160-166,169-175,178-185,188-189,191-195
+  s_a5f282227fb606::t_86bffe41aef00c 19-20,37-38,43,45,50,54,116-117,127-128,136-137,147-148,158-159,167-168,176-177
+internal/core/rag/search/search.go
+  s_a5f282227fb606::t_7d1e31f8d6ca52 34-38,40
+  s_a5f282227fb606::t_cdd42188326f8a 39
+  s_a5f282227fb606::t_b6be1e3cf0f5b7 122-125,131,135,150-154,156-160
+internal/core/rag/search/rerank.go
+  s_a5f282227fb606::t_563669e3f403e8 9
+  s_a5f282227fb606::t_b4968fcca96d71 50-51
+  s_a5f282227fb606::t_86bffe41aef00c 21-23,30,35-36,44,55-56,88-89,113
+  s_a5f282227fb606::t_80e6c9318dc9ca 61,63-65
+  s_a5f282227fb606::t_b6be1e3cf0f5b7 1-8,10-20,24-29,31-34,37-43,45-49,52-54,57-60,62,66-87,90-106,108-112,114-129
+  s_a5f282227fb606::t_63461109bb15d1 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "0a5bba5c40e2017f9955541543b44528c9cc8bbb",
+  "prompts": {},
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
