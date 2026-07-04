@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/boxify/api-go/internal/domain"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/xerr"
@@ -31,17 +32,75 @@ func (r *TagRepository) Create(ctx context.Context, userID uuid.UUID, tag *model
 }
 
 func (r *TagRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Tag, error) {
+	return r.ListByScope(ctx, userID, string(domain.TagScopeAll))
+}
+
+func (r *TagRepository) ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error) {
 	var rows []*models.Tag
 
-	err := r.db.WithContext(ctx).
-		Where("user_id = ?", userID).
-		Order("updated_at DESC").
-		Find(&rows).Error
+	query, err := r.tagScopeQuery(ctx, userID, scope)
+	if err != nil {
+		return nil, err
+	}
+	err = query.Order("updated_at DESC").Find(&rows).Error
 	if err != nil {
 		return nil, xerr.Wrapf(err, "查询标签列表失败")
 	}
 
 	return rows, nil
+}
+
+func (r *TagRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.TagListQuery) ([]*models.Tag, int64, error) {
+	base, err := r.tagScopeQuery(ctx, userID, query.Scope)
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	if err := base.Model(&models.Tag{}).Count(&total).Error; err != nil {
+		return nil, 0, xerr.Wrapf(err, "统计标签列表失败")
+	}
+	limit, offset := query.LimitOffset(20)
+	var rows []*models.Tag
+	if err := base.Order("updated_at DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+		return nil, 0, xerr.Wrapf(err, "查询标签分页列表失败")
+	}
+	return rows, total, nil
+}
+
+func (r *TagRepository) CountDocumentsByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	if len(tagIDs) == 0 {
+		return map[uuid.UUID]int64{}, nil
+	}
+	var rows []tagCountRow
+	err := r.db.WithContext(ctx).
+		Table("document_tags AS dt").
+		Select("dt.tag_id AS tag_id, COUNT(*) AS count").
+		Joins("JOIN documents d ON d.id = dt.document_id").
+		Where("d.user_id = ? AND dt.tag_id IN ?", userID, tagIDs).
+		Group("dt.tag_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, xerr.Wrapf(err, "统计标签文档数量失败")
+	}
+	return tagCountRowsToMap(rows), nil
+}
+
+func (r *TagRepository) CountImagesByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	if len(tagIDs) == 0 {
+		return map[uuid.UUID]int64{}, nil
+	}
+	var rows []tagCountRow
+	err := r.db.WithContext(ctx).
+		Table("image_tags AS it").
+		Select("it.tag_id AS tag_id, COUNT(*) AS count").
+		Joins("JOIN images i ON i.id = it.image_id").
+		Where("i.user_id = ? AND it.tag_id IN ?", userID, tagIDs).
+		Group("it.tag_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, xerr.Wrapf(err, "统计标签图片数量失败")
+	}
+	return tagCountRowsToMap(rows), nil
 }
 
 func (r *TagRepository) FindByID(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) (*models.Tag, error) {
@@ -136,6 +195,117 @@ func (r *TagRepository) SyncDocumentTags(ctx context.Context, userID uuid.UUID, 
 	return rows, nil
 }
 
+func (r *TagRepository) ListDocumentIDsByTag(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) ([]uuid.UUID, error) {
+	var rows []tagDocumentIDRow
+	err := r.db.WithContext(ctx).
+		Table("document_tags AS dt").
+		Select("DISTINCT dt.document_id AS document_id").
+		Joins("JOIN documents d ON d.id = dt.document_id").
+		Joins("JOIN tags t ON t.id = dt.tag_id").
+		Where("d.user_id = ? AND t.user_id = ? AND dt.tag_id = ?", userID, userID, tagID).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, xerr.Wrapf(err, "查询标签关联文档失败")
+	}
+	out := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.DocumentID)
+	}
+	return out, nil
+}
+
+func (r *TagRepository) ListDocumentTagNames(ctx context.Context, userID uuid.UUID, documentIDs []uuid.UUID) (map[uuid.UUID][]string, error) {
+	if len(documentIDs) == 0 {
+		return map[uuid.UUID][]string{}, nil
+	}
+	var rows []tagDocumentNameRow
+	err := r.db.WithContext(ctx).
+		Table("document_tags AS dt").
+		Select("dt.document_id AS document_id, t.name AS name").
+		Joins("JOIN documents d ON d.id = dt.document_id").
+		Joins("JOIN tags t ON t.id = dt.tag_id").
+		Where("d.user_id = ? AND t.user_id = ? AND dt.document_id IN ?", userID, userID, documentIDs).
+		Order("dt.document_id ASC, t.name ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, xerr.Wrapf(err, "查询文档标签名称失败")
+	}
+	out := make(map[uuid.UUID][]string, len(documentIDs))
+	for _, row := range rows {
+		out[row.DocumentID] = append(out[row.DocumentID], row.Name)
+	}
+	return out, nil
+}
+
+func (r *TagRepository) Merge(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) (*models.Tag, error) {
+	if sourceID == targetID {
+		return nil, xerr.BadRequest("不能合并相同标签")
+	}
+
+	var target models.Tag
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var source models.Tag
+		if err := tx.Where("id = ? AND user_id = ?", sourceID, userID).First(&source).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return xerr.NotFound("标签不存在")
+			}
+			return xerr.Wrapf(err, "查询源标签失败")
+		}
+		if err := tx.Where("id = ? AND user_id = ?", targetID, userID).First(&target).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return xerr.NotFound("标签不存在")
+			}
+			return xerr.Wrapf(err, "查询目标标签失败")
+		}
+
+		if err := tx.Exec(`
+			INSERT INTO document_tags (document_id, tag_id)
+			SELECT dt.document_id, ? FROM document_tags dt
+			JOIN documents d ON d.id = dt.document_id
+			WHERE d.user_id = ? AND dt.tag_id = ?
+			ON CONFLICT DO NOTHING
+		`, targetID, userID, sourceID).Error; err != nil {
+			return xerr.Wrapf(err, "迁移文档标签关联失败")
+		}
+		if err := tx.Exec(`
+			DELETE FROM document_tags dt
+			USING documents d
+			WHERE d.id = dt.document_id AND d.user_id = ? AND dt.tag_id = ?
+		`, userID, sourceID).Error; err != nil {
+			return xerr.Wrapf(err, "删除源文档标签关联失败")
+		}
+		if err := tx.Exec(`
+			INSERT INTO image_tags (image_id, tag_id)
+			SELECT it.image_id, ? FROM image_tags it
+			JOIN images i ON i.id = it.image_id
+			WHERE i.user_id = ? AND it.tag_id = ?
+			ON CONFLICT DO NOTHING
+		`, targetID, userID, sourceID).Error; err != nil {
+			return xerr.Wrapf(err, "迁移图片标签关联失败")
+		}
+		if err := tx.Exec(`
+			DELETE FROM image_tags it
+			USING images i
+			WHERE i.id = it.image_id AND i.user_id = ? AND it.tag_id = ?
+		`, userID, sourceID).Error; err != nil {
+			return xerr.Wrapf(err, "删除源图片标签关联失败")
+		}
+
+		result := tx.Where("id = ? AND user_id = ?", sourceID, userID).Delete(&models.Tag{})
+		if result.Error != nil {
+			return xerr.Wrapf(result.Error, "删除源标签失败")
+		}
+		if result.RowsAffected == 0 {
+			return xerr.NotFound("标签不存在")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &target, nil
+}
+
 func (r *TagRepository) Delete(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND user_id = ?", tagID, userID).
@@ -147,6 +317,42 @@ func (r *TagRepository) Delete(ctx context.Context, userID uuid.UUID, tagID uuid
 		return xerr.NotFound("标签不存在")
 	}
 	return nil
+}
+
+type tagCountRow struct {
+	TagID uuid.UUID `gorm:"column:tag_id"`
+	Count int64     `gorm:"column:count"`
+}
+
+type tagDocumentIDRow struct {
+	DocumentID uuid.UUID `gorm:"column:document_id"`
+}
+
+type tagDocumentNameRow struct {
+	DocumentID uuid.UUID `gorm:"column:document_id"`
+	Name       string    `gorm:"column:name"`
+}
+
+func tagCountRowsToMap(rows []tagCountRow) map[uuid.UUID]int64 {
+	out := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		out[row.TagID] = row.Count
+	}
+	return out
+}
+
+func (r *TagRepository) tagScopeQuery(ctx context.Context, userID uuid.UUID, scope string) (*gorm.DB, error) {
+	query := r.db.WithContext(ctx).Model(&models.Tag{}).Where("user_id = ?", userID)
+	switch scope {
+	case "", string(domain.TagScopeAll):
+	case string(domain.TagScopeDocument):
+		query = query.Where("EXISTS (SELECT 1 FROM document_tags dt JOIN documents d ON d.id = dt.document_id WHERE dt.tag_id = tags.id AND d.user_id = ?)", userID)
+	case string(domain.TagScopeImage):
+		query = query.Where("EXISTS (SELECT 1 FROM image_tags it JOIN images i ON i.id = it.image_id WHERE it.tag_id = tags.id AND i.user_id = ?)", userID)
+	default:
+		return nil, xerr.BadRequest("标签 scope 无效")
+	}
+	return query, nil
 }
 
 func normalizeTagNames(names []string) []string {

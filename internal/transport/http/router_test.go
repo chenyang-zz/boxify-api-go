@@ -5,16 +5,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/boxify/api-go/internal/config"
 	corellm "github.com/boxify/api-go/internal/core/llm"
+	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/core/rag/webcrawl"
 	"github.com/boxify/api-go/internal/domain"
@@ -46,6 +49,10 @@ func newTestRouter(t *testing.T, enableDebugPanicRoute ...bool) http.Handler {
 }
 
 func newTestRouterWithConfig(t *testing.T, cfg config.Config, enableDebugPanicRoute ...bool) http.Handler {
+	return newTestRouterWithConfigAndOverrides(t, cfg, nil, enableDebugPanicRoute...)
+}
+
+func newTestRouterWithConfigAndOverrides(t *testing.T, cfg config.Config, configure func(*svc.ServiceContext), enableDebugPanicRoute ...bool) http.Handler {
 	t.Helper()
 	cipher, err := security.NewSecretCipher("0123456789abcdef0123456789abcdef")
 	if err != nil {
@@ -98,6 +105,7 @@ func newTestRouterWithConfig(t *testing.T, cfg config.Config, enableDebugPanicRo
 		KnowledgeBaseRepo: newTestKnowledgeBaseRepository(),
 		DocumentRepo:      newTestDocumentRepository(),
 		ImageRepo:         newTestImageRepository(),
+		TagRepo:           newTestTagRepository(),
 		Storage:           newTestDocumentStore(),
 		Elasticsearch:     esClient,
 		RAGChunkRepo:      ragChunkRepo,
@@ -108,6 +116,9 @@ func newTestRouterWithConfig(t *testing.T, cfg config.Config, enableDebugPanicRo
 		LLMManager:        llmManager,
 		SecretCipher:      cipher,
 		TokenIssuer:       security.NewTokenIssuer("test-secret", time.Hour),
+	}
+	if configure != nil {
+		configure(svcCtx)
 	}
 	deps := httptransport.Dependencies{
 		Svc: svcCtx,
@@ -706,6 +717,209 @@ func (r *testImageRepository) Delete(ctx context.Context, userID uuid.UUID, imag
 	return xerr.NotFound("图片不存在")
 }
 
+type testTagRepository struct {
+	rows        []*models.Tag
+	docCounts   map[uuid.UUID]int64
+	imageCounts map[uuid.UUID]int64
+
+	documentIDsByTag map[uuid.UUID][]uuid.UUID
+	documentTagNames map[uuid.UUID][]string
+}
+
+func newTestTagRepository() *testTagRepository {
+	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	sourceID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	targetID := uuid.MustParse("10000000-0000-0000-0000-000000000002")
+	imageID := uuid.MustParse("10000000-0000-0000-0000-000000000003")
+	return &testTagRepository{
+		rows: []*models.Tag{
+			{ID: sourceID, UserID: userID, Name: "源标签", Color: "#111111"},
+			{ID: targetID, UserID: userID, Name: "目标标签", Color: "#222222"},
+			{ID: imageID, UserID: userID, Name: "图片标签", Color: "#333333"},
+		},
+		docCounts:   map[uuid.UUID]int64{sourceID: 2, targetID: 1, imageID: 0},
+		imageCounts: map[uuid.UUID]int64{sourceID: 1, targetID: 1, imageID: 3},
+	}
+}
+
+func (r *testTagRepository) Create(ctx context.Context, userID uuid.UUID, row *models.Tag) (*models.Tag, error) {
+	if row.ID == uuid.Nil {
+		row.ID = uuid.New()
+	}
+	row.UserID = userID
+	r.rows = append(r.rows, row)
+	return row, nil
+}
+
+func (r *testTagRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Tag, error) {
+	return r.ListByScope(ctx, userID, "all")
+}
+
+func (r *testTagRepository) ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error) {
+	out := make([]*models.Tag, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row.UserID != userID {
+			continue
+		}
+		switch scope {
+		case "document":
+			if r.docCounts[row.ID] == 0 {
+				continue
+			}
+		case "image":
+			if r.imageCounts[row.ID] == 0 {
+				continue
+			}
+		}
+		out = append(out, row)
+	}
+	return out, nil
+}
+
+func (r *testTagRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.TagListQuery) ([]*models.Tag, int64, error) {
+	rows, err := r.ListByScope(ctx, userID, query.Scope)
+	if err != nil {
+		return nil, 0, err
+	}
+	total := int64(len(rows))
+	limit, offset := query.LimitOffset(20)
+	if offset >= len(rows) {
+		return []*models.Tag{}, total, nil
+	}
+	end := offset + limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+	return rows[offset:end], total, nil
+}
+
+func (r *testTagRepository) CountDocumentsByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	out := map[uuid.UUID]int64{}
+	for _, id := range tagIDs {
+		out[id] = r.docCounts[id]
+	}
+	return out, nil
+}
+
+func (r *testTagRepository) CountImagesByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	out := map[uuid.UUID]int64{}
+	for _, id := range tagIDs {
+		out[id] = r.imageCounts[id]
+	}
+	return out, nil
+}
+
+func (r *testTagRepository) FindByID(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) (*models.Tag, error) {
+	for _, row := range r.rows {
+		if row.ID == tagID && row.UserID == userID {
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("标签不存在")
+}
+
+func (r *testTagRepository) Update(ctx context.Context, userID uuid.UUID, row *models.Tag) (*models.Tag, error) {
+	return r.UpdateFields(ctx, userID, row.ID, row, repository.NewTagUpdateFields().Name().Color())
+}
+
+func (r *testTagRepository) UpdateFields(ctx context.Context, userID uuid.UUID, tagID uuid.UUID, row *models.Tag, fields *repository.TagUpdateFields) (*models.Tag, error) {
+	existing, err := r.FindByID(ctx, userID, tagID)
+	if err != nil {
+		return nil, err
+	}
+	for _, column := range fields.Columns() {
+		switch column {
+		case "name":
+			existing.Name = row.Name
+		case "color":
+			existing.Color = row.Color
+		}
+	}
+	return existing, nil
+}
+
+func (r *testTagRepository) SyncDocumentTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, names []string) ([]models.Tag, error) {
+	return nil, nil
+}
+
+func (r *testTagRepository) ListDocumentIDsByTag(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) ([]uuid.UUID, error) {
+	return append([]uuid.UUID(nil), r.documentIDsByTag[tagID]...), nil
+}
+
+func (r *testTagRepository) ListDocumentTagNames(ctx context.Context, userID uuid.UUID, documentIDs []uuid.UUID) (map[uuid.UUID][]string, error) {
+	out := make(map[uuid.UUID][]string, len(documentIDs))
+	for _, id := range documentIDs {
+		out[id] = append([]string(nil), r.documentTagNames[id]...)
+	}
+	return out, nil
+}
+
+func (r *testTagRepository) Merge(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) (*models.Tag, error) {
+	target, err := r.FindByID(ctx, userID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := r.FindByID(ctx, userID, sourceID); err != nil {
+		return nil, err
+	}
+	r.docCounts[targetID] += r.docCounts[sourceID]
+	r.imageCounts[targetID] += r.imageCounts[sourceID]
+	delete(r.docCounts, sourceID)
+	delete(r.imageCounts, sourceID)
+	_ = r.Delete(ctx, userID, sourceID)
+	return target, nil
+}
+
+func (r *testTagRepository) Delete(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) error {
+	for i, row := range r.rows {
+		if row.ID == tagID && row.UserID == userID {
+			r.rows = append(r.rows[:i], r.rows[i+1:]...)
+			return nil
+		}
+	}
+	return xerr.NotFound("标签不存在")
+}
+
+type testRAGChunkRepository struct {
+	updateTagsErr error
+	tagUpdates    []testRAGTagUpdate
+}
+
+type testRAGTagUpdate struct {
+	userID     uuid.UUID
+	documentID uuid.UUID
+	tags       []string
+}
+
+func (r *testRAGChunkRepository) EnsureIndex(ctx context.Context, embeddingDim int) error {
+	return nil
+}
+
+func (r *testRAGChunkRepository) IndexDocumentChunks(ctx context.Context, document *models.Document, chunks []*ragchunker.Chunk, vectors [][]float64) error {
+	return nil
+}
+
+func (r *testRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+	return nil
+}
+
+func (r *testRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+	return nil
+}
+
+func (r *testRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+	r.tagUpdates = append(r.tagUpdates, testRAGTagUpdate{
+		userID:     userID,
+		documentID: documentID,
+		tags:       append([]string(nil), tags...),
+	})
+	return r.updateTagsErr
+}
+
+func (r *testRAGChunkRepository) DecodeSource(src map[string]any) (models.RAGChunkSource, error) {
+	return models.RAGChunkSource{}, nil
+}
+
 type testDocumentStore struct {
 	data map[string][]byte
 }
@@ -1060,6 +1274,147 @@ func TestKnowledgeBaseListCreatesDefaultForFreshUser(t *testing.T) {
 	if got.Name != "默认知识库" || got.Description != "未分类资料默认归入此库" || got.Icon != "📚" ||
 		got.Color != "#155EEF" || !got.IsDefault || !got.ChatEnabled {
 		t.Fatalf("default knowledge base = %+v, want configured default", got)
+	}
+}
+
+func TestTagRoutesSupportListUpdateMergeAndDelete(t *testing.T) {
+	// 验证标签 HTTP 路由支持 scope 查询、image_count 响应、更新、合并与删除绑定。
+	router := newTestRouter(t)
+	sourceID := "10000000-0000-0000-0000-000000000001"
+	targetID := "10000000-0000-0000-0000-000000000002"
+	imageID := "10000000-0000-0000-0000-000000000003"
+
+	list := httptest.NewRecorder()
+	listReq := httptest.NewRequest(http.MethodGet, "/api/tag?scope=image&page=1&page_size=2", nil)
+	listReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(list, listReq)
+	if list.Code != http.StatusOK {
+		t.Fatalf("list status = %d body=%s", list.Code, list.Body.String())
+	}
+	var listBody struct {
+		Data struct {
+			Total    int64 `json:"total"`
+			Page     int64 `json:"page"`
+			PageSize int64 `json:"page_size"`
+			List     []struct {
+				ID         string `json:"id"`
+				DocCount   int64  `json:"doc_count"`
+				ImageCount int64  `json:"image_count"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &listBody); err != nil {
+		t.Fatalf("unmarshal list body: %v", err)
+	}
+	if listBody.Data.Total != 3 || listBody.Data.Page != 1 || listBody.Data.PageSize != 2 {
+		t.Fatalf("list page meta = total:%d page:%d page_size:%d, want 3/1/2", listBody.Data.Total, listBody.Data.Page, listBody.Data.PageSize)
+	}
+	gotIDs := make([]string, 0, len(listBody.Data.List))
+	for _, row := range listBody.Data.List {
+		gotIDs = append(gotIDs, row.ID)
+		if row.ID == imageID && (row.DocCount != 0 || row.ImageCount != 3) {
+			t.Fatalf("image tag counts = %+v, want doc_count=0 image_count=3", row)
+		}
+	}
+	slices.Sort(gotIDs)
+	if !slices.Equal(gotIDs, []string{sourceID, targetID}) {
+		t.Fatalf("image scope ids = %v, want first page image-related tags", gotIDs)
+	}
+
+	update := httptest.NewRecorder()
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/tag/"+imageID, strings.NewReader(`{"name":" 更新后 ","color":"#abcdef"}`))
+	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(update, updateReq)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update status = %d body=%s", update.Code, update.Body.String())
+	}
+	var updateBody struct {
+		Data struct {
+			ID         string `json:"id"`
+			Name       string `json:"name"`
+			Color      string `json:"color"`
+			ImageCount int64  `json:"image_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(update.Body.Bytes(), &updateBody); err != nil {
+		t.Fatalf("unmarshal update body: %v", err)
+	}
+	if updateBody.Data.ID != imageID || updateBody.Data.Name != "更新后" || updateBody.Data.Color != "#abcdef" || updateBody.Data.ImageCount != 3 {
+		t.Fatalf("update body = %+v, want trimmed updated tag with image count", updateBody.Data)
+	}
+
+	merge := httptest.NewRecorder()
+	mergeReq := httptest.NewRequest(http.MethodPost, "/api/tag/merge", strings.NewReader(`{"source_id":"`+sourceID+`","target_id":"`+targetID+`"}`))
+	mergeReq.Header.Set("Content-Type", "application/json")
+	mergeReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(merge, mergeReq)
+	if merge.Code != http.StatusOK {
+		t.Fatalf("merge status = %d body=%s", merge.Code, merge.Body.String())
+	}
+	var mergeBody struct {
+		Data struct {
+			ID         string `json:"id"`
+			DocCount   int64  `json:"doc_count"`
+			ImageCount int64  `json:"image_count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(merge.Body.Bytes(), &mergeBody); err != nil {
+		t.Fatalf("unmarshal merge body: %v", err)
+	}
+	if mergeBody.Data.ID != targetID || mergeBody.Data.DocCount != 3 || mergeBody.Data.ImageCount != 2 {
+		t.Fatalf("merge body = %+v, want target with merged counts", mergeBody.Data)
+	}
+
+	del := httptest.NewRecorder()
+	delReq := httptest.NewRequest(http.MethodDelete, "/api/tag/"+imageID, nil)
+	delReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(del, delReq)
+	if del.Code != http.StatusOK {
+		t.Fatalf("delete status = %d body=%s", del.Code, del.Body.String())
+	}
+}
+
+func TestTagUpdateRouteIgnoresDocumentChunkTagSyncFailure(t *testing.T) {
+	// 验证标签更新路由在 ES tags 同步失败时仍返回 PG 更新后的成功响应。
+	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	tagID := uuid.New()
+	docID := uuid.New()
+	tagRepo := &testTagRepository{
+		rows:             []*models.Tag{{ID: tagID, UserID: userID, Name: "旧标签", Color: "#111111"}},
+		docCounts:        map[uuid.UUID]int64{tagID: 1},
+		imageCounts:      map[uuid.UUID]int64{},
+		documentIDsByTag: map[uuid.UUID][]uuid.UUID{tagID: []uuid.UUID{docID}},
+		documentTagNames: map[uuid.UUID][]string{docID: []string{"新标签"}},
+	}
+	chunkRepo := &testRAGChunkRepository{updateTagsErr: errors.New("es unavailable")}
+	router := newTestRouterWithConfigAndOverrides(t, config.Config{App: config.AppConfig{Env: "test"}}, func(svcCtx *svc.ServiceContext) {
+		svcCtx.TagRepo = tagRepo
+		svcCtx.RAGChunkRepo = chunkRepo
+	})
+
+	update := httptest.NewRecorder()
+	updateReq := httptest.NewRequest(http.MethodPatch, "/api/tag/"+tagID.String(), strings.NewReader(`{"name":"新标签"}`))
+	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(update, updateReq)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update status = %d body=%s, want 200 despite ES sync failure", update.Code, update.Body.String())
+	}
+	var updateBody struct {
+		Data struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(update.Body.Bytes(), &updateBody); err != nil {
+		t.Fatalf("unmarshal update body: %v", err)
+	}
+	if updateBody.Data.ID != tagID.String() || updateBody.Data.Name != "新标签" {
+		t.Fatalf("update body = %+v, want updated tag", updateBody.Data)
+	}
+	if len(chunkRepo.tagUpdates) != 1 || chunkRepo.tagUpdates[0].documentID != docID || !slices.Equal(chunkRepo.tagUpdates[0].tags, []string{"新标签"}) {
+		t.Fatalf("tag updates = %+v, want one attempted ES tag sync", chunkRepo.tagUpdates)
 	}
 }
 

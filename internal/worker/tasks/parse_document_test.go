@@ -120,6 +120,22 @@ func (r *fakeTagRepository) List(ctx context.Context, userID uuid.UUID) ([]*mode
 	return nil, nil
 }
 
+func (r *fakeTagRepository) ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error) {
+	return nil, nil
+}
+
+func (r *fakeTagRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.TagListQuery) ([]*models.Tag, int64, error) {
+	return nil, 0, nil
+}
+
+func (r *fakeTagRepository) CountDocumentsByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
+}
+
+func (r *fakeTagRepository) CountImagesByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
+	return map[uuid.UUID]int64{}, nil
+}
+
 func (r *fakeTagRepository) FindByID(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) (*models.Tag, error) {
 	return nil, xerr.NotFound("标签不存在")
 }
@@ -147,6 +163,18 @@ func (r *fakeTagRepository) SyncDocumentTags(ctx context.Context, userID uuid.UU
 		rows = append(rows, models.Tag{ID: uuid.New(), UserID: userID, Name: name, Color: "#155EEF"})
 	}
 	return rows, nil
+}
+
+func (r *fakeTagRepository) ListDocumentIDsByTag(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (r *fakeTagRepository) ListDocumentTagNames(ctx context.Context, userID uuid.UUID, documentIDs []uuid.UUID) (map[uuid.UUID][]string, error) {
+	return map[uuid.UUID][]string{}, nil
+}
+
+func (r *fakeTagRepository) Merge(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) (*models.Tag, error) {
+	return &models.Tag{ID: targetID, UserID: userID}, nil
 }
 
 func (r *fakeTagRepository) Delete(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) error {

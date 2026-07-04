@@ -11,11 +11,23 @@ import (
 type TagRepository interface {
 	Create(ctx context.Context, userID uuid.UUID, tag *models.Tag) (*models.Tag, error)
 	List(ctx context.Context, userID uuid.UUID) ([]*models.Tag, error)
+	ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error)
+	PageList(ctx context.Context, userID uuid.UUID, query TagListQuery) ([]*models.Tag, int64, error)
+	CountDocumentsByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error)
+	CountImagesByTags(ctx context.Context, userID uuid.UUID, tagIDs []uuid.UUID) (map[uuid.UUID]int64, error)
 	FindByID(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) (*models.Tag, error)
 	Update(ctx context.Context, userID uuid.UUID, tag *models.Tag) (*models.Tag, error)
 	UpdateFields(ctx context.Context, userID uuid.UUID, tagID uuid.UUID, tag *models.Tag, fields *TagUpdateFields) (*models.Tag, error)
 	SyncDocumentTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, names []string) ([]models.Tag, error)
+	ListDocumentIDsByTag(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) ([]uuid.UUID, error)
+	ListDocumentTagNames(ctx context.Context, userID uuid.UUID, documentIDs []uuid.UUID) (map[uuid.UUID][]string, error)
+	Merge(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) (*models.Tag, error)
 	Delete(ctx context.Context, userID uuid.UUID, tagID uuid.UUID) error
+}
+
+type TagListQuery struct {
+	Scope string
+	PageQuery
 }
 
 type TagUpdateFields struct {
