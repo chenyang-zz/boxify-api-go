@@ -1,0 +1,21 @@
+README.md
+  s_dfbdfa8ccd2a22::t_3813df35db603e 2,292
+docs/architecture.md
+  s_dfbdfa8ccd2a22::t_8481cde9978f45 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2ff7b4df63a41ad28eae948da417f58d89c8f457",
+  "prompts": {},
+  "sessions": {
+    "s_dfbdfa8ccd2a22": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dfbdfa8ccd2a22",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
