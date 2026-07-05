@@ -2,17 +2,38 @@ package tool
 
 import "context"
 
+// Schema 表示模型或协议用于理解如何调用工具的 schema。
+//
+// Parameters 描述工具参数的顶层 JSON Schema。Strict 供 OpenAI 等支持严格结构化
+// 输出的适配器使用；core/tool 只负责保存和传递该配置。
+type Schema struct {
+	Parameters ParametersSchema `json:"parameters,omitempty"`
+	Strict     *bool            `json:"strict,omitempty"`
+}
+
+// ParametersSchema 描述工具参数对象的顶层 JSON Schema。
+//
+// Properties 的单个字段 schema 仍保持开放 map，便于表达 enum、items、oneOf、
+// default 等完整 JSON Schema 能力。
+type ParametersSchema struct {
+	Type                 string                    `json:"type,omitempty"`
+	Properties           map[string]PropertySchema `json:"properties,omitempty"`
+	Required             []string                  `json:"required,omitempty"`
+	AdditionalProperties any                       `json:"additionalProperties,omitempty"`
+}
+
+// PropertySchema 描述单个参数字段的 JSON Schema。
+type PropertySchema map[string]any
+
 // Descriptor 描述一个可以暴露给模型或编排器选择的工具。
 //
-// Name 必须非空，并在同一个 Registry 中唯一。InputSchema 和 OutputSchema
-// 使用 JSON Schema 兼容的 map 表示，Annotations 用于承载模型或 UI 可选理解的
-// 附加元数据。
+// Name 必须非空，并在同一个 Registry 中唯一。Schema 表示调用 schema，
+// Annotations 用于承载模型或 UI 可选理解的附加元数据。
 type Descriptor struct {
-	Name         string         `json:"name"`
-	Description  string         `json:"description,omitempty"`
-	InputSchema  map[string]any `json:"input_schema,omitempty"`
-	OutputSchema map[string]any `json:"output_schema,omitempty"`
-	Annotations  map[string]any `json:"annotations,omitempty"`
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Schema      Schema         `json:"schema,omitempty"`
+	Annotations map[string]any `json:"annotations,omitempty"`
 }
 
 // SetDescriptor 描述一个工具集。

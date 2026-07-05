@@ -13,8 +13,18 @@ func TestFuncToolDescribesAndInvokes(t *testing.T) {
 	desc := Descriptor{
 		Name:        "search",
 		Description: "Search documents.",
-		InputSchema: map[string]any{
-			"type": "object",
+		Schema: Schema{
+			Parameters: ParametersSchema{
+				Type: "object",
+				Properties: map[string]PropertySchema{
+					"query": {
+						"type":        "string",
+						"description": "Search query.",
+					},
+				},
+				Required:             []string{"query"},
+				AdditionalProperties: false,
+			},
 		},
 	}
 	ft := NewFuncTool(desc, func(ctx context.Context, input Input) (Output, error) {
