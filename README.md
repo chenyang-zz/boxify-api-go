@@ -1,4 +1,8 @@
-# Cove API — Go
+<p align="center">
+  <img src="logo/cove-logo-full-bleed/cove-logo-full-bleed-512x512.png" alt="Cove" width="512" height="512" />
+</p>
+
+<h1 align="center">Cove API — Go</h1>
 
 <p align="center">
   <b>Cove 是一个 AI 助手平台后端</b><br/>
@@ -110,6 +114,7 @@ domain/            →  领域类型、事件、接口
 
 ```
 internal/core/
+├── tool/           # 业务无关的工具描述、注册和调用能力
 ├── agent/          # Agent 编排与工具调度
 ├── llm/            # LLM Provider 抽象
 ├── rag/            # 检索增强生成引擎
@@ -269,7 +274,23 @@ Cove 内置代码生成器（`cmd/codegen/`），扫描 Go 注解自动生成：
 └── README.md
 ```
 
+## 贡献
+
+欢迎提交 Issue 和 Pull Request。在提交 PR 前请确保：
+
+- 代码通过 `go vet` 和 `gofmt` 检查
+- 新增功能附带单元测试
+- 所有测试通过 `make test` |
+
+## 许可证
+
+[MIT](LICENSE) © Cove Team
+
 ---
+
+<p align="center">
+  <img src="logo/cove-logo/cove-logo-128x128.png" alt="Cove" width="128" height="128" />
+</p>
 
 <p align="center">
   Built with Go · LLM-powered · 欢迎贡献

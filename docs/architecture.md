@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../logo/cove-logo/cove-logo-256x256.png" alt="Cove" width="256" height="256" />
+</p>
+
 # Cove Agent Platform
 
 Cove 是一个 AI 助手平台的后端：对话、RAG、Agent、记忆、MCP——全部整合在一个 Go 代码库中。整体采用分层架构，HTTP 入口使用 Gin，但 Gin 被严格限制在 `transport/http` 层，不会泄漏到 domain、repository 或 infrastructure 包中。
@@ -89,6 +93,7 @@ Cove 是一个 AI 助手平台的后端：对话、RAG、Agent、记忆、MCP—
 
 | 包 | 职责 |
 |---|---|
+| `tool` | 业务无关的工具描述、注册和调用能力 |
 | `agent` | Agent 调度与工具调用（tool dispatch） |
 | `llm` | LLM Provider 抽象层，支持 Anthropic / OpenAI 多后端 |
 | `rag/` | 完整检索增强生成引擎（8 个子包） |
