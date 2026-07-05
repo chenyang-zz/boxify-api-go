@@ -53,7 +53,7 @@ SSE 路由必须声明事件类型：
 ```go
 // @auth(user_id)
 // @sse
-// @event domain.AgentEvent
+// @event types.AgentEvent
 // @input request.ChatStreamRequest
 chatRoutes.POST("/stream", chat.ChatStream)
 ```

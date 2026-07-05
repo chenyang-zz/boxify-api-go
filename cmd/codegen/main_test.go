@@ -12,7 +12,7 @@ import (
 )
 
 func TestParseDirective(t *testing.T) {
-	directive, ok := parseDirective("// routegen: auth user_id sse input=request.CreateBookRequest output=response.BookResponse event=domain.AgentEvent")
+	directive, ok := parseDirective("// routegen: auth user_id sse input=request.CreateBookRequest output=response.BookResponse event=types.AgentEvent")
 	if !ok {
 		t.Fatal("parseDirective ok = false, want true")
 	}
@@ -25,8 +25,8 @@ func TestParseDirective(t *testing.T) {
 	if directive.Output != "response.BookResponse" {
 		t.Fatalf("output = %q", directive.Output)
 	}
-	if !directive.SSE || directive.Event != "domain.AgentEvent" {
-		t.Fatalf("sse/event = %v/%q, want true/domain.AgentEvent", directive.SSE, directive.Event)
+	if !directive.SSE || directive.Event != "types.AgentEvent" {
+		t.Fatalf("sse/event = %v/%q, want true/types.AgentEvent", directive.SSE, directive.Event)
 	}
 }
 
@@ -108,7 +108,7 @@ func TestParseDirectiveGroupSupportsEventAnnotation(t *testing.T) {
 	group := commentGroup(
 		"// @auth(user_id)",
 		"// @sse",
-		"// @event domain.AgentEvent",
+		"// @event types.AgentEvent",
 		"// @description 流式聊天",
 		"// @input request.ChatStreamRequest",
 	)
@@ -117,8 +117,8 @@ func TestParseDirectiveGroupSupportsEventAnnotation(t *testing.T) {
 	if !ok {
 		t.Fatal("parseDirectiveGroup ok = false, want true")
 	}
-	if !directive.SSE || directive.Event != "domain.AgentEvent" {
-		t.Fatalf("sse/event = %v/%q, want true/domain.AgentEvent", directive.SSE, directive.Event)
+	if !directive.SSE || directive.Event != "types.AgentEvent" {
+		t.Fatalf("sse/event = %v/%q, want true/types.AgentEvent", directive.SSE, directive.Event)
 	}
 	if strings.Join(comments, "\n") != "流式聊天" {
 		t.Fatalf("comments = %#v, want description", comments)
@@ -432,7 +432,7 @@ func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler, authMidd
 	chatRoutes := api.Group("/chat", authMiddleware)
 	// @auth(user_id)
 	// @sse
-	// @event domain.AgentEvent
+	// @event types.AgentEvent
 	// @description 流式聊天
 	// @input request.ChatStreamRequest
 	chatRoutes.POST("/stream", chat.ChatStream)
@@ -460,8 +460,8 @@ func RegisterChatRoutes(api *gin.RouterGroup, chat handler.ChatHandler, authMidd
 
 	logicFile := readFile(t, root, "internal/logic/chat/chat_stream.go")
 	for _, want := range []string{
-		`"github.com/boxify/api-go/internal/domain"`,
-		"func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStreamRequest) (<-chan domain.AgentEvent, error)",
+		`"github.com/boxify/api-go/internal/domain/types"`,
+		"func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStreamRequest) (<-chan types.AgentEvent, error)",
 		"return nil, nil",
 	} {
 		if !strings.Contains(logicFile, want) {
@@ -1618,7 +1618,7 @@ func RegisterDocumentRoutes(api *gin.RouterGroup, doc handler.DocumentHandler, c
 	api.POST("/documents", authMiddleware, doc.Upload)
 	// @auth(user_id)
 	// @sse
-	// @event domain.Event
+	// @event types.Event
 	// @input request.ChatStreamRequest
 	api.POST("/chat/stream", authMiddleware, chat.ChatStream)
 }

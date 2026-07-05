@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/xerr"
@@ -64,7 +64,7 @@ func (r *ModelConfigRepository) Update(ctx context.Context, modelConfig *models.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return modelConfig, nil
 }
 
@@ -80,7 +80,7 @@ func (r *ModelConfigRepository) Delete(ctx context.Context, ID uuid.UUID) error 
 	return nil
 }
 
-func (r *ModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+func (r *ModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *types.ModelType) ([]*models.ModelConfig, error) {
 	var rows []*models.ModelConfig
 
 	query := r.db.WithContext(ctx).

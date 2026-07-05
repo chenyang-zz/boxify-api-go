@@ -20,7 +20,7 @@ import (
 	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/core/rag/webcrawl"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/boxify/api-go/internal/infrastructure/security"
@@ -256,7 +256,7 @@ func (s *memoryDocumentStore) Delete(ctx context.Context, key string) error {
 }
 
 type fakeDocumentTaskProducer struct {
-	tasks    []*domain.Task
+	tasks    []*types.Task
 	parseErr error
 	closed   bool
 }
@@ -284,7 +284,7 @@ func (fakeURLImportGuard) Validate(ctx context.Context, rawURL string) error {
 	return nil
 }
 
-func (p *fakeDocumentTaskProducer) Enqueue(ctx context.Context, task *domain.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
+func (p *fakeDocumentTaskProducer) Enqueue(ctx context.Context, task *types.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
 	if p.parseErr != nil {
 		return nil, p.parseErr
 	}
@@ -351,7 +351,7 @@ func (r *fakeSearchModelConfigRepository) Delete(ctx context.Context, id uuid.UU
 	return nil
 }
 
-func (r *fakeSearchModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+func (r *fakeSearchModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *types.ModelType) ([]*models.ModelConfig, error) {
 	out := make([]*models.ModelConfig, 0, len(r.rows))
 	for _, row := range r.rows {
 		if row.UserID == userID && (modelType == nil || row.Type == string(*modelType)) {
@@ -448,13 +448,13 @@ func TestUploadDocumentStoresFileAndCreatesDefaultKnowledgeBase(t *testing.T) {
 	if docRepo.created.UserID != userID || docRepo.created.KBID == nil || *docRepo.created.KBID != kbRepo.created.ID {
 		t.Fatalf("created document owner/kb = %+v, want current user default kb", docRepo.created)
 	}
-	if docRepo.created.FileName != "guide.md" || docRepo.created.FileExt != ".md" || docRepo.created.FileSize != 5 || docRepo.created.Status != domain.DocumentStatusPending {
+	if docRepo.created.FileName != "guide.md" || docRepo.created.FileExt != ".md" || docRepo.created.FileSize != 5 || docRepo.created.Status != types.DocumentStatusPending {
 		t.Fatalf("created document = %+v, want normalized file metadata", docRepo.created)
 	}
 	if string(store.data[docRepo.created.FileKey]) != "hello" {
 		t.Fatalf("stored content = %q, want hello", string(store.data[docRepo.created.FileKey]))
 	}
-	if out.ID != docRepo.created.ID || out.FileName != "guide.md" || out.KBID == nil || *out.KBID != kbRepo.created.ID || out.Status != domain.DocumentStatusPending {
+	if out.ID != docRepo.created.ID || out.FileName != "guide.md" || out.KBID == nil || *out.KBID != kbRepo.created.ID || out.Status != types.DocumentStatusPending {
 		t.Fatalf("response = %+v, want created document response", out)
 	}
 	payload := parseDocumentPayloadFromTask(t, producer.tasks, 0)
@@ -548,8 +548,8 @@ func TestListDocumentsFiltersByKnowledgeBaseAndPaginates(t *testing.T) {
 	kbID := uuid.New()
 	now := time.Now()
 	repo := newFakeDocumentRepository(
-		&models.Document{ID: uuid.New(), UserID: userID, KBID: &kbID, FileName: "a.txt", FileExt: ".txt", Status: domain.DocumentStatusPending, CreatedAt: now, Tags: []models.Tag{{Name: "重要"}}},
-		&models.Document{ID: uuid.New(), UserID: userID, KBID: &kbID, FileName: "b.txt", FileExt: ".txt", Status: domain.DocumentStatusPending, CreatedAt: now},
+		&models.Document{ID: uuid.New(), UserID: userID, KBID: &kbID, FileName: "a.txt", FileExt: ".txt", Status: types.DocumentStatusPending, CreatedAt: now, Tags: []models.Tag{{Name: "重要"}}},
+		&models.Document{ID: uuid.New(), UserID: userID, KBID: &kbID, FileName: "b.txt", FileExt: ".txt", Status: types.DocumentStatusPending, CreatedAt: now},
 	)
 	repo.listTotal = 7
 	logic := NewListDocumentsLogic(ctx, &svc.ServiceContext{DocumentRepo: repo})
@@ -618,7 +618,7 @@ func TestReParseDocumentResetsStatusAndProgress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReParseDocument error = %v", err)
 	}
-	if out.Status != domain.DocumentStatusPending || out.Progress != 0 || out.ErrorMsg != nil {
+	if out.Status != types.DocumentStatusPending || out.Progress != 0 || out.ErrorMsg != nil {
 		t.Fatalf("response = %+v, want reset parse state", out)
 	}
 	if strings.Join(repo.fields, ",") != "status,progress,error_msg" {
@@ -630,17 +630,17 @@ func TestReParseDocumentResetsStatusAndProgress(t *testing.T) {
 	}
 }
 
-func parseDocumentPayloadFromTask(t *testing.T, tasks []*domain.Task, index int) *domain.ParseDocumentPayload {
+func parseDocumentPayloadFromTask(t *testing.T, tasks []*types.Task, index int) *types.ParseDocumentPayload {
 	t.Helper()
 	if len(tasks) <= index {
 		t.Fatalf("tasks = %+v, want task at index %d", tasks, index)
 	}
-	if tasks[index].Name != domain.TaskParseDocument {
-		t.Fatalf("task name = %q, want %q", tasks[index].Name, domain.TaskParseDocument)
+	if tasks[index].Name != types.TaskParseDocument {
+		t.Fatalf("task name = %q, want %q", tasks[index].Name, types.TaskParseDocument)
 	}
-	payload, ok := tasks[index].Payload.(*domain.ParseDocumentPayload)
+	payload, ok := tasks[index].Payload.(*types.ParseDocumentPayload)
 	if !ok {
-		t.Fatalf("payload type = %T, want *domain.ParseDocumentPayload", tasks[index].Payload)
+		t.Fatalf("payload type = %T, want *types.ParseDocumentPayload", tasks[index].Payload)
 	}
 	return payload
 }
@@ -757,7 +757,7 @@ func TestImportDocumentFromURLStoresTextDocumentAndEnqueuesParse(t *testing.T) {
 	if docRepo.created.SourceType != documentSourceURL || docRepo.created.SourceUrl == nil || *docRepo.created.SourceUrl != "https://example.com/page" {
 		t.Fatalf("created source = %s/%v, want url source", docRepo.created.SourceType, docRepo.created.SourceUrl)
 	}
-	if docRepo.created.FileExt != ".txt" || docRepo.created.Status != domain.DocumentStatusPending {
+	if docRepo.created.FileExt != ".txt" || docRepo.created.Status != types.DocumentStatusPending {
 		t.Fatalf("created file/status = %s/%s, want .txt pending", docRepo.created.FileExt, docRepo.created.Status)
 	}
 	if !strings.HasSuffix(docRepo.created.FileName, ".txt") || strings.Contains(docRepo.created.FileName, "/") {
@@ -839,7 +839,7 @@ func TestImportDocumentFromURLMarksFailedWhenQueueEnqueueFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("ImportDocumentFromUrl error = nil, want enqueue error")
 	}
-	if docRepo.partial == nil || docRepo.partial.Status != domain.DocumentStatusFailed || docRepo.partial.ErrorMsg == nil {
+	if docRepo.partial == nil || docRepo.partial.Status != types.DocumentStatusFailed || docRepo.partial.ErrorMsg == nil {
 		t.Fatalf("failed patch = %+v, want failed status and error", docRepo.partial)
 	}
 }
@@ -880,7 +880,7 @@ func TestSearchDocumentsUsesRAGSearchByUserAndTags(t *testing.T) {
 	svcCtx := &svc.ServiceContext{
 		Config:          config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		RAGSearcher:     ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex("boxify_chunks"), ragsearch.WithEmbeddingDim(3), ragsearch.WithSourceDecoder[models.RAGChunkSource](ragChunkRepo.DecodeSource)),
-		ModelConfigRepo: &fakeSearchModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, IsDefault: true}}},
+		ModelConfigRepo: &fakeSearchModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, IsDefault: true}}},
 		SecretCipher:    cipher,
 		LLMManager:      newFakeSearchLLMManager(),
 	}
@@ -957,7 +957,7 @@ func TestSearchDocumentsReturnsErrorWhenEmbeddingAPIKeyDecryptFails(t *testing.T
 		Config:      config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		RAGSearcher: ragsearch.NewSearcher[models.RAGChunkSource](esClient, ragsearch.WithIndex("boxify_chunks"), ragsearch.WithEmbeddingDim(3)),
 		ModelConfigRepo: &fakeSearchModelConfigRepository{rows: []*models.ModelConfig{{
-			UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: "not-encrypted", IsDefault: true,
+			UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: "not-encrypted", IsDefault: true,
 		}}},
 		SecretCipher: cipher,
 		LLMManager:   newFakeSearchLLMManager(),

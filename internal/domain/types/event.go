@@ -4,7 +4,7 @@
  * @File   : event.go
  **/
 
-package domain
+package types
 
 import "github.com/google/uuid"
 

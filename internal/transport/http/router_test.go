@@ -20,7 +20,7 @@ import (
 	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/core/rag/webcrawl"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
@@ -169,23 +169,23 @@ func newTestLLMManager() *corellm.Manager {
 
 type testRealtimeBroker struct{}
 
-func (testRealtimeBroker) Publish(ctx context.Context, topic string, event domain.Event) error {
+func (testRealtimeBroker) Publish(ctx context.Context, topic string, event types.Event) error {
 	return nil
 }
 
 func (testRealtimeBroker) Subscribe(ctx context.Context, topic string) (realtime.Subscription, error) {
-	events := make(chan domain.Event, 2)
-	events <- domain.NewTokenEvent("345")
-	events <- domain.NewDoneEvent("ok")
+	events := make(chan types.Event, 2)
+	events <- types.NewTokenEvent("345")
+	events <- types.NewDoneEvent("ok")
 	close(events)
 	return testRealtimeSubscription{events: events}, nil
 }
 
 type testRealtimeSubscription struct {
-	events <-chan domain.Event
+	events <-chan types.Event
 }
 
-func (s testRealtimeSubscription) Events() <-chan domain.Event {
+func (s testRealtimeSubscription) Events() <-chan types.Event {
 	return s.events
 }
 
@@ -195,7 +195,7 @@ func (s testRealtimeSubscription) Close(ctx context.Context) error {
 
 type testTaskProducer struct{}
 
-func (testTaskProducer) Enqueue(ctx context.Context, task *domain.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
+func (testTaskProducer) Enqueue(ctx context.Context, task *types.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
 	return &queue.TaskInfo{ID: "task-id", Name: task.Name, Queue: task.Queue}, nil
 }
 
@@ -253,7 +253,7 @@ func (r *testModelConfigRepository) Delete(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
-func (r *testModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+func (r *testModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *types.ModelType) ([]*models.ModelConfig, error) {
 	out := make([]*models.ModelConfig, 0, len(r.rows))
 	for _, row := range r.rows {
 		if row.UserID == userID && (modelType == nil || row.Type == string(*modelType)) {

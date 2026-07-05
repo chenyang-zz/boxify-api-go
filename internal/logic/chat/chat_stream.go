@@ -8,7 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/boxify/api-go/internal/core/llm"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
@@ -34,7 +34,7 @@ func NewChatStreamLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ChatSt
 }
 
 // ChatStream 流式聊天
-func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStreamRequest) (<-chan domain.Event, error) {
+func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStreamRequest) (<-chan types.Event, error) {
 
 	// 生成动作不在当前协程中，而是一个独立 协程 的后台任务生成
 	// 通过 Redis 频道广播 token；本协程只「订阅频道并转发」给当前客户端
@@ -43,10 +43,10 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 
 	userText := strings.TrimSpace(input.Message)
 
-	attachments := make([]*domain.MessageAttachment, 0, len(input.Attachments))
+	attachments := make([]*types.MessageAttachment, 0, len(input.Attachments))
 	for _, attachment := range input.Attachments {
 		if attachment.Text != "" {
-			attachments = append(attachments, &domain.MessageAttachment{
+			attachments = append(attachments, &types.MessageAttachment{
 				Content:  attachment.Text,
 				FileName: attachment.FileName,
 			})
@@ -88,14 +88,14 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 		return nil, err
 	}
 
-	events := make(chan domain.Event, 16)
+	events := make(chan types.Event, 16)
 	go func() {
 		select {
 		case <-l.ctx.Done():
 			close(events)
 			_ = subscription.Close(context.Background())
 			return
-		case events <- domain.NewMetaEvent(conversation.ID, conversation.Title):
+		case events <- types.NewMetaEvent(conversation.ID, conversation.Title):
 		}
 		err = realtime.Forward(l.ctx, subscription, events, realtime.ForwardOptions{})
 		if err != nil {
@@ -110,7 +110,7 @@ func (l *ChatStreamLogic) ChatStream(userID uuid.UUID, input *request.ChatStream
 				return
 			default:
 				time.Sleep(2 * time.Second)
-				_ = l.svcCtx.Realtime.Publish(l.ctx, topic, domain.NewTokenEvent("345"))
+				_ = l.svcCtx.Realtime.Publish(l.ctx, topic, types.NewTokenEvent("345"))
 			}
 
 		}

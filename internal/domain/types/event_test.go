@@ -1,4 +1,4 @@
-package domain
+package types
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// 验证事件构造函数会生成正确类型和值，并且 EventName 返回事件名称。
 func TestEventConstructors(t *testing.T) {
 	conversationID := uuid.New()
 

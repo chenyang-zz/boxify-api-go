@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/hibiken/asynq"
 )
@@ -17,7 +17,7 @@ func NewProducer(cfg Config) *Producer {
 	return &Producer{client: asynq.NewClient(ClientOpt(cfg))}
 }
 
-func (p *Producer) Enqueue(ctx context.Context, task *domain.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
+func (p *Producer) Enqueue(ctx context.Context, task *types.Task, opts ...queue.EnqueueOption) (*queue.TaskInfo, error) {
 	if p == nil || p.client == nil {
 		return nil, fmt.Errorf("queue producer is nil")
 	}
@@ -31,8 +31,8 @@ func (p *Producer) Enqueue(ctx context.Context, task *domain.Task, opts ...queue
 	}
 	return &queue.TaskInfo{
 		ID:    info.ID,
-		Name:  domain.TaskName(info.Type),
-		Queue: domain.QueueName(info.Queue),
+		Name:  types.TaskName(info.Type),
+		Queue: types.QueueName(info.Queue),
 	}, nil
 }
 
@@ -43,7 +43,7 @@ func (p *Producer) Close() error {
 	return p.client.Close()
 }
 
-func enqueueOptions(task *domain.Task, opts ...queue.EnqueueOption) []asynq.Option {
+func enqueueOptions(task *types.Task, opts ...queue.EnqueueOption) []asynq.Option {
 	options := queue.NewEnqueueOptions(task, opts...)
 	asynqOptions := make([]asynq.Option, 0, 2)
 	if options.Queue != "" {

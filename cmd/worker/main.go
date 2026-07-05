@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/boxify/api-go/internal/config"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	queueredis "github.com/boxify/api-go/internal/infrastructure/queue/redis"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -43,11 +43,11 @@ func main() {
 			DB:       cfg.Redis.DB,
 		}),
 		asynq.Config{Queues: map[string]int{
-			string(domain.QueueDefault):  5,
-			string(domain.QueueParse):    3,
-			string(domain.QueueMemory):   3,
-			string(domain.QueueResearch): 1,
-			string(domain.QueueBeat):     1,
+			string(types.QueueDefault):  5,
+			string(types.QueueParse):    3,
+			string(types.QueueMemory):   3,
+			string(types.QueueResearch): 1,
+			string(types.QueueBeat):     1,
 		}},
 	)
 	if err := server.Run(mux); err != nil {

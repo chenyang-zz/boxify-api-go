@@ -4,7 +4,7 @@
  * @File   : model.go
  **/
 
-package domain
+package types
 
 type ModelProviderType string
 

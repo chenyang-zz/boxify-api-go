@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 	realtimememory "github.com/boxify/api-go/internal/infrastructure/realtime/memory"
 	"github.com/google/uuid"
@@ -27,14 +27,14 @@ func TestForwardRelaysEventsAndStopsOnDone(t *testing.T) {
 		t.Fatalf("subscribe error = %v", err)
 	}
 
-	if err := broker.Publish(ctx, "topic", domain.NewTokenEvent("hello")); err != nil {
+	if err := broker.Publish(ctx, "topic", types.NewTokenEvent("hello")); err != nil {
 		t.Fatalf("publish token error = %v", err)
 	}
-	if err := broker.Publish(ctx, "topic", domain.NewDoneEvent("ok")); err != nil {
+	if err := broker.Publish(ctx, "topic", types.NewDoneEvent("ok")); err != nil {
 		t.Fatalf("publish done error = %v", err)
 	}
 
-	out := make(chan domain.Event, 2)
+	out := make(chan types.Event, 2)
 	if err := realtime.Forward(ctx, sub, out, realtime.ForwardOptions{}); err != nil {
 		t.Fatalf("Forward error = %v", err)
 	}
@@ -50,7 +50,7 @@ func TestForwardRelaysEventsAndStopsOnDone(t *testing.T) {
 	if _, ok := <-out; ok {
 		t.Fatal("out channel remained open")
 	}
-	if first.EventName() != domain.EventTypeToken || second.EventName() != domain.EventTypeDone {
+	if first.EventName() != types.EventTypeToken || second.EventName() != types.EventTypeDone {
 		t.Fatalf("forwarded events = %q/%q, want token/done", first.EventName(), second.EventName())
 	}
 }
@@ -65,7 +65,7 @@ func TestForwardStopsOnContextCancel(t *testing.T) {
 		t.Fatalf("subscribe error = %v", err)
 	}
 
-	out := make(chan domain.Event)
+	out := make(chan types.Event)
 	if err := realtime.Forward(ctx, sub, out, realtime.ForwardOptions{}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Forward error = %v, want context.Canceled", err)
 	}

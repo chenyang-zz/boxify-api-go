@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/mapper"
 	"github.com/boxify/api-go/internal/models"
@@ -30,9 +30,9 @@ func NewListModelsLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ListMo
 }
 
 func (l *ListModelsLogic) ListModels(userID uuid.UUID, input *request.ListModelsRequest) (*response.ListModelsResponse, error) {
-	var modelType *domain.ModelType
+	var modelType *types.ModelType
 	if input.Type != "" {
-		tmp := domain.ModelType(input.Type)
+		tmp := types.ModelType(input.Type)
 		modelType = &tmp
 	}
 	rows, err := l.svcCtx.ModelConfigRepo.List(l.ctx, userID, modelType)

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	repositorypostgres "github.com/boxify/api-go/internal/repository/postgres"
@@ -266,21 +266,21 @@ func TestTagRepositoryListCountsAndMergeWhenPostgresEnvIsConfigured(t *testing.T
 		t.Fatalf("insert image_tags error = %v", err)
 	}
 
-	allRows, err := tagRepo.ListByScope(ctx, user.ID, string(domain.TagScopeAll))
+	allRows, err := tagRepo.ListByScope(ctx, user.ID, string(types.TagScopeAll))
 	if err != nil {
 		t.Fatalf("ListByScope all error = %v", err)
 	}
 	if len(allRows) != 3 {
 		t.Fatalf("all rows len = %d, want 3", len(allRows))
 	}
-	docRows, err := tagRepo.ListByScope(ctx, user.ID, string(domain.TagScopeDocument))
+	docRows, err := tagRepo.ListByScope(ctx, user.ID, string(types.TagScopeDocument))
 	if err != nil {
 		t.Fatalf("ListByScope document error = %v", err)
 	}
 	if got := tagNamesForTest(docRows); !slices.Equal(got, []string{"源标签", "目标标签"}) {
 		t.Fatalf("document scope names = %v, want source and target", got)
 	}
-	imageRows, err := tagRepo.ListByScope(ctx, user.ID, string(domain.TagScopeImage))
+	imageRows, err := tagRepo.ListByScope(ctx, user.ID, string(types.TagScopeImage))
 	if err != nil {
 		t.Fatalf("ListByScope image error = %v", err)
 	}
@@ -288,7 +288,7 @@ func TestTagRepositoryListCountsAndMergeWhenPostgresEnvIsConfigured(t *testing.T
 		t.Fatalf("image scope names = %v, want image-related tags", got)
 	}
 	pageRows, total, err := tagRepo.PageList(ctx, user.ID, repository.TagListQuery{
-		Scope: string(domain.TagScopeImage),
+		Scope: string(types.TagScopeImage),
 		PageQuery: repository.PageQuery{
 			Page:     2,
 			PageSize: 1,

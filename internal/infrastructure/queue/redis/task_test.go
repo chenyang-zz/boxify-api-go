@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	queueredis "github.com/boxify/api-go/internal/infrastructure/queue/redis"
 	"github.com/google/uuid"
@@ -15,7 +15,7 @@ func TestEncodeDecodeParseDocumentTaskRoundTrip(t *testing.T) {
 	// 验证 Redis/Asynq 实现能复用 domain 任务契约完成编码和解码。
 	userID := uuid.New()
 	documentID := uuid.New()
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -24,17 +24,17 @@ func TestEncodeDecodeParseDocumentTaskRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeTask error = %v", err)
 	}
-	if asynqTask.Type() != string(domain.TaskParseDocument) {
-		t.Fatalf("task type = %q, want %q", asynqTask.Type(), domain.TaskParseDocument)
+	if asynqTask.Type() != string(types.TaskParseDocument) {
+		t.Fatalf("task type = %q, want %q", asynqTask.Type(), types.TaskParseDocument)
 	}
 
 	got, err := queueredis.DecodeTask(asynqTask)
 	if err != nil {
 		t.Fatalf("DecodeTask error = %v", err)
 	}
-	payload, ok := got.Payload.(*domain.ParseDocumentPayload)
+	payload, ok := got.Payload.(*types.ParseDocumentPayload)
 	if !ok {
-		t.Fatalf("payload type = %T, want *domain.ParseDocumentPayload", got.Payload)
+		t.Fatalf("payload type = %T, want *types.ParseDocumentPayload", got.Payload)
 	}
 	if payload.UserID != userID || payload.DocumentID != documentID {
 		t.Fatalf("payload = %+v, want user/document ids", payload)
@@ -43,7 +43,7 @@ func TestEncodeDecodeParseDocumentTaskRoundTrip(t *testing.T) {
 
 func TestDecodeTaskRejectsInvalidPayload(t *testing.T) {
 	// 验证 Redis/Asynq 解码会拒绝非法 JSON 和未知任务，避免错误任务进入 handler。
-	badJSON := asynq.NewTask(string(domain.TaskParseDocument), []byte("{bad json"))
+	badJSON := asynq.NewTask(string(types.TaskParseDocument), []byte("{bad json"))
 	if _, err := queueredis.DecodeTask(badJSON); err == nil {
 		t.Fatal("DecodeTask bad JSON error = nil, want error")
 	}
@@ -58,7 +58,7 @@ func TestRouterForwardsDecodedDomainTask(t *testing.T) {
 	// 验证 Router adapter 会把 Asynq task 解码成 domain task 再交给业务 handler。
 	userID := uuid.New()
 	documentID := uuid.New()
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -67,10 +67,10 @@ func TestRouterForwardsDecodedDomainTask(t *testing.T) {
 		t.Fatalf("EncodeTask error = %v", err)
 	}
 
-	var got *domain.Task
+	var got *types.Task
 	mux := asynq.NewServeMux()
 	router := queueredis.NewRouter(mux)
-	router.Handle(domain.TaskParseDocument, queue.HandlerFunc(func(ctx context.Context, task *domain.Task) error {
+	router.Handle(types.TaskParseDocument, queue.HandlerFunc(func(ctx context.Context, task *types.Task) error {
 		got = task
 		return nil
 	}))
@@ -81,9 +81,9 @@ func TestRouterForwardsDecodedDomainTask(t *testing.T) {
 	if got == nil {
 		t.Fatal("handler task = nil, want domain task")
 	}
-	payload, ok := got.Payload.(*domain.ParseDocumentPayload)
+	payload, ok := got.Payload.(*types.ParseDocumentPayload)
 	if !ok {
-		t.Fatalf("payload type = %T, want *domain.ParseDocumentPayload", got.Payload)
+		t.Fatalf("payload type = %T, want *types.ParseDocumentPayload", got.Payload)
 	}
 	if payload.UserID != userID || payload.DocumentID != documentID {
 		t.Fatalf("payload = %+v, want user/document ids", payload)

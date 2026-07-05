@@ -6,7 +6,7 @@ import (
 
 	"github.com/boxify/api-go/internal/core/llm"
 	"github.com/boxify/api-go/internal/core/prompt"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/transport/http/request"
@@ -34,7 +34,7 @@ func NewOptimizePromptLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Op
 // OptimizePrompt 优化提示词
 func (l *OptimizePromptLogic) OptimizePrompt(userID uuid.UUID, input *request.OptimizePromptRequest) (*response.OptimizePromptResponse, error) {
 	// 获取chat 模型配置
-	modelType := domain.ChatModelType
+	modelType := types.ChatModelType
 	configs, err := l.svcCtx.ModelConfigRepo.List(l.ctx, userID, &modelType)
 	if err != nil {
 		return nil, err

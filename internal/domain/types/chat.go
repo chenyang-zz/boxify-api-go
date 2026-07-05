@@ -1,4 +1,4 @@
-package domain
+package types
 
 type MessageAttachment struct {
 	FileName string

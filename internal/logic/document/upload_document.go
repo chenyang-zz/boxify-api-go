@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
 	"github.com/boxify/api-go/internal/mapper"
 	"github.com/boxify/api-go/internal/models"
@@ -71,7 +71,7 @@ func (l *UploadDocumentLogic) UploadDocument(userID uuid.UUID, input *request.Up
 		FileSize:   fileInfo.Size,
 		FileKey:    fileKey,
 		SourceType: documentSourceFile,
-		Status:     domain.DocumentStatusPending,
+		Status:     types.DocumentStatusPending,
 	})
 	if err != nil {
 		return nil, err

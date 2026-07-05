@@ -4,53 +4,53 @@ import (
 	"context"
 	"testing"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/mapper"
 	"github.com/boxify/api-go/internal/transport/http/response"
 	"github.com/google/uuid"
 )
 
 func TestEventToResponseMapsTextEvent(t *testing.T) {
-	got := mapper.EventToResponse(domain.NewTokenEvent("hello"))
+	got := mapper.EventToResponse(types.NewTokenEvent("hello"))
 
 	event, ok := got.(*response.BaseEvent)
 	if !ok {
 		t.Fatalf("EventToResponse type = %T, want *response.BaseEvent", got)
 	}
-	if event.Type != domain.EventTypeToken || event.Text != "hello" || event.EventName() != domain.EventTypeToken {
+	if event.Type != types.EventTypeToken || event.Text != "hello" || event.EventName() != types.EventTypeToken {
 		t.Fatalf("event = %+v, want token hello", event)
 	}
 }
 
 func TestEventToResponseMapsMetaEvent(t *testing.T) {
 	conversationID := uuid.New()
-	got := mapper.EventToResponse(domain.NewMetaEvent(conversationID, "New Chat"))
+	got := mapper.EventToResponse(types.NewMetaEvent(conversationID, "New Chat"))
 
 	event, ok := got.(*response.MetaEvent)
 	if !ok {
 		t.Fatalf("EventToResponse type = %T, want *response.MetaEvent", got)
 	}
-	if event.Type != domain.EventTypeMeta || event.ConversationID != conversationID || event.Title != "New Chat" || event.EventName() != domain.EventTypeMeta {
+	if event.Type != types.EventTypeMeta || event.ConversationID != conversationID || event.Title != "New Chat" || event.EventName() != types.EventTypeMeta {
 		t.Fatalf("event = %+v, want meta payload", event)
 	}
 }
 
 func TestEventToResponseMapsErrorEvent(t *testing.T) {
-	got := mapper.EventToResponse(domain.NewErrorEvent("boom"))
+	got := mapper.EventToResponse(types.NewErrorEvent("boom"))
 
 	event, ok := got.(*response.ErrorEvent)
 	if !ok {
 		t.Fatalf("EventToResponse type = %T, want *response.ErrorEvent", got)
 	}
-	if event.Type != domain.EventTypeError || event.Message != "boom" || event.EventName() != domain.EventTypeError {
+	if event.Type != types.EventTypeError || event.Message != "boom" || event.EventName() != types.EventTypeError {
 		t.Fatalf("event = %+v, want error payload", event)
 	}
 }
 
 func TestEventStreamToResponseMapsAndCloses(t *testing.T) {
-	events := make(chan domain.Event, 2)
-	events <- domain.NewTokenEvent("hello")
-	events <- domain.NewDoneEvent("ok")
+	events := make(chan types.Event, 2)
+	events <- types.NewTokenEvent("hello")
+	events <- types.NewDoneEvent("ok")
 	close(events)
 
 	out := mapper.EventStreamToResponse(context.Background(), events)
@@ -66,14 +66,14 @@ func TestEventStreamToResponseMapsAndCloses(t *testing.T) {
 		t.Fatal("response channel remained open")
 	}
 
-	if first.EventName() != domain.EventTypeToken || second.EventName() != domain.EventTypeDone {
+	if first.EventName() != types.EventTypeToken || second.EventName() != types.EventTypeDone {
 		t.Fatalf("events = %q/%q, want token/done", first.EventName(), second.EventName())
 	}
 }
 
 func TestEventStreamToResponseMapsPingToComment(t *testing.T) {
-	events := make(chan domain.Event, 1)
-	events <- domain.NewPingEvent()
+	events := make(chan types.Event, 1)
+	events <- types.NewPingEvent()
 	close(events)
 
 	out := mapper.EventStreamToResponse(context.Background(), events)
@@ -91,7 +91,7 @@ func TestEventStreamToResponseMapsPingToComment(t *testing.T) {
 }
 
 func TestEventStreamToResponseMapsNilEventToError(t *testing.T) {
-	events := make(chan domain.Event, 1)
+	events := make(chan types.Event, 1)
 	events <- nil
 	close(events)
 
@@ -104,7 +104,7 @@ func TestEventStreamToResponseMapsNilEventToError(t *testing.T) {
 	if !ok {
 		t.Fatalf("response type = %T, want *response.BaseEvent", got)
 	}
-	if event.EventName() != domain.EventTypeError {
+	if event.EventName() != types.EventTypeError {
 		t.Fatalf("event = %q, want error", event.EventName())
 	}
 }

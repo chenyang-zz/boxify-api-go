@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 )
 
@@ -24,14 +24,14 @@ func TestBrokerBroadcastsToSubscribers(t *testing.T) {
 	}
 	defer second.Close(ctx)
 
-	if err := broker.Publish(ctx, "topic", domain.NewTokenEvent("hello")); err != nil {
+	if err := broker.Publish(ctx, "topic", types.NewTokenEvent("hello")); err != nil {
 		t.Fatalf("publish error = %v", err)
 	}
 
 	for name, sub := range map[string]realtime.Subscription{"first": first, "second": second} {
 		select {
 		case event := <-sub.Events():
-			if event.EventName() != domain.EventTypeToken {
+			if event.EventName() != types.EventTypeToken {
 				t.Fatalf("%s event = %q, want token", name, event.EventName())
 			}
 		case <-time.After(time.Second):
@@ -51,7 +51,7 @@ func TestSubscriptionCloseStopsReceivingEvents(t *testing.T) {
 		t.Fatalf("close error = %v", err)
 	}
 
-	if err := broker.Publish(ctx, "topic", domain.NewTokenEvent("hello")); err != nil {
+	if err := broker.Publish(ctx, "topic", types.NewTokenEvent("hello")); err != nil {
 		t.Fatalf("publish error = %v", err)
 	}
 

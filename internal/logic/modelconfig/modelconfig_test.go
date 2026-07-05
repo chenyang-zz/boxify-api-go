@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/svc"
@@ -88,7 +88,7 @@ func TestListModelsReturnsMaskedKeysAndSkipsDecryptFailures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListModels error = %v", err)
 	}
-	if repo.listType == nil || *repo.listType != domain.ModelType("chat") {
+	if repo.listType == nil || *repo.listType != types.ModelType("chat") {
 		t.Fatalf("listType = %v, want chat", repo.listType)
 	}
 	if len(out.List) != 1 {
@@ -112,7 +112,7 @@ type fakeModelConfigRepository struct {
 	created  *models.ModelConfig
 	updated  *models.ModelConfig
 	rows     []*models.ModelConfig
-	listType *domain.ModelType
+	listType *types.ModelType
 }
 
 func (r *fakeModelConfigRepository) Create(ctx context.Context, row *models.ModelConfig) (*models.ModelConfig, error) {
@@ -132,7 +132,7 @@ func (r *fakeModelConfigRepository) Delete(ctx context.Context, ID uuid.UUID) er
 	return nil
 }
 
-func (r *fakeModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+func (r *fakeModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *types.ModelType) ([]*models.ModelConfig, error) {
 	r.listType = modelType
 	return r.rows, nil
 }

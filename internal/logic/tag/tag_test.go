@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/svc"
@@ -47,7 +47,7 @@ func (r *fakeTagRepository) Create(ctx context.Context, userID uuid.UUID, row *m
 }
 
 func (r *fakeTagRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Tag, error) {
-	return r.ListByScope(ctx, userID, string(domain.TagScopeAll))
+	return r.ListByScope(ctx, userID, string(types.TagScopeAll))
 }
 
 func (r *fakeTagRepository) ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error) {
@@ -232,7 +232,7 @@ func TestListTagsReturnsPagedCountsByScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTags error = %v", err)
 	}
-	if repo.pageQuery.Scope != string(domain.TagScopeImage) || repo.pageQuery.Page != 2 || repo.pageQuery.PageSize != 10 {
+	if repo.pageQuery.Scope != string(types.TagScopeImage) || repo.pageQuery.Page != 2 || repo.pageQuery.PageSize != 10 {
 		t.Fatalf("ListTags query = %+v, want scope=image page=2 page_size=10", repo.pageQuery)
 	}
 	if out.Total != 1 || out.Page != 2 || out.PageSize != 10 {
@@ -257,7 +257,7 @@ func TestListTagsDefaultsPagination(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTags error = %v", err)
 	}
-	if repo.pageQuery.Scope != string(domain.TagScopeAll) || repo.pageQuery.Page != 1 || repo.pageQuery.PageSize != 20 {
+	if repo.pageQuery.Scope != string(types.TagScopeAll) || repo.pageQuery.Page != 1 || repo.pageQuery.PageSize != 20 {
 		t.Fatalf("ListTags default query = %+v, want scope=all page=1 page_size=20", repo.pageQuery)
 	}
 	if out.Total != 1 || out.Page != 1 || out.PageSize != 20 {

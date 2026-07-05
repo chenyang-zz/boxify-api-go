@@ -7,7 +7,7 @@ import (
 	"unicode"
 
 	"github.com/boxify/api-go/internal/core/rag/webcrawl"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
 	"github.com/boxify/api-go/internal/mapper"
 	"github.com/boxify/api-go/internal/models"
@@ -87,7 +87,7 @@ func (l *ImportDocumentFromUrlLogic) ImportDocumentFromUrl(userID uuid.UUID, inp
 		FileKey:    fileKey,
 		SourceType: documentSourceURL,
 		SourceUrl:  &rawURL,
-		Status:     domain.DocumentStatusPending,
+		Status:     types.DocumentStatusPending,
 	})
 	if err != nil {
 		return nil, err

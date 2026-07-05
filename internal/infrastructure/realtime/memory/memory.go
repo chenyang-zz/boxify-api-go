@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 )
 
@@ -17,7 +17,7 @@ func New() realtime.Broker {
 	return &Broker{topics: map[string]map[*subscription]struct{}{}}
 }
 
-func (b *Broker) Publish(ctx context.Context, topic string, event domain.Event) error {
+func (b *Broker) Publish(ctx context.Context, topic string, event types.Event) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -36,7 +36,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic string) (realtime.Subscrip
 	sub := &subscription{
 		broker: b,
 		topic:  topic,
-		events: make(chan domain.Event, 16),
+		events: make(chan types.Event, 16),
 	}
 
 	b.mu.Lock()
@@ -54,11 +54,11 @@ func (b *Broker) Subscribe(ctx context.Context, topic string) (realtime.Subscrip
 type subscription struct {
 	broker *Broker
 	topic  string
-	events chan domain.Event
+	events chan types.Event
 	once   sync.Once
 }
 
-func (s *subscription) Events() <-chan domain.Event {
+func (s *subscription) Events() <-chan types.Event {
 	return s.events
 }
 

@@ -1,9 +1,9 @@
-package domain
+package types
 
 import "testing"
 
+// 验证标签 scope 常量集中由 domain 类型包提供，避免 logic/repository 重复定义字符串。
 func TestTagScopeConstants(t *testing.T) {
-	// 验证标签 scope 常量集中由 domain 层提供，避免 logic/repository 重复定义字符串。
 	tests := map[string]TagScope{
 		"all":      TagScopeAll,
 		"document": TagScopeDocument,

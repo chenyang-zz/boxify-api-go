@@ -96,8 +96,8 @@ func logicMethodArgs(route Route) ([]string, []string) {
 
 func logicImportsForType(goType string) []string {
 	var imports []string
-	if strings.Contains(goType, "domain.") {
-		imports = append(imports, fmt.Sprintf(`"%s/internal/domain"`, modulePath))
+	if strings.Contains(goType, "types.") {
+		imports = append(imports, fmt.Sprintf(`"%s/internal/domain/types"`, modulePath))
 	}
 	if strings.Contains(goType, "response.") {
 		imports = append(imports, fmt.Sprintf(`"%s/internal/transport/http/response"`, modulePath))

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	knowledgebaselogic "github.com/boxify/api-go/internal/logic/knowledgebase"
 	"github.com/boxify/api-go/internal/models"
@@ -125,7 +125,7 @@ func enqueueParseDocumentTask(ctx context.Context, producer queue.Producer, user
 	if producer == nil {
 		return xerr.Internal("任务队列未初始化", nil)
 	}
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		return xerr.Wrapf(err, "创建文档解析任务失败")
 	}
@@ -143,7 +143,7 @@ func markDocumentParseDispatchFailed(ctx context.Context, repo repository.Docume
 	}
 	message := cause.Error()
 	_, _ = repo.UpdateFields(ctx, userID, documentID, &models.Document{
-		Status:   domain.DocumentStatusFailed,
+		Status:   types.DocumentStatusFailed,
 		Progress: 0,
 		ErrorMsg: &message,
 	}, repository.NewDocumentUpdateFields().Status().Progress().ErrorMsg())

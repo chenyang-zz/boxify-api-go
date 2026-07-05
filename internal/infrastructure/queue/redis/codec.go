@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )
 
-func EncodeTask(task *domain.Task) (*asynq.Task, error) {
+func EncodeTask(task *types.Task) (*asynq.Task, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task is nil")
 	}
 	switch task.Name {
-	case domain.TaskParseDocument:
+	case types.TaskParseDocument:
 		payload, err := parseDocumentPayload(task.Payload)
 		if err != nil {
 			return nil, err
@@ -24,48 +24,48 @@ func EncodeTask(task *domain.Task) (*asynq.Task, error) {
 			return nil, err
 		}
 		return asynq.NewTask(string(task.Name), data), nil
-	case domain.TaskParseImage, domain.TaskMemoryExtract, domain.TaskMemoryConsolidate, domain.TaskResearchRun:
+	case types.TaskParseImage, types.TaskMemoryExtract, types.TaskMemoryConsolidate, types.TaskResearchRun:
 		return asynq.NewTask(string(task.Name), nil), nil
 	default:
 		return nil, fmt.Errorf("unknown task name: %s", task.Name)
 	}
 }
 
-func DecodeTask(task *asynq.Task) (*domain.Task, error) {
+func DecodeTask(task *asynq.Task) (*types.Task, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task is nil")
 	}
-	name := domain.TaskName(task.Type())
+	name := types.TaskName(task.Type())
 	switch name {
-	case domain.TaskParseDocument:
-		var payload domain.ParseDocumentPayload
+	case types.TaskParseDocument:
+		var payload types.ParseDocumentPayload
 		if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 			return nil, err
 		}
 		if payload.UserID == uuid.Nil || payload.DocumentID == uuid.Nil {
 			return nil, fmt.Errorf("parse document payload ids are required")
 		}
-		return &domain.Task{
+		return &types.Task{
 			Name:    name,
-			Queue:   domain.QueueParse,
+			Queue:   types.QueueParse,
 			Payload: &payload,
 		}, nil
-	case domain.TaskParseImage:
-		return &domain.Task{Name: name, Queue: domain.QueueParse}, nil
-	case domain.TaskMemoryExtract:
-		return &domain.Task{Name: name, Queue: domain.QueueMemory}, nil
-	case domain.TaskMemoryConsolidate:
-		return &domain.Task{Name: name, Queue: domain.QueueBeat}, nil
-	case domain.TaskResearchRun:
-		return &domain.Task{Name: name, Queue: domain.QueueResearch}, nil
+	case types.TaskParseImage:
+		return &types.Task{Name: name, Queue: types.QueueParse}, nil
+	case types.TaskMemoryExtract:
+		return &types.Task{Name: name, Queue: types.QueueMemory}, nil
+	case types.TaskMemoryConsolidate:
+		return &types.Task{Name: name, Queue: types.QueueBeat}, nil
+	case types.TaskResearchRun:
+		return &types.Task{Name: name, Queue: types.QueueResearch}, nil
 	default:
 		return nil, fmt.Errorf("unknown task name: %s", name)
 	}
 }
 
-func parseDocumentPayload(payload any) (*domain.ParseDocumentPayload, error) {
+func parseDocumentPayload(payload any) (*types.ParseDocumentPayload, error) {
 	switch value := payload.(type) {
-	case *domain.ParseDocumentPayload:
+	case *types.ParseDocumentPayload:
 		if value == nil {
 			return nil, fmt.Errorf("parse document payload is nil")
 		}
@@ -73,7 +73,7 @@ func parseDocumentPayload(payload any) (*domain.ParseDocumentPayload, error) {
 			return nil, fmt.Errorf("parse document payload ids are required")
 		}
 		return value, nil
-	case domain.ParseDocumentPayload:
+	case types.ParseDocumentPayload:
 		if value.UserID == uuid.Nil || value.DocumentID == uuid.Nil {
 			return nil, fmt.Errorf("parse document payload ids are required")
 		}

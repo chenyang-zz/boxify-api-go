@@ -7,7 +7,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/xerr"
@@ -32,7 +32,7 @@ func (r *TagRepository) Create(ctx context.Context, userID uuid.UUID, tag *model
 }
 
 func (r *TagRepository) List(ctx context.Context, userID uuid.UUID) ([]*models.Tag, error) {
-	return r.ListByScope(ctx, userID, string(domain.TagScopeAll))
+	return r.ListByScope(ctx, userID, string(types.TagScopeAll))
 }
 
 func (r *TagRepository) ListByScope(ctx context.Context, userID uuid.UUID, scope string) ([]*models.Tag, error) {
@@ -344,10 +344,10 @@ func tagCountRowsToMap(rows []tagCountRow) map[uuid.UUID]int64 {
 func (r *TagRepository) tagScopeQuery(ctx context.Context, userID uuid.UUID, scope string) (*gorm.DB, error) {
 	query := r.db.WithContext(ctx).Model(&models.Tag{}).Where("user_id = ?", userID)
 	switch scope {
-	case "", string(domain.TagScopeAll):
-	case string(domain.TagScopeDocument):
+	case "", string(types.TagScopeAll):
+	case string(types.TagScopeDocument):
 		query = query.Where("EXISTS (SELECT 1 FROM document_tags dt JOIN documents d ON d.id = dt.document_id WHERE dt.tag_id = tags.id AND d.user_id = ?)", userID)
-	case string(domain.TagScopeImage):
+	case string(types.TagScopeImage):
 		query = query.Where("EXISTS (SELECT 1 FROM image_tags it JOIN images i ON i.id = it.image_id WHERE it.tag_id = tags.id AND i.user_id = ?)", userID)
 	default:
 		return nil, xerr.BadRequest("标签 scope 无效")

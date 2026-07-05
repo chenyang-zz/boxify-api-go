@@ -3,18 +3,18 @@ package codec
 import (
 	"testing"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/google/uuid"
 )
 
 func TestEventCodecRoundTripsKnownEvents(t *testing.T) {
 	conversationID := uuid.New()
-	tests := []domain.Event{
-		domain.NewTokenEvent("tok"),
-		domain.NewDoneEvent("done"),
-		domain.NewMetaEvent(conversationID, "Title"),
-		domain.NewErrorEvent("boom"),
-		domain.NewPingEvent(),
+	tests := []types.Event{
+		types.NewTokenEvent("tok"),
+		types.NewDoneEvent("done"),
+		types.NewMetaEvent(conversationID, "Title"),
+		types.NewErrorEvent("boom"),
+		types.NewPingEvent(),
 	}
 
 	for _, event := range tests {
@@ -40,8 +40,8 @@ func TestEventCodecMapsUnknownEventsToBaseEvent(t *testing.T) {
 	if got.EventName() != "custom" {
 		t.Fatalf("EventName() = %q, want custom", got.EventName())
 	}
-	if _, ok := got.(*domain.BaseEvent); !ok {
-		t.Fatalf("event type = %T, want *domain.BaseEvent", got)
+	if _, ok := got.(*types.BaseEvent); !ok {
+		t.Fatalf("event type = %T, want *types.BaseEvent", got)
 	}
 }
 

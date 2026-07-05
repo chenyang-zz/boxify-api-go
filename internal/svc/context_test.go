@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/boxify/api-go/internal/config"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/db/migration"
 	dbpostgres "github.com/boxify/api-go/internal/infrastructure/db/postgres"
 	infraredis "github.com/boxify/api-go/internal/infrastructure/db/redis"
@@ -216,8 +216,8 @@ type closeTaskProducer struct {
 	closed bool
 }
 
-func (p *closeTaskProducer) Enqueue(context.Context, *domain.Task, ...queue.EnqueueOption) (*queue.TaskInfo, error) {
-	return &queue.TaskInfo{ID: "task-id", Queue: domain.QueueParse}, nil
+func (p *closeTaskProducer) Enqueue(context.Context, *types.Task, ...queue.EnqueueOption) (*queue.TaskInfo, error) {
+	return &queue.TaskInfo{ID: "task-id", Queue: types.QueueParse}, nil
 }
 
 func (p *closeTaskProducer) Close() error {

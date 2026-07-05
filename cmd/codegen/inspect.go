@@ -192,7 +192,7 @@ func RunDoctor(opts DoctorOptions) (Report, error) {
 	}
 	for _, route := range routes {
 		if route.Directive.SSE && route.Directive.Event == "" {
-			report.AddDiagnostic("error", "route.sse.missing_event", fmt.Sprintf("%s.%s uses @sse but missing @event <GoType>", route.HandlerType, route.HandlerMethod), "add @event domain.AgentEvent or another SSE event type", "")
+			report.AddDiagnostic("error", "route.sse.missing_event", fmt.Sprintf("%s.%s uses @sse but missing @event <GoType>", route.HandlerType, route.HandlerMethod), "add @event types.AgentEvent or another SSE event type", "")
 		}
 		if !route.Directive.SSE && route.Directive.Output == "" {
 			report.AddDiagnostic("warn", "route.response.missing", fmt.Sprintf("%s.%s has no @response/@output declaration", route.HandlerType, route.HandlerMethod), "add @response ResponseType or intentionally document an empty response", "")

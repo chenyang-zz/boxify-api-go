@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 	"github.com/boxify/api-go/internal/infrastructure/realtime/codec"
 	goredis "github.com/redis/go-redis/v9"
@@ -23,7 +23,7 @@ func New(client *goredis.Client) realtime.Broker {
 	}
 }
 
-func (b *Broker) Publish(ctx context.Context, topic string, event domain.Event) error {
+func (b *Broker) Publish(ctx context.Context, topic string, event types.Event) error {
 	payload, err := codec.MarshalEvent(event)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic string) (realtime.Subscrip
 
 	sub := &subscription{
 		pubsub: pubsub,
-		events: make(chan domain.Event, 16),
+		events: make(chan types.Event, 16),
 		log:    b.log,
 	}
 	go sub.run(ctx)
@@ -49,12 +49,12 @@ func (b *Broker) Subscribe(ctx context.Context, topic string) (realtime.Subscrip
 
 type subscription struct {
 	pubsub *goredis.PubSub
-	events chan domain.Event
+	events chan types.Event
 	log    *slog.Logger
 	once   sync.Once
 }
 
-func (s *subscription) Events() <-chan domain.Event {
+func (s *subscription) Events() <-chan types.Event {
 	return s.events
 }
 

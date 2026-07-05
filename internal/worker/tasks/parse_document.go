@@ -11,7 +11,7 @@ import (
 	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	ragclassifier "github.com/boxify/api-go/internal/core/rag/classifier"
 	ragparser "github.com/boxify/api-go/internal/core/rag/documentparse"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/repository"
@@ -33,7 +33,7 @@ func NewParseDocumentTask(svcCtx *svc.ServiceContext) *ParseDocumentTask {
 	}
 }
 
-func (h *ParseDocumentTask) Handle(ctx context.Context, task *domain.Task) error {
+func (h *ParseDocumentTask) Handle(ctx context.Context, task *types.Task) error {
 	payload, err := parseTaskPayload(task)
 	if err != nil {
 		return skipRetry(fmt.Errorf("解析文档任务 payload 失败: %w", err))
@@ -61,7 +61,7 @@ func (h *ParseDocumentTask) Handle(ctx context.Context, task *domain.Task) error
 	)
 
 	if err := h.updateParseState(ctx, doc, &models.Document{
-		Status:   domain.DocumentStatusParsing,
+		Status:   types.DocumentStatusParsing,
 		Progress: 0.1,
 		ErrorMsg: nil,
 	}, repository.NewDocumentUpdateFields().Status().Progress().ErrorMsg()); err != nil {
@@ -187,7 +187,7 @@ func (h *ParseDocumentTask) Handle(ctx context.Context, task *domain.Task) error
 	)
 
 	if err := h.updateParseState(ctx, doc, &models.Document{
-		Status:   domain.DocumentStatusDone,
+		Status:   types.DocumentStatusDone,
 		Progress: 1,
 		ChunkNum: int64(len(chunks)),
 		ErrorMsg: nil,
@@ -204,11 +204,11 @@ func (h *ParseDocumentTask) Handle(ctx context.Context, task *domain.Task) error
 	return nil
 }
 
-func parseTaskPayload(task *domain.Task) (*domain.ParseDocumentPayload, error) {
+func parseTaskPayload(task *types.Task) (*types.ParseDocumentPayload, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task is nil")
 	}
-	payload, ok := task.Payload.(*domain.ParseDocumentPayload)
+	payload, ok := task.Payload.(*types.ParseDocumentPayload)
 	if !ok || payload == nil {
 		return nil, fmt.Errorf("payload type = %T", task.Payload)
 	}
@@ -227,7 +227,7 @@ func (h *ParseDocumentTask) markParseFailed(ctx context.Context, doc *models.Doc
 		)
 	}
 	return h.updateParseState(ctx, doc, &models.Document{
-		Status:   domain.DocumentStatusFailed,
+		Status:   types.DocumentStatusFailed,
 		Progress: doc.Progress,
 		ErrorMsg: &message,
 	}, repository.NewDocumentUpdateFields().Status().Progress().ErrorMsg())
@@ -258,7 +258,7 @@ func (h *ParseDocumentTask) embeddingClient(ctx context.Context, userID uuid.UUI
 	if h == nil || h.svcCtx == nil || h.svcCtx.ModelConfigRepo == nil || h.svcCtx.SecretCipher == nil || h.svcCtx.LLMManager == nil {
 		return nil, xerr.Internal("向量模型依赖未初始化", nil)
 	}
-	modelType := domain.EmbeddingModelType
+	modelType := types.EmbeddingModelType
 	configs, err := h.svcCtx.ModelConfigRepo.List(ctx, userID, &modelType)
 	if err != nil {
 		return nil, err
@@ -291,7 +291,7 @@ func (h *ParseDocumentTask) chatClient(ctx context.Context, userID uuid.UUID) (c
 	if h == nil || h.svcCtx == nil || h.svcCtx.ModelConfigRepo == nil || h.svcCtx.SecretCipher == nil || h.svcCtx.LLMManager == nil {
 		return nil, xerr.Internal("文本模型依赖未初始化", nil)
 	}
-	modelType := domain.ChatModelType
+	modelType := types.ChatModelType
 	configs, err := h.svcCtx.ModelConfigRepo.List(ctx, userID, &modelType)
 	if err != nil {
 		return nil, err

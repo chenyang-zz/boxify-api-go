@@ -7,7 +7,7 @@ import (
 
 	corellm "github.com/boxify/api-go/internal/core/llm"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/transport/http/request"
@@ -75,7 +75,7 @@ func (l *SearchDocumentsLogic) embeddingClient(userID uuid.UUID) (corellm.Client
 	if l.svcCtx == nil || l.svcCtx.ModelConfigRepo == nil || l.svcCtx.SecretCipher == nil || l.svcCtx.LLMManager == nil {
 		return nil, xerr.Internal("向量模型依赖未初始化", nil)
 	}
-	modelType := domain.EmbeddingModelType
+	modelType := types.EmbeddingModelType
 	configs, err := l.svcCtx.ModelConfigRepo.List(l.ctx, userID, &modelType)
 	if err != nil {
 		return nil, err

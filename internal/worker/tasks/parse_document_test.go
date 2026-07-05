@@ -16,7 +16,7 @@ import (
 	ragchunker "github.com/boxify/api-go/internal/core/rag/chunker"
 	ragclassifier "github.com/boxify/api-go/internal/core/rag/classifier"
 	ragparser "github.com/boxify/api-go/internal/core/rag/documentparse"
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
@@ -290,7 +290,7 @@ func (r *fakeModelConfigRepository) Delete(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
-func (r *fakeModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *domain.ModelType) ([]*models.ModelConfig, error) {
+func (r *fakeModelConfigRepository) List(ctx context.Context, userID uuid.UUID, modelType *types.ModelType) ([]*models.ModelConfig, error) {
 	out := make([]*models.ModelConfig, 0, len(r.rows))
 	for _, row := range r.rows {
 		if row.UserID == userID && (modelType == nil || row.Type == string(*modelType)) {
@@ -367,7 +367,7 @@ func TestHandleParseDocumentProcessesTextDocument(t *testing.T) {
 		Config:            config.Config{Rag: config.RagConfig{EmbeddingDim: 3, EmbeddingBatchSize: 4, ChunkIndex: "boxify_chunks"}},
 		DocumentRepo:      docRepo,
 		TagRepo:           tagRepo,
-		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(domain.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
+		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(types.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
 		SecretCipher:      cipher,
 		Storage:           store,
 		Elasticsearch:     esClient,
@@ -377,7 +377,7 @@ func TestHandleParseDocumentProcessesTextDocument(t *testing.T) {
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{invokeAnswer: `["自动","手动"]`, embedOptions: &embeddingOptions}, &llmConfigs),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -451,7 +451,7 @@ func TestHandleParseDocumentMarksFailedWhenEmbeddingConfigMissing(t *testing.T) 
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{}),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -509,7 +509,7 @@ func TestHandleParseDocumentCompletesWhenChatConfigMissing(t *testing.T) {
 		Config:            config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		DocumentRepo:      newFakeDocumentRepository(row),
 		TagRepo:           tagRepo,
-		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
+		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
 		SecretCipher:      cipher,
 		Storage:           store,
 		RAGChunkRepo:      repositoryes.NewRAGChunkRepository(esClient, "boxify_chunks"),
@@ -518,7 +518,7 @@ func TestHandleParseDocumentCompletesWhenChatConfigMissing(t *testing.T) {
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{}),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -579,7 +579,7 @@ func TestHandleParseDocumentMarksFailedWhenUpdateTagsFails(t *testing.T) {
 		Config:            config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		DocumentRepo:      newFakeDocumentRepository(row),
 		TagRepo:           &fakeTagRepository{},
-		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(domain.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
+		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(types.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
 		SecretCipher:      cipher,
 		Storage:           store,
 		RAGChunkRepo:      repositoryes.NewRAGChunkRepository(esClient, "boxify_chunks"),
@@ -588,7 +588,7 @@ func TestHandleParseDocumentMarksFailedWhenUpdateTagsFails(t *testing.T) {
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{invokeAnswer: `["自动"]`}),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -641,7 +641,7 @@ func TestHandleParseDocumentMarksFailedWhenSyncDocumentTagsFails(t *testing.T) {
 		Config:            config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		DocumentRepo:      newFakeDocumentRepository(row),
 		TagRepo:           &fakeTagRepository{syncErr: errors.New("pg sync failed")},
-		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(domain.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
+		ModelConfigRepo:   &fakeModelConfigRepository{rows: []*models.ModelConfig{{UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}, {UserID: userID, Type: string(types.ChatModelType), Provider: "fake", ModelName: "db-chat", APIKeyEncrypted: encryptedAPIKey, BaseURL: "https://llm.example", IsDefault: true}}},
 		SecretCipher:      cipher,
 		Storage:           store,
 		RAGChunkRepo:      repositoryes.NewRAGChunkRepository(esClient, "boxify_chunks"),
@@ -650,7 +650,7 @@ func TestHandleParseDocumentMarksFailedWhenSyncDocumentTagsFails(t *testing.T) {
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{invokeAnswer: `["自动"]`}),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -688,7 +688,7 @@ func TestHandleParseDocumentMarksFailedWhenEmbeddingAPIKeyDecryptFails(t *testin
 		DocumentRepo: newFakeDocumentRepository(row),
 		TagRepo:      &fakeTagRepository{},
 		ModelConfigRepo: &fakeModelConfigRepository{rows: []*models.ModelConfig{{
-			UserID: userID, Type: string(domain.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: "not-encrypted", IsDefault: true,
+			UserID: userID, Type: string(types.EmbeddingModelType), Provider: "fake", ModelName: "db-embed", APIKeyEncrypted: "not-encrypted", IsDefault: true,
 		}}},
 		SecretCipher:      cipher,
 		Storage:           store,
@@ -697,7 +697,7 @@ func TestHandleParseDocumentMarksFailedWhenEmbeddingAPIKeyDecryptFails(t *testin
 		RAGChunker:        ragchunker.NewChunker(ragchunker.WithParentChunkTokens(1200)),
 		LLMManager:        newFakeLLMManager(fakeLLMClient{}),
 	})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -719,7 +719,7 @@ func TestHandleParseDocumentMarksUnsupportedDocumentFailed(t *testing.T) {
 	store := newMemoryStore()
 	store.data[row.FileKey] = []byte("%PDF")
 	handler := NewParseDocumentTask(&svc.ServiceContext{DocumentRepo: newFakeDocumentRepository(row), Storage: store, RAGDocumentParser: ragparser.NewParser(), RAGChunker: ragchunker.NewChunker(), LLMManager: newFakeLLMManager(fakeLLMClient{})})
-	task, err := domain.NewParseDocumentTask(userID, documentID)
+	task, err := types.NewParseDocumentTask(userID, documentID)
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}
@@ -736,7 +736,7 @@ func TestHandleParseDocumentSkipsRetryWhenDocumentMissing(t *testing.T) {
 	// 验证任务中的文档已被删除时返回 SkipRetry，避免无意义重试。
 	ctx := context.Background()
 	userID := uuid.New()
-	task, err := domain.NewParseDocumentTask(userID, uuid.New())
+	task, err := types.NewParseDocumentTask(userID, uuid.New())
 	if err != nil {
 		t.Fatalf("NewParseDocumentTask error = %v", err)
 	}

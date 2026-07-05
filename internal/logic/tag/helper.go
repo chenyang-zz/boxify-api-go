@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/svc"
@@ -22,17 +22,17 @@ func tagIDFromInput(raw string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func tagScopeFromInput(input *request.ListTagsRequest) (domain.TagScope, error) {
+func tagScopeFromInput(input *request.ListTagsRequest) (types.TagScope, error) {
 	if input == nil || input.Scope == nil {
-		return domain.TagScopeAll, nil
+		return types.TagScopeAll, nil
 	}
 	scope := strings.TrimSpace(*input.Scope)
 	if scope == "" {
-		return domain.TagScopeAll, nil
+		return types.TagScopeAll, nil
 	}
-	switch domain.TagScope(scope) {
-	case domain.TagScopeAll, domain.TagScopeDocument, domain.TagScopeImage:
-		return domain.TagScope(scope), nil
+	switch types.TagScope(scope) {
+	case types.TagScopeAll, types.TagScopeDocument, types.TagScopeImage:
+		return types.TagScope(scope), nil
 	default:
 		return "", xerr.BadRequest("标签 scope 无效")
 	}

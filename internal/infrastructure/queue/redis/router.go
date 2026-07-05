@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/queue"
 	"github.com/hibiken/asynq"
 )
@@ -16,7 +16,7 @@ func NewRouter(mux *asynq.ServeMux) *Router {
 	return &Router{mux: mux}
 }
 
-func (r *Router) Handle(name domain.TaskName, handler queue.Handler) {
+func (r *Router) Handle(name types.TaskName, handler queue.Handler) {
 	if r == nil || r.mux == nil || handler == nil {
 		return
 	}

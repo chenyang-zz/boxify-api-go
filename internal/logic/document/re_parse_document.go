@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/mapper"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
@@ -38,7 +38,7 @@ func (l *ReParseDocumentLogic) ReParseDocument(userID uuid.UUID, input *request.
 		return nil, err
 	}
 	row, err := l.svcCtx.DocumentRepo.UpdateFields(l.ctx, userID, documentID, &models.Document{
-		Status:   domain.DocumentStatusPending,
+		Status:   types.DocumentStatusPending,
 		Progress: 0,
 		ErrorMsg: nil,
 	}, repository.NewDocumentUpdateFields().Status().Progress().ErrorMsg())

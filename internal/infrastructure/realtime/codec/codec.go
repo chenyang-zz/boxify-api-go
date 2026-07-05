@@ -3,7 +3,7 @@ package codec
 import (
 	"encoding/json"
 
-	"github.com/boxify/api-go/internal/domain"
+	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/google/uuid"
 )
 
@@ -25,14 +25,14 @@ type errorEventData struct {
 	Message string `json:"message"`
 }
 
-func MarshalEvent(event domain.Event) ([]byte, error) {
+func MarshalEvent(event types.Event) ([]byte, error) {
 	var data any = map[string]any{}
 	switch e := event.(type) {
-	case *domain.TextEvent:
+	case *types.TextEvent:
 		data = textEventData{Text: e.Text}
-	case *domain.MetaEvent:
+	case *types.MetaEvent:
 		data = metaEventData{ConversationID: e.ConversationID, Title: e.Title}
-	case *domain.ErrorEvent:
+	case *types.ErrorEvent:
 		data = errorEventData{Message: e.Message}
 	}
 
@@ -45,40 +45,40 @@ func MarshalEvent(event domain.Event) ([]byte, error) {
 	})
 }
 
-func UnmarshalEvent(payload []byte) (domain.Event, error) {
+func UnmarshalEvent(payload []byte) (types.Event, error) {
 	var envelope eventEnvelope
 	if err := json.Unmarshal(payload, &envelope); err != nil {
 		return nil, err
 	}
 
 	switch envelope.Event {
-	case domain.EventTypeToken:
+	case types.EventTypeToken:
 		var data textEventData
 		if err := json.Unmarshal(envelope.Data, &data); err != nil {
 			return nil, err
 		}
-		return domain.NewTokenEvent(data.Text), nil
-	case domain.EventTypeDone:
+		return types.NewTokenEvent(data.Text), nil
+	case types.EventTypeDone:
 		var data textEventData
 		if err := json.Unmarshal(envelope.Data, &data); err != nil {
 			return nil, err
 		}
-		return domain.NewDoneEvent(data.Text), nil
-	case domain.EventTypeMeta:
+		return types.NewDoneEvent(data.Text), nil
+	case types.EventTypeMeta:
 		var data metaEventData
 		if err := json.Unmarshal(envelope.Data, &data); err != nil {
 			return nil, err
 		}
-		return domain.NewMetaEvent(data.ConversationID, data.Title), nil
-	case domain.EventTypeError:
+		return types.NewMetaEvent(data.ConversationID, data.Title), nil
+	case types.EventTypeError:
 		var data errorEventData
 		if err := json.Unmarshal(envelope.Data, &data); err != nil {
 			return nil, err
 		}
-		return domain.NewErrorEvent(data.Message), nil
-	case domain.EventTypePing:
-		return domain.NewPingEvent(), nil
+		return types.NewErrorEvent(data.Message), nil
+	case types.EventTypePing:
+		return types.NewPingEvent(), nil
 	default:
-		return domain.NewBaseEvent(envelope.Event), nil
+		return types.NewBaseEvent(envelope.Event), nil
 	}
 }
