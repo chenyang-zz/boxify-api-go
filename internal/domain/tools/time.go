@@ -16,14 +16,14 @@ var ErrInvalidTimezone = errors.New("invalid timezone")
 func newCurrentTimeTool(opts options) coretool.Tool {
 	return coretool.NewFuncTool(coretool.Descriptor{
 		Name:        ToolCurrentTime,
-		Description: "Get the current time in an optional IANA timezone.",
+		Description: "获取当前时间，可按指定 IANA 时区返回。",
 		Schema: coretool.Schema{
 			Parameters: coretool.ParametersSchema{
 				Type: "object",
 				Properties: map[string]coretool.PropertySchema{
 					"timezone": {
 						"type":        "string",
-						"description": "Optional IANA timezone name. Defaults to UTC.",
+						"description": "可选的 IANA 时区名称，默认使用 UTC。",
 					},
 				},
 				AdditionalProperties: false,

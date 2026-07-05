@@ -16,8 +16,6 @@ import (
 	ragparser "github.com/boxify/api-go/internal/core/rag/documentparse"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/core/rag/webcrawl"
-	coretool "github.com/boxify/api-go/internal/core/tool"
-	domaintools "github.com/boxify/api-go/internal/domain/tools"
 	infraes "github.com/boxify/api-go/internal/infrastructure/db/es"
 	dbneo4j "github.com/boxify/api-go/internal/infrastructure/db/neo4j"
 	dbpostgres "github.com/boxify/api-go/internal/infrastructure/db/postgres"
@@ -78,7 +76,6 @@ type ServiceContext struct {
 	PromptManager  *prompt.Manager
 	LLMManager     *corellm.Manager
 	MCPToolService *coremcp.Service
-	ToolCatalog    *coretool.Catalog
 
 	closeOnce sync.Once
 	closeErr  error
@@ -92,10 +89,6 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 	accessTokenTTL, err := time.ParseDuration(cfg.JWT.AccessTokenTTL)
 	if err != nil {
 		return nil, xerr.BadRequest("JWT access token TTL 配置无效")
-	}
-	toolCatalog, err := domaintools.NewCatalog()
-	if err != nil {
-		return nil, xerr.Wrapf(err, "创建领域工具目录失败")
 	}
 
 	db, err := dbpostgres.NewGormDB(ctx, dbpostgres.Config{URL: cfg.Database.URL})
@@ -112,7 +105,6 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		PromptManager:  prompt.NewManager(filepath.Join("internal", "prompts")),
 		LLMManager:     BuildLLMManager(),
 		MCPToolService: coremcp.NewService(coremcp.Options{}),
-		ToolCatalog:    toolCatalog,
 	}
 	bindPostgresRepositories(svcCtx, db)
 

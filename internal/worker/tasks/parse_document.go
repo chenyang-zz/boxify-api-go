@@ -255,35 +255,10 @@ func (h *ParseDocumentTask) updateParseState(ctx context.Context, doc *models.Do
 
 // embeddingClient 获取用户默认的向量模型客户端
 func (h *ParseDocumentTask) embeddingClient(ctx context.Context, userID uuid.UUID) (corellm.Client, error) {
-	if h == nil || h.svcCtx == nil || h.svcCtx.ModelConfigRepo == nil || h.svcCtx.SecretCipher == nil || h.svcCtx.LLMManager == nil {
+	if h == nil {
 		return nil, xerr.Internal("向量模型依赖未初始化", nil)
 	}
-	modelType := types.EmbeddingModelType
-	configs, err := h.svcCtx.ModelConfigRepo.List(ctx, userID, &modelType)
-	if err != nil {
-		return nil, err
-	}
-	if len(configs) == 0 {
-		return nil, xerr.BadRequest("未配置向量模型，请先在模型配置中添加")
-	}
-	defaultConfig := configs[0]
-	for _, config := range configs {
-		if config.IsDefault {
-			defaultConfig = config
-			break
-		}
-	}
-	apiKey, err := h.svcCtx.SecretCipher.Decrypt(defaultConfig.APIKeyEncrypted)
-	if err != nil {
-		return nil, xerr.Internal("模型 API Key 解密失败", err)
-	}
-	return h.svcCtx.LLMManager.NewClient(corellm.ModelConfig{
-		Provider:       defaultConfig.Provider,
-		Model:          defaultConfig.ModelName,
-		APIKey:         apiKey,
-		BaseURL:        defaultConfig.BaseURL,
-		EmbeddingModel: defaultConfig.ModelName,
-	})
+	return svc.EmbeddingClient(ctx, h.svcCtx, userID)
 }
 
 // chatClient 获取用户默认的文本模型客户端

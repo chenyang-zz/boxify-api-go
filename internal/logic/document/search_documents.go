@@ -7,7 +7,6 @@ import (
 
 	corellm "github.com/boxify/api-go/internal/core/llm"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
-	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/transport/http/request"
@@ -72,35 +71,7 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 }
 
 func (l *SearchDocumentsLogic) embeddingClient(userID uuid.UUID) (corellm.Client, error) {
-	if l.svcCtx == nil || l.svcCtx.ModelConfigRepo == nil || l.svcCtx.SecretCipher == nil || l.svcCtx.LLMManager == nil {
-		return nil, xerr.Internal("向量模型依赖未初始化", nil)
-	}
-	modelType := types.EmbeddingModelType
-	configs, err := l.svcCtx.ModelConfigRepo.List(l.ctx, userID, &modelType)
-	if err != nil {
-		return nil, err
-	}
-	if len(configs) == 0 {
-		return nil, xerr.BadRequest("未配置向量模型，请先在模型配置中添加")
-	}
-	defaultConfig := configs[0]
-	for _, config := range configs {
-		if config.IsDefault {
-			defaultConfig = config
-			break
-		}
-	}
-	apiKey, err := l.svcCtx.SecretCipher.Decrypt(defaultConfig.APIKeyEncrypted)
-	if err != nil {
-		return nil, xerr.Internal("模型 API Key 解密失败", err)
-	}
-	return l.svcCtx.LLMManager.NewClient(corellm.ModelConfig{
-		Provider:       defaultConfig.Provider,
-		Model:          defaultConfig.ModelName,
-		APIKey:         apiKey,
-		BaseURL:        defaultConfig.BaseURL,
-		EmbeddingModel: defaultConfig.ModelName,
-	})
+	return svc.EmbeddingClient(l.ctx, l.svcCtx, userID)
 }
 
 func documentSearchFilters(userID uuid.UUID, tags []string) []any {

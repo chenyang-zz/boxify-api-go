@@ -24,7 +24,7 @@ func TestCurrentTimeDescriptorUsesSchema(t *testing.T) {
 			Properties: map[string]coretool.PropertySchema{
 				"timezone": {
 					"type":        "string",
-					"description": "Optional IANA timezone name. Defaults to UTC.",
+					"description": "可选的 IANA 时区名称，默认使用 UTC。",
 				},
 			},
 			AdditionalProperties: false,
