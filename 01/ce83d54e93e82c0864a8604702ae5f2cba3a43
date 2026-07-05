@@ -1,0 +1,131 @@
+internal/repository/postgres/document_knowledgebase_test.go
+  s_735be408a64636::t_adc2c809de3cb1 10,269,276,283,291
+internal/logic/document/document_test.go
+  s_735be408a64636::t_adc2c809de3cb1 23,259,287,354,451,457,551-552,621,633,638-639,641,643,760,842,883,960
+internal/domain/types/tag_test.go
+  s_735be408a64636::t_39f7d9ae5f0707 5
+  s_735be408a64636::t_adc2c809de3cb1 1-4,6-17
+cmd/worker/main.go
+  s_735be408a64636::t_adc2c809de3cb1 9,46-50
+cmd/scheduler/main.go
+  s_735be408a64636::t_adc2c809de3cb1 8,27
+cmd/codegen/main_test.go
+  s_735be408a64636::t_adc2c809de3cb1 15,28-29,111,120-121,435,463-464,1621
+internal/svc/context_test.go
+  s_735be408a64636::t_adc2c809de3cb1 11,219-220
+internal/worker/tasks/parse_document_test.go
+  s_735be408a64636::t_adc2c809de3cb1 19,293,370,380,454,512,521,582,591,644,653,691,700,722,739
+cmd/codegen/generate_logic.go
+  s_735be408a64636::t_adc2c809de3cb1 99
+  s_735be408a64636::t_39f7d9ae5f0707 100
+internal/logic/document/import_document_from_url.go
+  s_735be408a64636::t_adc2c809de3cb1 10,90
+internal/worker/tasks/placeholder.go
+  s_735be408a64636::t_adc2c809de3cb1 7,19
+internal/infrastructure/realtime/memory/memory.go
+  s_735be408a64636::t_adc2c809de3cb1 7,20,39,57,61
+cmd/codegen/inspect.go
+  s_735be408a64636::t_adc2c809de3cb1 195
+internal/logic/chat/chat_stream.go
+  s_735be408a64636::t_adc2c809de3cb1 11,37,46,49,91,98,113
+internal/infrastructure/realtime/codec/codec_test.go
+  s_735be408a64636::t_adc2c809de3cb1 6,12-17,43-44
+internal/logic/tag/helper.go
+  s_735be408a64636::t_adc2c809de3cb1 8,25,27,31,33-35
+internal/domain/types/tag.go
+  s_735be408a64636::t_adc2c809de3cb1 1-9
+internal/infrastructure/queue/client.go
+  s_735be408a64636::t_adc2c809de3cb1 6,10,18-19,23,28,31,33,38,41,53
+internal/infrastructure/queue/redis/producer.go
+  s_735be408a64636::t_adc2c809de3cb1 7,20,34-35,46
+internal/domain/types/task_test.go
+  s_735be408a64636::t_adc2c809de3cb1 1-9,11-29,31-53,55-62
+  s_735be408a64636::t_39f7d9ae5f0707 10,30,54
+internal/logic/document/helper.go
+  s_735be408a64636::t_adc2c809de3cb1 8,128,146
+internal/worker/tasks/parse_document.go
+  s_735be408a64636::t_adc2c809de3cb1 14,36,64,190,207,211,230,261,294
+cmd/codegen/README.md
+  s_735be408a64636::t_39f7d9ae5f0707 56
+internal/infrastructure/realtime/redis/redis.go
+  s_735be408a64636::t_adc2c809de3cb1 8,26,43,52,57
+internal/domain/types/task.go
+  s_735be408a64636::t_adc2c809de3cb1 1-65
+internal/transport/http/router_test.go
+  s_735be408a64636::t_adc2c809de3cb1 23,172,177-179,185,188,198,256
+internal/infrastructure/realtime/forward.go
+  s_735be408a64636::t_adc2c809de3cb1 6,13,20
+internal/logic/tag/tag_test.go
+  s_735be408a64636::t_adc2c809de3cb1 10,50,235,260
+internal/infrastructure/queue/tasks_test.go
+  s_735be408a64636::t_adc2c809de3cb1 7,14,19,34,39-41
+internal/logic/document/re_parse_document.go
+  s_735be408a64636::t_adc2c809de3cb1 7,41
+internal/worker/tasks/registry.go
+  s_735be408a64636::t_adc2c809de3cb1 4,21,23
+internal/domain/types/document_test.go
+  s_735be408a64636::t_39f7d9ae5f0707 5
+  s_735be408a64636::t_adc2c809de3cb1 1-4,6-18
+internal/logic/modelconfig/list_models.go
+  s_735be408a64636::t_adc2c809de3cb1 7,33,35
+internal/infrastructure/realtime/memory/memory_test.go
+  s_735be408a64636::t_adc2c809de3cb1 8,27,34,54
+internal/logic/document/search_documents.go
+  s_735be408a64636::t_adc2c809de3cb1 10,78
+internal/domain/types/event.go
+  s_735be408a64636::t_adc2c809de3cb1 1-83
+internal/mapper/chat.go
+  s_735be408a64636::t_adc2c809de3cb1 12,16,22,25-26,31,37,42,49,61
+internal/infrastructure/realtime/bus_test.go
+  s_735be408a64636::t_adc2c809de3cb1 8,30,33,37,53,68
+internal/domain/types/model.go
+  s_735be408a64636::t_adc2c809de3cb1 1-25
+internal/repository/postgres/tag.go
+  s_735be408a64636::t_adc2c809de3cb1 10,35,347-348,350
+internal/logic/modelconfig/modelconfig_test.go
+  s_735be408a64636::t_adc2c809de3cb1 7,91,115,135
+internal/logic/agentconfig/optimize_prompt.go
+  s_735be408a64636::t_adc2c809de3cb1 9,37
+internal/mapper/chat_test.go
+  s_735be408a64636::t_adc2c809de3cb1 7,14,20,27,33,39,45,51-53,69,75-76,94,107
+internal/infrastructure/queue/redis/codec.go
+  s_735be408a64636::t_adc2c809de3cb1 7,12,17,27,34,38,40-41,48,50,53-60,66,68,76
+internal/logic/document/upload_document.go
+  s_735be408a64636::t_adc2c809de3cb1 7,74
+internal/infrastructure/queue/redis/router.go
+  s_735be408a64636::t_adc2c809de3cb1 6,19
+internal/infrastructure/queue/redis/task_test.go
+  s_735be408a64636::t_adc2c809de3cb1 7,18,27-28,35,37,46,61,70,73,84,86
+internal/domain/types/chat.go
+  s_735be408a64636::t_adc2c809de3cb1 1-6
+internal/infrastructure/realtime/codec/codec.go
+  s_735be408a64636::t_adc2c809de3cb1 6,28,31,33,35,48,55,60-61,66-67,72-73,78-80,82
+internal/infrastructure/realtime/bus.go
+  s_735be408a64636::t_adc2c809de3cb1 6,10,15
+internal/domain/types/event_test.go
+  s_735be408a64636::t_adc2c809de3cb1 1-8,10-96
+  s_735be408a64636::t_39f7d9ae5f0707 9
+internal/domain/types/document.go
+  s_735be408a64636::t_adc2c809de3cb1 1-8
+internal/repository/postgres/model_config.go
+  s_735be408a64636::t_adc2c809de3cb1 7,83
+  s_735be408a64636::t_d0201d3d0f6983 67
+internal/repository/model_config.go
+  s_735be408a64636::t_adc2c809de3cb1 6,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "01ce83d54e93e82c0864a8604702ae5f2cba3a43",
+  "prompts": {},
+  "sessions": {
+    "s_735be408a64636": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f306c-e27f-71d1-b0d5-e5abc482b074",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
