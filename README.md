@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo/cove-logo-full-bleed/cove-logo-full-bleed-512x512.png" alt="Cove" width="512" height="512" />
+  <img src="logo/cove-logo-full-bleed/cove-logo-full-bleed-192x192.png" alt="Cove" width="192" height="192" />
 </p>
 
 <h1 align="center">Cove API — Go</h1>
@@ -289,7 +289,7 @@ Cove 内置代码生成器（`cmd/codegen/`），扫描 Go 注解自动生成：
 ---
 
 <p align="center">
-  <img src="logo/cove-logo/cove-logo-128x128.png" alt="Cove" width="128" height="128" />
+  <img src="logo/cove-logo/cove-logo-64x64.png" alt="Cove" width="64" height="64" />
 </p>
 
 <p align="center">

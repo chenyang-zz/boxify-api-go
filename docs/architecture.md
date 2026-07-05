@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../logo/cove-logo/cove-logo-256x256.png" alt="Cove" width="256" height="256" />
+  <img src="../logo/cove-logo/cove-logo-144x144.png" alt="Cove" width="144" height="144" />
 </p>
 
 # Cove Agent Platform
