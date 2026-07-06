@@ -148,7 +148,7 @@ func (c *anthropicLLMClient) messageParams(messages []*corellm.Message, opts ...
 		MaxTokens: c.defaultMaxTokens,
 	}
 	if c.defaultTemperature != nil {
-		params.Temperature = anthropic.Float(*c.defaultTemperature)
+		opts = append([]corellm.ModelCallOption{corellm.WithTemperature(*c.defaultTemperature)}, opts...)
 	}
 	chatOpts := corellm.NewChatOptions(opts...)
 	if chatOpts.Temperature != nil {

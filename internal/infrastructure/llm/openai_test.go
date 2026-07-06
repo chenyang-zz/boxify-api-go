@@ -13,6 +13,7 @@ import (
 	infra "github.com/boxify/api-go/internal/infrastructure/llm"
 )
 
+// 验证 OpenAI Invoke 会发送基础聊天请求，并使用 core 层默认温度。
 func TestOpenAIClientInvokeSendsChatCompletionRequest(t *testing.T) {
 	var authHeader string
 	var path string
@@ -50,8 +51,8 @@ func TestOpenAIClientInvokeSendsChatCompletionRequest(t *testing.T) {
 	if stream, ok := requestBody["stream"]; ok && stream != false {
 		t.Fatalf("stream = %#v, want false or omitted", stream)
 	}
-	if _, ok := requestBody["temperature"]; ok {
-		t.Fatalf("temperature should be omitted when no option is set: %#v", requestBody)
+	if requestBody["temperature"] != float64(corellm.DefaultTemperature) {
+		t.Fatalf("temperature = %#v, want core default %v; body=%#v", requestBody["temperature"], corellm.DefaultTemperature, requestBody)
 	}
 	if _, ok := requestBody["max_tokens"]; ok {
 		t.Fatalf("max_tokens should be omitted when no option is set: %#v", requestBody)
@@ -82,6 +83,7 @@ func TestOpenAIClientInvokeSendsOptionalChatParams(t *testing.T) {
 	}
 }
 
+// 验证 OpenAI client 默认温度会覆盖 core 默认温度。
 func TestOpenAIClientInvokeUsesDefaultTemperature(t *testing.T) {
 	var requestBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

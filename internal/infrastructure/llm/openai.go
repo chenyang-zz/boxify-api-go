@@ -145,10 +145,12 @@ func (c *openaiLLMClient) chatParams(messages []*corellm.Message, opts ...corell
 		Model:    openai.ChatModel(c.model),
 		Messages: toOpenAIMessages(messages),
 	}
+	chatCallOpts := make([]corellm.ModelCallOption, 0, len(opts)+1)
 	if c.defaultTemperature != nil {
-		params.Temperature = openai.Float(*c.defaultTemperature)
+		chatCallOpts = append(chatCallOpts, corellm.WithTemperature(*c.defaultTemperature))
 	}
-	chatOpts := corellm.NewChatOptions(opts...)
+	chatCallOpts = append(chatCallOpts, opts...)
+	chatOpts := corellm.NewChatOptions(chatCallOpts...)
 	if chatOpts.Temperature != nil {
 		params.Temperature = openai.Float(*chatOpts.Temperature)
 	}

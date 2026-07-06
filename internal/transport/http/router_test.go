@@ -362,6 +362,19 @@ func (r *testMessageRepository) List(ctx context.Context, userID uuid.UUID) ([]*
 	return append([]*models.Message(nil), r.rows...), nil
 }
 
+func (r *testMessageRepository) ListByConversationID(ctx context.Context, userID uuid.UUID, conversationID uuid.UUID) ([]*models.Message, error) {
+	out := make([]*models.Message, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row.ConversationID == conversationID {
+			out = append(out, row)
+		}
+	}
+	slices.SortFunc(out, func(a, b *models.Message) int {
+		return a.CreatedAt.Compare(b.CreatedAt)
+	})
+	return out, nil
+}
+
 func (r *testMessageRepository) FindByID(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) (*models.Message, error) {
 	for _, row := range r.rows {
 		if row.ID == messageID {

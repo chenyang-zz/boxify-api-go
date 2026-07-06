@@ -1,5 +1,10 @@
 package llm
 
+const (
+	// DefaultTemperature 是聊天模型调用在缺少上层配置时使用的安全默认温度。
+	DefaultTemperature = 0.7
+)
+
 type ModelCallOptions struct {
 	Temperature *float64
 	MaxTokens   *int64
@@ -16,7 +21,8 @@ type ModelCallOption func(*ModelCallOptions)
 type EmbeddingOption func(*EmbeddingOptions)
 
 func NewChatOptions(opts ...ModelCallOption) ModelCallOptions {
-	var out ModelCallOptions
+	temperature := DefaultTemperature
+	out := ModelCallOptions{Temperature: &temperature}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&out)

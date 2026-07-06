@@ -16,8 +16,17 @@ import (
 )
 
 type MessageMetaData struct {
-	ImageKeys  []string `json:"image_keys"`
-	SenderName string   `json:"sender_name"`
+	ImageKeys   []string              `json:"image_keys"`
+	SenderName  string                `json:"sender_name"`
+	ToolCalls   []MessageToolCallMeta `json:"tool_calls,omitempty"`
+	Interrupted bool                  `json:"interrupted,omitempty"`
+}
+
+type MessageToolCallMeta struct {
+	Tool        string         `json:"tool"`
+	Input       map[string]any `json:"input,omitempty"`
+	Observation string         `json:"observation,omitempty"`
+	Iteration   int            `json:"iteration,omitempty"`
 }
 
 func (m MessageMetaData) Value() (driver.Value, error) {

@@ -52,6 +52,22 @@ func (r *MessageRepository) List(ctx context.Context, userID uuid.UUID) ([]*mode
 	return rows, nil
 }
 
+func (r *MessageRepository) ListByConversationID(ctx context.Context, userID uuid.UUID, conversationID uuid.UUID) ([]*models.Message, error) {
+	var rows []*models.Message
+
+	err := r.db.WithContext(ctx).
+		Joins("JOIN conversations ON messages.conversation_id = conversations.id").
+		Where("messages.conversation_id = ?", conversationID).
+		Where("conversations.user_id = ?", userID).
+		Order("messages.created_at ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, xerr.Wrapf(err, "查询会话消息列表失败")
+	}
+
+	return rows, nil
+}
+
 func (r *MessageRepository) FindByID(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) (*models.Message, error) {
 	message := &models.Message{}
 	err := r.db.WithContext(ctx).

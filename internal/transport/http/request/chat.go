@@ -17,7 +17,7 @@ type ChatStreamRequest struct {
 	ImageKeys []string `json:"image_keys" binding:"omitempty"`
 	// 对话临时附件（文档文本），仅本次对话上下文使用，不入库
 	Attachments     []*ChatAttachment `json:"attachments"`
-	EnableKnowledge bool              `json:"enable_knowledge" binding:"omitempty"`
+	EnableKnowledge *bool             `json:"enable_knowledge" binding:"omitempty"`
 	EnableMemory    bool              `json:"enable_memory" binding:"omitempty"`
 	EnableWebSearch bool              `json:"enable_web_search" binding:"omitempty"`
 }

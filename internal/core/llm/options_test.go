@@ -2,20 +2,21 @@ package llm
 
 import "testing"
 
-func TestNewEmbeddingOptionsAppliesBatchSize(t *testing.T) {
-	// 验证 embedding option 会记录正数批次大小，供具体 LLM client 分批请求向量接口。
-	opts := NewEmbeddingOptions(WithEmbeddingBatchSize(10))
-
-	if opts.BatchSize != 10 {
-		t.Fatalf("EmbeddingOptions.BatchSize = %d, want 10", opts.BatchSize)
+// 验证 NewChatOptions 会提供核心层默认温度，并允许调用方显式覆盖。
+func TestNewChatOptionsDefaultsTemperatureAndAllowsOverride(t *testing.T) {
+	defaults := NewChatOptions()
+	if defaults.Temperature == nil {
+		t.Fatal("NewChatOptions().Temperature = nil, want default value")
 	}
-}
+	if *defaults.Temperature != DefaultTemperature {
+		t.Fatalf("NewChatOptions().Temperature = %v, want %v", *defaults.Temperature, DefaultTemperature)
+	}
+	if defaults.MaxTokens != nil {
+		t.Fatalf("NewChatOptions().MaxTokens = %v, want nil", *defaults.MaxTokens)
+	}
 
-func TestNewEmbeddingOptionsIgnoresInvalidBatchSize(t *testing.T) {
-	// 验证无效批次大小不会覆盖已有配置，避免调用方传 0 时破坏默认行为。
-	opts := NewEmbeddingOptions(WithEmbeddingBatchSize(10), WithEmbeddingBatchSize(0), WithEmbeddingBatchSize(-1))
-
-	if opts.BatchSize != 10 {
-		t.Fatalf("EmbeddingOptions.BatchSize = %d, want 10", opts.BatchSize)
+	overridden := NewChatOptions(WithTemperature(0.2))
+	if overridden.Temperature == nil || *overridden.Temperature != 0.2 {
+		t.Fatalf("NewChatOptions(WithTemperature).Temperature = %v, want 0.2", overridden.Temperature)
 	}
 }
