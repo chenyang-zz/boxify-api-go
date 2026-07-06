@@ -1,0 +1,70 @@
+internal/worker/tasks/parse_document_test.go
+  s_a5f282227fb606::t_cb0668c6e7a14c 240-247
+internal/core/llm/result.go
+  s_a5f282227fb606::t_3dc4fe3700f383 11
+  s_a5f282227fb606::t_cbd0195392c4e2 1-2,4-10,12-39
+  s_a5f282227fb606::t_33364394e94e0d 3
+internal/logic/document/document_test.go
+  s_a5f282227fb606::t_cb0668c6e7a14c 314-321
+internal/core/llm/options.go
+  s_a5f282227fb606::t_cbd0195392c4e2 3-8,17,19-20,53-60,80-102,104-141
+  s_a5f282227fb606::t_b87c37abc598db 14,28,34,46,73
+  s_a5f282227fb606::t_33364394e94e0d 103
+  s_a5f282227fb606::t_8657a2e400813a 61
+internal/core/llm/doc.go
+  s_a5f282227fb606::t_b87c37abc598db 1-2,4-5
+  s_a5f282227fb606::t_3fb89ada63295c 3
+internal/core/tool/clone.go
+  s_a5f282227fb606::t_33364394e94e0d 3-7,13-29
+  s_a5f282227fb606::t_838ddf735b4257 30
+internal/core/llm/options_test.go
+  s_a5f282227fb606::t_b4bf590d2f8f76 3-7,27-107
+internal/infrastructure/llm/openai.go
+  s_a5f282227fb606::t_2b32d5287f8069 5,12,16,104-105,108-114,117,120,122-124,126-136,182-184,188-189,193-204,206-287
+  s_a5f282227fb606::t_3dc4fe3700f383 125,205
+  s_a5f282227fb606::t_4694fb26673ca7 288
+internal/infrastructure/llm/anthropic_test.go
+  s_a5f282227fb606::t_10745b770067ef 12,16,74-99,101-149,179,206-231
+  s_a5f282227fb606::t_3fb89ada63295c 100
+internal/core/tool/tool_test.go
+  s_a5f282227fb606::t_a3dd036d7a2b66 59-128
+internal/core/agent/react_test.go
+  s_a5f282227fb606::t_5c9cd3b55c8891 316-323
+internal/transport/http/router_test.go
+  s_a5f282227fb606::t_cb0668c6e7a14c 144-151
+internal/logic/chat/chat_stream_test.go
+  s_a5f282227fb606::t_cb0668c6e7a14c 265-272
+internal/core/llm/client.go
+  s_a5f282227fb606::t_b9ca4d593deb8d 7-10,12,14,16,18,20
+  s_a5f282227fb606::t_33364394e94e0d 15
+internal/infrastructure/llm/openai_test.go
+  s_a5f282227fb606::t_3fb89ada63295c 167
+  s_a5f282227fb606::t_099c4019099a4c 13
+  s_a5f282227fb606::t_cdb6239d4cb9fc 63,79,84,139-166,168-218,242,261,269
+internal/infrastructure/llm/anthropic.go
+  s_a5f282227fb606::t_3dc4fe3700f383 138
+  s_a5f282227fb606::t_4f999bcbc5b4fa 12,89-90,93-99,102,105,108,110-123,126-133,135-137,139-145,195-197,201-202,207-267
+  s_a5f282227fb606::t_69225667dfba22 268
+internal/core/llm/manager_test.go
+  s_a5f282227fb606::t_6771a5a76df754 25-32
+internal/core/rag/classifier/classifier_test.go
+  s_a5f282227fb606::t_5c9cd3b55c8891 176-183
+internal/domain/tools/builtin/knowledge_test.go
+  s_a5f282227fb606::t_cb0668c6e7a14c 454-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bd9b41b9bfd18382e12609ef47134967a225d39e",
+  "prompts": {},
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
