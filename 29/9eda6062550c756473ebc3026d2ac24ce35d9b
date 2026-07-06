@@ -1,0 +1,59 @@
+internal/logic/chat/chat_stream.go
+  s_735be408a64636::t_9a5ecd3bb0d5a7 340-345,347-354,356
+  s_735be408a64636::t_e6df412a8cd17f 9,11-12,19-20,24-25,48-50,73-75,87,91,121-126,128-133,135-151,153-166,168-183,191-196,198-206,208-211,213-223,225-242,244-250,253-267,269-272,274-293,295-296,298-312,314-317,319-339,346,355,357-358,360-378,380-403,405-408,410-414
+  s_735be408a64636::t_36168dd41707d3 185-188,207,212,224
+  h_e1f1392360ad67 103,119,127,134,167,190,197,252,268,273,294,297,313,318,359,379,404,409,417
+  s_735be408a64636::t_e4fd879e4087b9 184
+internal/svc/model_client.go
+  s_735be408a64636::t_ddc065d755d86f 46-79
+internal/repository/postgres/message_test.go
+  s_735be408a64636::t_e6ae73b5d6010c 1-83
+internal/models/message.go
+  s_735be408a64636::t_0a424c9c78d8ae 19-29
+internal/infrastructure/llm/openai.go
+  s_735be408a64636::t_5fe5d315af88e5 148,150,152-153
+internal/transport/http/request/chat.go
+  s_735be408a64636::t_5c9189a25c3432 20
+internal/transport/http/router_test.go
+  s_735be408a64636::t_c26371cfacf32c 365-377
+internal/repository/message.go
+  s_735be408a64636::t_a4844cbae6f966 14
+internal/infrastructure/realtime/forward.go
+  s_735be408a64636::t_deeb82b674c401 20
+  s_735be408a64636::t_f1dd496fdc2c5b 21
+internal/core/llm/options.go
+  s_735be408a64636::t_7fb0bd6f7a45fb 3-7,24-25
+internal/infrastructure/llm/anthropic.go
+  s_735be408a64636::t_325114eca67bdb 151
+internal/infrastructure/llm/openai_test.go
+  s_735be408a64636::t_92f43184e5e0b8 16,54-55,86
+internal/core/llm/options_test.go
+  s_735be408a64636::t_c9cb8ea4fe31b1 5-15,18-20
+internal/repository/postgres/message.go
+  s_735be408a64636::t_b7c612de49dd30 55-70,144
+internal/logic/chat/chat_stream_test.go
+  s_735be408a64636::t_0f7bca84f704af 146-178
+  s_735be408a64636::t_17fd85ef9c54a9 1-19,21-136,138-145,179-554
+  s_735be408a64636::t_0970590fac5df0 20,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "299eda6062550c756473ebc3026d2ac24ce35d9b",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_735be408a64636": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f306c-e27f-71d1-b0d5-e5abc482b074",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
