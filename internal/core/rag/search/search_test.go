@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"errors"
+	"math"
 	"reflect"
 	"slices"
 	"testing"
@@ -80,8 +81,8 @@ func decodeSourceMeta(src map[string]any) (sourceMeta, error) {
 	}, nil
 }
 
+// 验证 NewSearcher 使用默认配置，并且 WithOption 能覆盖默认值。
 func TestNewSearcherAppliesOptions(t *testing.T) {
-	// 验证 NewSearcher 使用默认配置，并且 WithOption 能覆盖默认值。
 	reranker := &fakeReranker{}
 	esClient := &fakeESClient{}
 	embedder := &fakeEmbedder{}
@@ -106,6 +107,7 @@ func TestNewSearcherAppliesOptions(t *testing.T) {
 		WithRerankDocumentBuilder(func(src map[string]any) string {
 			return "custom"
 		}),
+		WithLowRelevanceThreshold(0.45),
 		WithFilterBuilder(filterBuilder),
 		WithSourceDecoder[sourceMeta](decodeSourceMeta),
 	)
@@ -137,13 +139,16 @@ func TestNewSearcherAppliesOptions(t *testing.T) {
 	if searcher.RerankMinScore == nil || *searcher.RerankMinScore != 0.2 || searcher.RerankDocumentBuilder == nil {
 		t.Fatalf("rerank min/builder = %#v/%v, want configured", searcher.RerankMinScore, searcher.RerankDocumentBuilder != nil)
 	}
+	if searcher.LowRelevanceThreshold == nil || *searcher.LowRelevanceThreshold != 0.45 {
+		t.Fatalf("LowRelevanceThreshold = %#v, want 0.45", searcher.LowRelevanceThreshold)
+	}
 	if searcher.FilterBuilder == nil || searcher.sourceDecoder == nil {
 		t.Fatal("FilterBuilder or sourceDecoder is nil")
 	}
 }
 
+// 验证分数归一化能处理空输入、同分输入和普通区间输入。
 func TestNormalizeScores(t *testing.T) {
-	// 验证分数归一化能处理空输入、同分输入和普通区间输入。
 	if got := Normalize(nil); len(got) != 0 {
 		t.Fatalf("Normalize(nil) = %#v, want empty", got)
 	}
@@ -157,8 +162,8 @@ func TestNormalizeScores(t *testing.T) {
 	}
 }
 
+// 验证 filter builder 出错时会直接返回错误，不访问 embedding 和 ES。
 func TestSearcherReturnsFilterBuilderErrorBeforeDependencies(t *testing.T) {
-	// 验证 filter builder 出错时会直接返回错误，不访问 embedding 和 ES。
 	wantErr := errors.New("build filter failed")
 	esClient := &fakeESClient{}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
@@ -174,8 +179,8 @@ func TestSearcherReturnsFilterBuilderErrorBeforeDependencies(t *testing.T) {
 	}
 }
 
+// 验证 Search 的 InputOption 会同时影响向量召回和 BM25 召回。
 func TestSearcherUsesRequestOptionsInVectorAndBM25Queries(t *testing.T) {
-	// 验证 Search 的 InputOption 会同时影响向量召回和 BM25 召回。
 	filter := []any{
 		map[string]any{"term": map[string]any{"tenant": "u-1"}},
 		map[string]any{"terms": map[string]any{"kb_id": []string{"kb-1", "kb-2"}}},
@@ -221,8 +226,8 @@ func TestSearcherUsesRequestOptionsInVectorAndBM25Queries(t *testing.T) {
 	}
 }
 
+// 验证请求级 embedder 会覆盖构造级默认 embedder。
 func TestSearcherUsesInputEmbedderBeforeDefaultEmbedder(t *testing.T) {
-	// 验证请求级 embedder 会覆盖构造级默认 embedder。
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	defaultEmbedder := &fakeEmbedder{vec: []float64{0.1}}
 	inputEmbedder := &fakeEmbedder{vec: []float64{0.2}}
@@ -240,8 +245,8 @@ func TestSearcherUsesInputEmbedderBeforeDefaultEmbedder(t *testing.T) {
 	}
 }
 
+// 验证构造级和请求级都没有 embedder 时返回明确错误。
 func TestSearcherReturnsErrorWithoutEmbedder(t *testing.T) {
-	// 验证构造级和请求级都没有 embedder 时返回明确错误。
 	esClient := &fakeESClient{}
 
 	_, err := NewSearcher[sourceMeta](esClient).Search(context.Background(), "query")
@@ -253,8 +258,8 @@ func TestSearcherReturnsErrorWithoutEmbedder(t *testing.T) {
 	}
 }
 
+// 验证自定义 filter builder 会收到内部 Input，并且 Input 未设置 recallSize 时使用 searcher option 默认值。
 func TestSearcherUsesFilterBuilderAndOptionRecallSize(t *testing.T) {
-	// 验证自定义 filter builder 会收到内部 Input，并且 Input 未设置 recallSize 时使用 searcher option 默认值。
 	filter := []any{map[string]any{"term": map[string]any{"tenant": "from-builder"}}}
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
@@ -290,8 +295,8 @@ func TestSearcherUsesFilterBuilderAndOptionRecallSize(t *testing.T) {
 	}
 }
 
+// 验证 knn oversample 显式配置后写入 num_candidates。
 func TestSearcherUsesConfiguredKnnOversample(t *testing.T) {
-	// 验证 knn oversample 显式配置后写入 num_candidates。
 	esClient := &fakeESClient{resps: []map[string]any{hitsResponse(), hitsResponse()}}
 	embedder := &fakeEmbedder{vec: []float64{0.1}}
 
@@ -308,8 +313,8 @@ func TestSearcherUsesConfiguredKnnOversample(t *testing.T) {
 	}
 }
 
+// 验证结果只包含通用字段，业务元数据通过 decoder 放入 Source，parent 内容不影响 Source 来源。
 func TestSearcherFusesScoresAndDecodesSource(t *testing.T) {
-	// 验证结果只包含通用字段，业务元数据通过 decoder 放入 Source，parent 内容不影响 Source 来源。
 	childSrc := source("both child", "parent-both")
 	childSrc["doc_name"] = "ChildDoc"
 	esClient := &fakeESClient{resps: []map[string]any{
@@ -335,16 +340,16 @@ func TestSearcherFusesScoresAndDecodesSource(t *testing.T) {
 	if !slices.Equal(gotIDs, wantIDs) {
 		t.Fatalf("result ids = %#v, want %#v; results=%#v", gotIDs, wantIDs, got)
 	}
-	if got[0].Score != 0.6 || got[1].Score != 0.4 || got[2].Content != "parent content" {
+	if got.Results[0].Score != 0.6 || got.Results[1].Score != 0.4 || got.Results[2].Content != "parent content" {
 		t.Fatalf("results = %#v, want fused scores and parent content", got)
 	}
-	if got[2].Source.DocName != "ChildDoc" {
-		t.Fatalf("decoded source = %#v, want child source metadata", got[2].Source)
+	if got.Results[2].Source.DocName != "ChildDoc" {
+		t.Fatalf("decoded source = %#v, want child source metadata", got.Results[2].Source)
 	}
 }
 
+// 验证 source decoder 出错时 Search 会返回错误，避免静默丢失业务元数据。
 func TestSearcherReturnsDecoderError(t *testing.T) {
-	// 验证 source decoder 出错时 Search 会返回错误，避免静默丢失业务元数据。
 	wantErr := errors.New("decode failed")
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 1, source("doc a", ""))),
@@ -360,8 +365,8 @@ func TestSearcherReturnsDecoderError(t *testing.T) {
 	}
 }
 
+// 验证未配置 source decoder 时，Output.Source 使用类型零值。
 func TestSearcherUsesZeroSourceWithoutDecoder(t *testing.T) {
-	// 验证未配置 source decoder 时，Output.Source 使用类型零值。
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 1, source("doc a", ""))),
 		hitsResponse(),
@@ -372,13 +377,13 @@ func TestSearcherUsesZeroSourceWithoutDecoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
-	if len(got) != 1 || got[0].Source != (sourceMeta{}) {
+	if len(got.Results) != 1 || got.Results[0].Source != (sourceMeta{}) {
 		t.Fatalf("results = %#v, want zero source", got)
 	}
 }
 
+// 验证 MinVectorScore 只过滤向量不达标的候选，保留候选继续参与 BM25 融合和 rerank。
 func TestSearcherFiltersByMinVectorScore(t *testing.T) {
-	// 验证 MinVectorScore 只过滤向量不达标的候选，保留候选继续参与 BM25 融合和 rerank。
 	threshold := 0.5
 	reranker := &fakeReranker{results: []RerankResult{{Index: 0, Score: 1}, {Index: 1, Score: 0.9}}}
 	esClient := &fakeESClient{resps: []map[string]any{
@@ -411,13 +416,13 @@ func TestSearcherFiltersByMinVectorScore(t *testing.T) {
 	if reranker.calls != 1 || !slices.Equal(reranker.documents, []string{"lexical", "semantic"}) {
 		t.Fatalf("reranker calls/documents = %d/%#v", reranker.calls, reranker.documents)
 	}
-	if got[0].Score != 0.6 || got[1].Score != 0.4 {
+	if got.Results[0].Score != 0.6 || got.Results[1].Score != 0.4 {
 		t.Fatalf("scores = %#v, want fused scores after vector gate", got)
 	}
 }
 
+// 验证 child 指向的 parent 查不到时，会回退返回 child 自身内容。
 func TestSearcherFallsBackToChildContentWhenParentMissing(t *testing.T) {
-	// 验证 child 指向的 parent 查不到时，会回退返回 child 自身内容。
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("child", 1, source("child content", "missing-parent"))),
 		hitsResponse(),
@@ -429,13 +434,13 @@ func TestSearcherFallsBackToChildContentWhenParentMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
-	if len(got) != 1 || got[0].Content != "child content" {
+	if len(got.Results) != 1 || got.Results[0].Content != "child content" {
 		t.Fatalf("results = %#v, want child content fallback", got)
 	}
 }
 
+// 验证 reranker 成功时按重排顺序返回，失败时回退融合排序。
 func TestSearcherUsesRerankerAndFallsBackOnError(t *testing.T) {
-	// 验证 reranker 成功时按重排顺序返回，失败时回退融合排序。
 	reranker := &fakeReranker{results: []RerankResult{{Index: 1, Score: 0.99}, {Index: 0, Score: 0.5}}}
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 2, source("doc a", "")), hit("b", 1, source("doc b", ""))),
@@ -450,8 +455,8 @@ func TestSearcherUsesRerankerAndFallsBackOnError(t *testing.T) {
 	if gotIDs := resultIDs(got); !slices.Equal(gotIDs, []string{"b", "a"}) {
 		t.Fatalf("reranked result ids = %#v, want b,a", gotIDs)
 	}
-	if got[0].RerankScore == nil || *got[0].RerankScore != 0.99 || got[0].Score != 0 {
-		t.Fatalf("rerank/fused score = %#v/%v, want 0.99/0", got[0].RerankScore, got[0].Score)
+	if got.Results[0].RerankScore == nil || *got.Results[0].RerankScore != 0.99 || got.Results[0].Score != 0 {
+		t.Fatalf("rerank/fused score = %#v/%v, want 0.99/0", got.Results[0].RerankScore, got.Results[0].Score)
 	}
 	if reranker.calls != 1 || !slices.Equal(reranker.documents, []string{"doc a", "doc b"}) {
 		t.Fatalf("reranker calls/documents = %d/%#v", reranker.calls, reranker.documents)
@@ -471,8 +476,91 @@ func TestSearcherUsesRerankerAndFallsBackOnError(t *testing.T) {
 	}
 }
 
+// 验证低相关状态优先使用 rerank 分数，并且不会过滤原始结果。
+func TestSearcherReportsLowRelevanceByRerankScore(t *testing.T) {
+	reranker := &fakeReranker{results: []RerankResult{{Index: 0, Score: 0.3}, {Index: 1, Score: 0.2}}}
+	esClient := &fakeESClient{resps: []map[string]any{
+		hitsResponse(hit("a", 0.95, source("doc a", "")), hit("b", 0.9, source("doc b", ""))),
+		hitsResponse(),
+	}}
+	embedder := &fakeEmbedder{vec: []float64{0.1}}
+
+	got, err := NewSearcher[sourceMeta](
+		esClient,
+		WithEmbedder(embedder),
+		WithReranker(reranker),
+		WithLowRelevanceThreshold(0.5),
+	).Search(context.Background(), "query", WithTopK(2))
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(got.Results) != 2 {
+		t.Fatalf("Search().Results len = %d, want 2", len(got.Results))
+	}
+	if !got.Relevance.Low || got.Relevance.Basis != RelevanceBasisRerank {
+		t.Fatalf("Search().Relevance = %#v, want low rerank status", got.Relevance)
+	}
+	if got.Relevance.MaxScore == nil || *got.Relevance.MaxScore != 0.3 {
+		t.Fatalf("Search().Relevance.MaxScore = %#v, want 0.3", got.Relevance.MaxScore)
+	}
+	if got.Relevance.Threshold == nil || *got.Relevance.Threshold != 0.5 {
+		t.Fatalf("Search().Relevance.Threshold = %#v, want 0.5", got.Relevance.Threshold)
+	}
+}
+
+// 验证没有 rerank 分数时，低相关状态使用向量 cosine 原始分数而不是归一化融合分。
+func TestSearcherReportsLowRelevanceByVectorCosine(t *testing.T) {
+	esClient := &fakeESClient{resps: []map[string]any{
+		hitsResponse(hit("a", 0.7, source("doc a", "")), hit("b", 0.55, source("doc b", ""))),
+		hitsResponse(),
+	}}
+	embedder := &fakeEmbedder{vec: []float64{0.1}}
+
+	got, err := NewSearcher[sourceMeta](
+		esClient,
+		WithEmbedder(embedder),
+		WithLowRelevanceThreshold(0.5),
+	).Search(context.Background(), "query", WithTopK(2))
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if !got.Relevance.Low || got.Relevance.Basis != RelevanceBasisVector {
+		t.Fatalf("Search().Relevance = %#v, want low vector status", got.Relevance)
+	}
+	if got.Relevance.MaxScore == nil || math.Abs(*got.Relevance.MaxScore-0.4) > 1e-9 {
+		t.Fatalf("Search().Relevance.MaxScore = %#v, want cosine 0.4", got.Relevance.MaxScore)
+	}
+	if got.Results[0].Score != 0.6 {
+		t.Fatalf("Search().Results[0].Score = %v, want weighted fused score 0.6", got.Results[0].Score)
+	}
+}
+
+// 验证请求级低相关阈值会覆盖构造级阈值。
+func TestSearcherInputLowRelevanceThresholdOverridesDefault(t *testing.T) {
+	esClient := &fakeESClient{resps: []map[string]any{
+		hitsResponse(hit("a", 0.7, source("doc a", ""))),
+		hitsResponse(),
+	}}
+	embedder := &fakeEmbedder{vec: []float64{0.1}}
+
+	got, err := NewSearcher[sourceMeta](
+		esClient,
+		WithEmbedder(embedder),
+		WithLowRelevanceThreshold(0.9),
+	).Search(context.Background(), "query", WithTopK(1), WithInputLowRelevanceThreshold(0.1))
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if got.Relevance.Low {
+		t.Fatalf("Search().Relevance.Low = true, want false after request threshold override")
+	}
+	if got.Relevance.Threshold == nil || *got.Relevance.Threshold != 0.1 {
+		t.Fatalf("Search().Relevance.Threshold = %#v, want 0.1", got.Relevance.Threshold)
+	}
+}
+
+// 验证请求级配置可以关闭构造级 reranker。
 func TestSearcherCanDisableRerankPerInput(t *testing.T) {
-	// 验证请求级配置可以关闭构造级 reranker。
 	reranker := &fakeReranker{results: []RerankResult{{Index: 1, Score: 1}}}
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 2, source("doc a", "")), hit("b", 1, source("doc b", ""))),
@@ -493,8 +581,8 @@ func TestSearcherCanDisableRerankPerInput(t *testing.T) {
 	}
 }
 
+// 验证 rerank window 控制候选窗口，topK 透传给 reranker，文档 builder 覆盖默认 content。
 func TestSearcherUsesRerankWindowTopKAndDocumentBuilder(t *testing.T) {
-	// 验证 rerank window 控制候选窗口，topK 透传给 reranker，文档 builder 覆盖默认 content。
 	reranker := &fakeReranker{results: []RerankResult{{Index: 1, Score: 0.8}, {Index: 0, Score: 0.7}}}
 	first := source("doc a", "")
 	first["title"] = "A"
@@ -532,8 +620,8 @@ func TestSearcherUsesRerankWindowTopKAndDocumentBuilder(t *testing.T) {
 	}
 }
 
+// 验证 reranker 返回越界、重复和低分结果时会被过滤，并保留有效 rerank 分数。
 func TestSearcherFiltersInvalidDuplicateAndLowScoreRerankResults(t *testing.T) {
-	// 验证 reranker 返回越界、重复和低分结果时会被过滤，并保留有效 rerank 分数。
 	reranker := &fakeReranker{results: []RerankResult{
 		{Index: 5, Score: 1},
 		{Index: 1, Score: 0.4},
@@ -558,13 +646,13 @@ func TestSearcherFiltersInvalidDuplicateAndLowScoreRerankResults(t *testing.T) {
 	if gotIDs := resultIDs(got); !slices.Equal(gotIDs, []string{"a"}) {
 		t.Fatalf("result ids = %#v, want only a", gotIDs)
 	}
-	if got[0].RerankScore == nil || *got[0].RerankScore != 0.9 {
-		t.Fatalf("RerankScore = %#v, want 0.9", got[0].RerankScore)
+	if got.Results[0].RerankScore == nil || *got.Results[0].RerankScore != 0.9 {
+		t.Fatalf("RerankScore = %#v, want 0.9", got.Results[0].RerankScore)
 	}
 }
 
+// 验证 fail-open 关闭时，reranker 错误会直接返回。
 func TestSearcherReturnsRerankErrorWhenFailClosed(t *testing.T) {
-	// 验证 fail-open 关闭时，reranker 错误会直接返回。
 	wantErr := errors.New("rerank failed")
 	esClient := &fakeESClient{resps: []map[string]any{
 		hitsResponse(hit("a", 1, source("doc a", ""))),
@@ -583,8 +671,8 @@ func TestSearcherReturnsRerankErrorWhenFailClosed(t *testing.T) {
 	}
 }
 
+// 验证请求级 reranker、窗口、topK、失败策略、最低分和文档 builder 都优先于构造级配置。
 func TestSearcherInputRerankOptionsOverrideSearcherOptions(t *testing.T) {
-	// 验证请求级 reranker、窗口、topK、失败策略、最低分和文档 builder 都优先于构造级配置。
 	defaultReranker := &fakeReranker{err: errors.New("should not be used")}
 	inputReranker := &fakeReranker{results: []RerankResult{{Index: 1, Score: 0.6}, {Index: 0, Score: 0.4}}}
 	esClient := &fakeESClient{resps: []map[string]any{
@@ -628,13 +716,13 @@ func TestSearcherInputRerankOptionsOverrideSearcherOptions(t *testing.T) {
 	}
 }
 
+// 验证默认空检索器不返回结果，也不产生错误。
 func TestNoopSearcherReturnsEmptyResult(t *testing.T) {
-	// 验证默认空检索器不返回结果，也不产生错误。
 	got, err := NoopSearcher[sourceMeta]{}.Search(context.Background(), "query")
 	if err != nil {
 		t.Fatalf("Search() error = %v, want nil", err)
 	}
-	if got != nil {
+	if got == nil || got.Results != nil {
 		t.Fatalf("Search() = %#v, want nil", got)
 	}
 }
@@ -665,9 +753,9 @@ func source(content string, parentID string) map[string]any {
 	return src
 }
 
-func resultIDs(results []Output[sourceMeta]) []string {
-	ids := make([]string, 0, len(results))
-	for _, result := range results {
+func resultIDs(result *SearchResult[sourceMeta]) []string {
+	ids := make([]string, 0, len(result.Results))
+	for _, result := range result.Results {
 		ids = append(ids, result.ID)
 	}
 	return ids

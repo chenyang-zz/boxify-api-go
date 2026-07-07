@@ -66,6 +66,7 @@ type Input struct {
 	rerankFailOpen *bool
 	rerankMinScore *float64
 	rerankBuilder  RerankDocumentBuilder
+	lowThreshold   *float64
 }
 
 // InputOption 修改单次 Search 请求配置。
@@ -100,6 +101,15 @@ func WithFilters(filters []any) InputOption {
 func WithMinVectorScore(minVectorScore float64) InputOption {
 	return func(req *Input) {
 		req.MinVectorScore = &minVectorScore
+	}
+}
+
+// WithInputLowRelevanceThreshold 设置单次请求的低相关状态阈值。
+//
+// Search 会保留结果并只写入 Relevance.Low 状态；该配置会覆盖构造级阈值。
+func WithInputLowRelevanceThreshold(score float64) InputOption {
+	return func(req *Input) {
+		req.lowThreshold = &score
 	}
 }
 
@@ -193,4 +203,35 @@ type Output[T any] struct {
 	Score       float64
 	RerankScore *float64
 	Source      T
+}
+
+// RelevanceBasis 表示低相关状态使用的分数来源。
+type RelevanceBasis string
+
+const (
+	// RelevanceBasisNone 表示没有可用的绝对相关度分数。
+	RelevanceBasisNone RelevanceBasis = ""
+	// RelevanceBasisVector 表示使用向量 cosine 分数判断相关度。
+	RelevanceBasisVector RelevanceBasis = "vector"
+	// RelevanceBasisRerank 表示使用 reranker 分数判断相关度。
+	RelevanceBasisRerank RelevanceBasis = "rerank"
+)
+
+// RelevanceStatus 描述一次检索结果整体相关度是否偏低。
+//
+// Low 只表达状态，不会导致 Search 过滤结果。MaxScore 是最终结果中的最高绝对相关度分数；
+// Threshold 是调用方配置的低相关阈值。Basis 说明 MaxScore 来自向量分还是重排分。
+type RelevanceStatus struct {
+	Low       bool
+	Basis     RelevanceBasis
+	MaxScore  *float64
+	Threshold *float64
+}
+
+// SearchResult 表示一次 RAG 检索的完整返回值。
+//
+// Results 保存命中结果；Relevance 保存整体低相关状态，供业务层决定是否使用这些结果。
+type SearchResult[T any] struct {
+	Results   []Output[T]
+	Relevance RelevanceStatus
 }

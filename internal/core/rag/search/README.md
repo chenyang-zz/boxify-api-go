@@ -30,10 +30,11 @@ query
   -> topK trim
   -> parent content fallback
   -> source decode
-  -> outputs
+  -> relevance status
+  -> search result
 ```
 
-Rerank 只处理融合后的候选窗口，不替代向量/BM25 融合逻辑。`MinVectorScore` 仍只负责过滤低向量相关度候选，过滤后继续参与融合和 rerank。
+Rerank 只处理融合后的候选窗口，不替代向量/BM25 融合逻辑。`MinVectorScore` 只负责过滤低向量相关度候选，过滤后继续参与融合和 rerank。低相关状态只打标，不过滤结果。
 
 ## Public API
 
@@ -70,6 +71,24 @@ type Output[T any] struct {
 
 `Score` 继续表示第一阶段融合分数，`RerankScore` 仅表示第二阶段重排分数，避免混用不同分数体系。
 
+`Search` 返回完整结果对象：
+
+```go
+type SearchResult[T any] struct {
+	Results   []Output[T]
+	Relevance RelevanceStatus
+}
+
+type RelevanceStatus struct {
+	Low       bool
+	Basis     RelevanceBasis
+	MaxScore  *float64
+	Threshold *float64
+}
+```
+
+`Relevance.Low` 表示最终结果整体相关度低于调用方指定阈值。该状态优先使用最终结果中的最高 rerank 分数；没有 rerank 分数时，使用 ES knn `_score` 还原出的最高 cosine 分数。不要用 `Output.Score` 判定低相关，因为它是归一化后的融合分。
+
 ## Configuration
 
 构造级配置：
@@ -81,6 +100,7 @@ WithRerankTopK(n int)
 WithRerankFailOpen(enabled bool)
 WithRerankMinScore(score float64)
 WithRerankDocumentBuilder(builder RerankDocumentBuilder)
+WithLowRelevanceThreshold(score float64)
 ```
 
 请求级配置：
@@ -93,6 +113,7 @@ WithInputRerankTopK(n int)
 WithInputRerankFailOpen(enabled bool)
 WithInputRerankMinScore(score float64)
 WithInputRerankDocumentBuilder(builder RerankDocumentBuilder)
+WithInputLowRelevanceThreshold(score float64)
 ```
 
 配置优先级：
@@ -104,6 +125,7 @@ WithInputRerankDocumentBuilder(builder RerankDocumentBuilder)
 5. 默认 rerank window 使用 `max(topK, recallSize)`。
 6. 默认 rerank topK 使用最终 `topK`。
 7. 默认 document builder 读取 `_source["content"]`。
+8. 低相关阈值未配置时，`Low=false`，但仍尽量填充 `Basis` 和 `MaxScore`。
 
 ## Implementation Structure
 
@@ -128,7 +150,11 @@ if err != nil {
 if len(candidateIDs) > topK {
 	candidateIDs = candidateIDs[:topK]
 }
-return s.resultsForIDs(ctx, candidateIDs, hits, fused, rerankScores)
+results, err := s.resultsForIDs(ctx, candidateIDs, hits, fused, rerankScores)
+return &SearchResult[T]{
+	Results:   results,
+	Relevance: s.relevanceStatus(req, results, vecScores, rerankScores),
+}, err
 ```
 
 公开类型继续放在 `types.go`，长期 option 放 `options.go`，请求级 option 放 `types.go`，避免把公开 API 分散到实现文件。

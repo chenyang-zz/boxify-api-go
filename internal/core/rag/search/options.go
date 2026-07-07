@@ -28,8 +28,9 @@ type Options struct {
 	RerankFailOpen        bool
 	RerankMinScore        *float64
 	RerankDocumentBuilder RerankDocumentBuilder
-	FilterBuilder         FilterBuilder
-	sourceDecoder         any
+	LowRelevanceThreshold *float64      // 低相关状态阈值
+	FilterBuilder         FilterBuilder // 请求过滤构造器
+	sourceDecoder         any           // ES _source 到业务元数据的解码器
 }
 
 // Option 修改 Searcher 的长期配置。
@@ -153,6 +154,15 @@ func WithRerankDocumentBuilder(builder RerankDocumentBuilder) Option {
 		if builder != nil {
 			opts.RerankDocumentBuilder = builder
 		}
+	}
+}
+
+// WithLowRelevanceThreshold 设置默认低相关状态阈值。
+//
+// Search 会保留结果并只写入 Relevance.Low 状态；请求级阈值会覆盖该配置。
+func WithLowRelevanceThreshold(score float64) Option {
+	return func(opts *Options) {
+		opts.LowRelevanceThreshold = &score
 	}
 }
 

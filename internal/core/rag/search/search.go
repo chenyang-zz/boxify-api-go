@@ -51,13 +51,13 @@ func NewSearcher[T any](esClient ESClient, opts ...Option) *Searcher[T] {
 }
 
 // Search 返回空检索结果。
-func (NoopSearcher[T]) Search(ctx context.Context, query string, opts ...InputOption) ([]Output[T], error) {
-	return nil, nil
+func (NoopSearcher[T]) Search(ctx context.Context, query string, opts ...InputOption) (*SearchResult[T], error) {
+	return &SearchResult[T]{}, nil
 }
 
 // Search 执行混合检索：向量召回 + BM25 召回，然后按权重融合排序。
 // 当 MinVectorScore 存在时，先过滤向量相关度不足的候选，再继续融合和重排。
-func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...InputOption) ([]Output[T], error) {
+func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...InputOption) (*SearchResult[T], error) {
 	if s == nil || s.es == nil {
 		return nil, errors.New("rag search ES client is nil")
 	}
@@ -113,7 +113,7 @@ func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...InputOpt
 	if req.MinVectorScore != nil {
 		hits, vecScores, bmScores = filterByMinVectorScore(hits, vecScores, bmScores, *req.MinVectorScore)
 		if len(hits) == 0 {
-			return nil, nil
+			return &SearchResult[T]{Relevance: s.relevanceStatus(req, nil, vecScores, nil)}, nil
 		}
 	}
 
@@ -128,7 +128,14 @@ func (s *Searcher[T]) Search(ctx context.Context, query string, opts ...InputOpt
 	if len(candidateIDs) > topK {
 		candidateIDs = candidateIDs[:topK]
 	}
-	return s.resultsForIDs(ctx, candidateIDs, hits, fused, rerankScores)
+	results, err := s.resultsForIDs(ctx, candidateIDs, hits, fused, rerankScores)
+	if err != nil {
+		return nil, err
+	}
+	return &SearchResult[T]{
+		Results:   results,
+		Relevance: s.relevanceStatus(req, results, vecScores, rerankScores),
+	}, nil
 }
 
 // resultsForIDs 组装检索结果；命中 child 时优先返回 parent 内容，给上层提供更完整上下文。
@@ -161,6 +168,89 @@ func (s *Searcher[T]) resultsForIDs(ctx context.Context, ids []string, hits map[
 		})
 	}
 	return results, nil
+}
+
+// relevanceStatus 基于最终返回结果计算整体低相关状态。
+func (s *Searcher[T]) relevanceStatus(req Input, results []Output[T], vecScores map[string]float64, rerankScores map[string]float64) RelevanceStatus {
+	status := RelevanceStatus{Threshold: s.lowRelevanceThreshold(req)}
+	if len(results) == 0 {
+		return status
+	}
+
+	// 有 rerank 分数时优先使用 reranker 的绝对分数，避免和融合分数混用。
+	if score, ok := maxRerankScore(results, rerankScores); ok {
+		status.Basis = RelevanceBasisRerank
+		status.MaxScore = &score
+		status.Low = belowThreshold(score, status.Threshold)
+		return status
+	}
+
+	// 没有 rerank 分数时，使用 ES knn 原始分数还原出的 cosine 分数。
+	if score, ok := maxVectorCosine(results, vecScores); ok {
+		status.Basis = RelevanceBasisVector
+		status.MaxScore = &score
+		status.Low = belowThreshold(score, status.Threshold)
+	}
+	return status
+}
+
+// lowRelevanceThreshold 基于请求参数计算低相关阈值。
+func (s *Searcher[T]) lowRelevanceThreshold(req Input) *float64 {
+	if req.lowThreshold != nil {
+		return req.lowThreshold
+	}
+	return s.LowRelevanceThreshold
+}
+
+// maxRerankScore 计算 rerank 分数最大值。
+func maxRerankScore[T any](results []Output[T], rerankScores map[string]float64) (float64, bool) {
+	if len(rerankScores) == 0 {
+		return 0, false
+	}
+	var maxScore float64
+	ok := false
+	for _, result := range results {
+		score, exists := rerankScores[result.ID]
+		if !exists {
+			continue
+		}
+		if !ok || score > maxScore {
+			maxScore = score
+			ok = true
+		}
+	}
+	return maxScore, ok
+}
+
+// maxVectorCosine 计算 vector 分数最大值。
+func maxVectorCosine[T any](results []Output[T], vecScores map[string]float64) (float64, bool) {
+	if len(vecScores) == 0 {
+		return 0, false
+	}
+	var maxScore float64
+	ok := false
+	for _, result := range results {
+		score, exists := vecScores[result.ID]
+		if !exists {
+			continue
+		}
+		cosine := vectorScoreToCosine(score)
+		if !ok || cosine > maxScore {
+			maxScore = cosine
+			ok = true
+		}
+	}
+	return maxScore, ok
+}
+
+// vectorScoreToCosine 将 ES knn cosine 原始分数转换为真实余弦相似度。
+func vectorScoreToCosine(score float64) float64 {
+	return 2*score - 1
+}
+
+// belowThreshold 判断分数是否低于阈值。
+func belowThreshold(score float64, threshold *float64) bool {
+	return threshold != nil && score < *threshold
 }
 
 // resolveParentContent 查询 parent chunk 内容；业务隔离过滤由外层调用方负责提供。
@@ -205,7 +295,7 @@ func filterByMinVectorScore(hits map[string]map[string]any, vecScores map[string
 		if !ok {
 			continue
 		}
-		cos := 2*score - 1
+		cos := vectorScoreToCosine(score)
 		if cos < minScore {
 			continue
 		}

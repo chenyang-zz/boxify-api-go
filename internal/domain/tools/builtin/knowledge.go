@@ -124,7 +124,7 @@ func searchKnowledge(ctx context.Context, svcCtx *svc.ServiceContext, req *knowl
 		return nil, err
 	}
 	tagResolution := resolveKnowledgeTags(ctx, svcCtx, llmClient, userID, req.Tags)
-	results, err := svcCtx.RAGSearcher.Search(ctx, req.Query,
+	searchResult, err := svcCtx.RAGSearcher.Search(ctx, req.Query,
 		ragsearch.WithTopK(req.TopK),
 		ragsearch.WithFilters(knowledgeSearchFilters(userID, kbIDs, tagResolution.Matched)),
 		ragsearch.WithInputEmbedder(llmClient),
@@ -132,6 +132,7 @@ func searchKnowledge(ctx context.Context, svcCtx *svc.ServiceContext, req *knowl
 	if err != nil {
 		return nil, err
 	}
+	results := searchResult.Results
 	out := make([]knowledgeSearchResult, 0, len(results))
 	for _, item := range results {
 		out = append(out, knowledgeSearchResult{

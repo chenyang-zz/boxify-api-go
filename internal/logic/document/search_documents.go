@@ -43,7 +43,7 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 	if err != nil {
 		return nil, err
 	}
-	results, err := l.svcCtx.RAGSearcher.Search(l.ctx, input.Query,
+	searchResult, err := l.svcCtx.RAGSearcher.Search(l.ctx, input.Query,
 		ragsearch.WithTopK(int(input.TopK)),
 		ragsearch.WithFilters(documentSearchFilters(userID, input.Tags)),
 		ragsearch.WithInputEmbedder(llmClient),
@@ -51,6 +51,7 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 	if err != nil {
 		return nil, err
 	}
+	results := searchResult.Results
 	out := make([]*response.SearchDocumentResponse, 0, len(results))
 	for _, item := range results {
 		out = append(out, &response.SearchDocumentResponse{
