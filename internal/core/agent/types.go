@@ -11,28 +11,19 @@ import (
 // ErrMaxIterations 表示 Agent 在达到最大迭代次数后仍未得到最终答案。
 var ErrMaxIterations = errors.New("max iterations reached")
 
-// ErrParseDecision 表示模型输出不符合 ReAct 决策格式。
-var ErrParseDecision = errors.New("parse react decision")
-
-// ErrInvalidActionInput 表示 Action Input 不是合法 JSON object。
-var ErrInvalidActionInput = errors.New("invalid action input")
-
-// ErrToolCallingUnsupported 表示模型客户端当前不支持原生工具调用。
-var ErrToolCallingUnsupported = errors.New("tool calling unsupported")
-
 // Input 表示一次 Agent 运行的输入。
 //
 // Query 用于最常见的单轮用户问题。Messages 用于调用方传入已有上下文；
-// 两者同时存在时，默认 prompt builder 会同时保留 Messages 并追加 Query。
+// 两者同时存在时，具体实现可同时保留 Messages 并追加 Query。
 type Input struct {
 	Query    string
 	Messages []*llm.Message
 }
 
 // Result 表示一次 Agent 运行的结果。
-type Result struct {
+type Result[S any] struct {
 	Answer     string
-	Steps      []Step
+	Steps      []S
 	Iterations int
 	StoppedBy  StopReason
 }
@@ -59,7 +50,7 @@ const (
 	PhaseBuildPrompt Phase = "build_prompt"
 	// PhaseModel 表示正在调用模型。
 	PhaseModel Phase = "model"
-	// PhaseFallback 表示 function calling 路径退回文本 ReAct。
+	// PhaseFallback 表示模型原生工具调用路径退回文本协议。
 	PhaseFallback Phase = "fallback"
 	// PhaseParse 表示正在解析模型输出。
 	PhaseParse Phase = "parse"
@@ -85,47 +76,15 @@ type Transition struct {
 //
 // State 会传给 prompt builder 和 hooks。调用方应把它视为快照，不应依赖修改它来影响
 // Agent 内部状态。
-type State struct {
+type State[D any, S any] struct {
 	Input        Input
 	Tools        []coretool.Descriptor
-	Steps        []Step
+	Steps        []S
 	Iteration    int
 	Phase        Phase
-	LastDecision Decision
+	LastDecision D
 	LastError    error
 	SystemPrompt string
-}
-
-// Step 表示一次 Agent 迭代中的模型决策、工具调用和观察结果。
-type Step struct {
-	Iteration      int
-	Thought        string
-	Action         string
-	ActionInput    coretool.Input
-	ToolCallID     string
-	Observation    string
-	FinalAnswer    string
-	RawModelOutput string
-}
-
-// DecisionKind 表示模型输出被解析后的决策类型。
-type DecisionKind string
-
-const (
-	// DecisionFinal 表示模型给出了最终答案。
-	DecisionFinal DecisionKind = "final"
-	// DecisionToolCall 表示模型要求调用工具。
-	DecisionToolCall DecisionKind = "tool_call"
-)
-
-// Decision 表示模型输出被标准化后的结构化决策。
-type Decision struct {
-	Kind        DecisionKind
-	Thought     string
-	FinalAnswer string
-	Action      string
-	ActionInput coretool.Input
-	ToolCallID  string
 }
 
 // ToolCall 表示 Agent 准备执行的一次工具调用。
@@ -134,41 +93,17 @@ type ToolCall struct {
 	Input coretool.Input
 }
 
-// Planner 负责把当前状态转成下一步标准化决策。
-type Planner interface {
-	Plan(ctx context.Context, state State, opts ...llm.ModelCallOption) (Decision, error)
-}
-
-// ToolCallingPlanner 表示支持模型原生工具调用的 planner。
-type ToolCallingPlanner interface {
-	Planner
-	SupportsToolCalling() bool
-}
-
-// ToolCallingClient 是 agent 消费侧定义的原生工具调用模型接口。
-//
-// 具体供应商 adapter 负责把 ToolCallingInput 转换成 OpenAI、Anthropic 或其他模型
-// 的消息格式，并把模型返回的 tool call 转成 ToolCallingOutput。
-type ToolCallingClient interface {
-	InvokeWithTools(ctx context.Context, input ToolCallingInput, opts ...llm.ModelCallOption) (ToolCallingOutput, error)
-}
-
-// ToolCallingInput 表示一次原生工具调用模型请求。
-type ToolCallingInput struct {
-	Messages []*llm.Message
-	Tools    []coretool.Descriptor
-	Steps    []Step
-}
-
-// ToolCallingOutput 表示原生工具调用模型输出。
-type ToolCallingOutput struct {
-	Content   string
-	ToolCalls []ModelToolCall
-}
-
-// ModelToolCall 表示模型请求执行的一次工具调用。
-type ModelToolCall struct {
-	ID    string
-	Name  string
-	Input coretool.Input
+// Hooks 定义 Agent 关键生命周期和状态迁移钩子。
+type Hooks[D any, S any] interface {
+	BeforeRun(ctx context.Context, state State[D, S]) error
+	AfterRun(ctx context.Context, result Result[S], runErr error) error
+	BeforeTransition(ctx context.Context, state State[D, S], transition Transition) error
+	AfterTransition(ctx context.Context, state State[D, S], transition Transition) error
+	BeforeModel(ctx context.Context, state State[D, S], messages []*llm.Message) error
+	AfterModel(ctx context.Context, state State[D, S], output string, modelErr error) error
+	AfterParse(ctx context.Context, state State[D, S], decision D, parseErr error) error
+	BeforeTool(ctx context.Context, state State[D, S], call ToolCall) error
+	AfterTool(ctx context.Context, state State[D, S], call ToolCall, output coretool.Output, toolErr error) error
+	OnStep(ctx context.Context, state State[D, S], step S) error
+	OnError(ctx context.Context, state State[D, S], err error) error
 }

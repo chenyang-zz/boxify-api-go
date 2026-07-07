@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	coreagent "github.com/boxify/api-go/internal/core/agent"
+	corereact "github.com/boxify/api-go/internal/core/agent/react"
 	corellm "github.com/boxify/api-go/internal/core/llm"
 	coretool "github.com/boxify/api-go/internal/core/tool"
 	flow "github.com/boxify/api-go/internal/domain/flow"
@@ -254,7 +254,7 @@ func TestAgentHooksAfterToolReturnsToolErrorWithoutEmittingResult(t *testing.T) 
 	hooks := &agentHooks{events: ch}
 	toolErr := errors.New("tool transport failed")
 
-	err := hooks.AfterTool(context.Background(), coreagent.State{Iteration: 3}, coreagent.ToolCall{
+	err := hooks.AfterTool(context.Background(), corereact.State{Iteration: 3}, corereact.ToolCall{
 		Name:  "remote_tool",
 		Input: map[string]any{"q": "x"},
 	}, coretool.Output{Text: "ignored"}, toolErr)
@@ -273,7 +273,7 @@ func TestAgentHooksAfterToolKeepsFullObservation(t *testing.T) {
 	hooks := &agentHooks{events: ch}
 	fullObservation := strings.Repeat("长", 4100)
 
-	err := hooks.AfterTool(context.Background(), coreagent.State{Iteration: 2}, coreagent.ToolCall{
+	err := hooks.AfterTool(context.Background(), corereact.State{Iteration: 2}, corereact.ToolCall{
 		Name: "long_tool",
 	}, coretool.Output{Text: fullObservation}, nil)
 

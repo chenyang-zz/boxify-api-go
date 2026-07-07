@@ -1,4 +1,4 @@
-package agent
+package react
 
 import (
 	"context"
@@ -294,6 +294,23 @@ func TestAgentRunReturnsToolCallingErrorWhenFallbackDisabled(t *testing.T) {
 	}
 }
 
+// 验证点：react 公开的 State、Result、NoopHooks 等 alias 仍能作为调用方 hooks 类型使用。
+func TestReactAliasesExposeBaseTypes(t *testing.T) {
+	var hooks Hooks = NoopHooks{}
+	state := State{Iteration: 1, LastDecision: Decision{ActionInput: coretool.Input{"query": "hello"}}}
+	result := Result{Steps: []Step{{ActionInput: coretool.Input{"query": "hello"}}}, StoppedBy: StopFinalAnswer}
+
+	if err := hooks.BeforeRun(context.Background(), state); err != nil {
+		t.Fatalf("NoopHooks.BeforeRun() error = %v, want nil", err)
+	}
+	if err := hooks.AfterRun(context.Background(), result, nil); err != nil {
+		t.Fatalf("NoopHooks.AfterRun() error = %v, want nil", err)
+	}
+	if state.LastDecision.ActionInput["query"] != "hello" || result.Steps[0].ActionInput["query"] != "hello" {
+		t.Fatalf("aliases state/result = %#v/%#v, want preserved values", state, result)
+	}
+}
+
 type fakeAgentLLM struct {
 	outputs  []string
 	err      error
@@ -413,16 +430,7 @@ func (h *recordingHooks) OnError(ctx context.Context, state State, err error) er
 }
 
 func cloneMessages(messages []*llm.Message) []*llm.Message {
-	out := make([]*llm.Message, 0, len(messages))
-	for _, message := range messages {
-		if message == nil {
-			out = append(out, nil)
-			continue
-		}
-		copied := *message
-		out = append(out, &copied)
-	}
-	return out
+	return llm.CloneMessages(messages)
 }
 
 func cloneToolCallingInput(input ToolCallingInput) ToolCallingInput {

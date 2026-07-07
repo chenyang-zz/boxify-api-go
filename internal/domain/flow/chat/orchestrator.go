@@ -7,7 +7,7 @@ import (
 
 	"log/slog"
 
-	coreagent "github.com/boxify/api-go/internal/core/agent"
+	corereact "github.com/boxify/api-go/internal/core/agent/react"
 	"github.com/boxify/api-go/internal/core/llm"
 	coretool "github.com/boxify/api-go/internal/core/tool"
 	flow "github.com/boxify/api-go/internal/domain/flow"
@@ -91,14 +91,14 @@ func (o *Orchestrator) generate(ctx context.Context, input Input, events chan<- 
 	}
 
 	hooks := &agentHooks{events: events}
-	options := []coreagent.Option{
-		coreagent.WithHooks(hooks),
-		coreagent.WithModelOptions(llm.WithTemperature(input.Temperature)),
+	options := []corereact.Option{
+		corereact.WithHooks(hooks),
+		corereact.WithModelOptions(llm.WithTemperature(input.Temperature)),
 	}
 	if strings.TrimSpace(input.SystemPrompt) != "" {
-		options = append(options, coreagent.WithSystemPrompt(strings.TrimSpace(input.SystemPrompt)))
+		options = append(options, corereact.WithSystemPrompt(strings.TrimSpace(input.SystemPrompt)))
 	}
-	result, err := coreagent.New(client, registry, options...).Run(runCtx, coreagent.Input{
+	result, err := corereact.New(client, registry, options...).Run(runCtx, corereact.Input{
 		Query:    composeQuery(input.Message, input.Attachments),
 		Messages: history,
 	})
@@ -193,19 +193,19 @@ func composeQuery(message string, attachments []*types.MessageAttachment) string
 }
 
 type agentHooks struct {
-	coreagent.NoopHooks
+	corereact.NoopHooks
 	events          chan<- flow.Message
 	lastModelOutput string
 }
 
-func (h *agentHooks) AfterModel(ctx context.Context, state coreagent.State, output string, modelErr error) error {
+func (h *agentHooks) AfterModel(ctx context.Context, state corereact.State, output string, modelErr error) error {
 	if strings.TrimSpace(output) != "" {
 		h.lastModelOutput = strings.TrimSpace(output)
 	}
 	return nil
 }
 
-func (h *agentHooks) BeforeTool(ctx context.Context, state coreagent.State, call coreagent.ToolCall) error {
+func (h *agentHooks) BeforeTool(ctx context.Context, state corereact.State, call corereact.ToolCall) error {
 	return h.emit(ctx, &flow.ToolCallMessage{
 		Tool:       call.Name,
 		Input:      cloneToolInput(call.Input),
@@ -214,7 +214,7 @@ func (h *agentHooks) BeforeTool(ctx context.Context, state coreagent.State, call
 	})
 }
 
-func (h *agentHooks) AfterTool(ctx context.Context, state coreagent.State, call coreagent.ToolCall, output coretool.Output, toolErr error) error {
+func (h *agentHooks) AfterTool(ctx context.Context, state corereact.State, call corereact.ToolCall, output coretool.Output, toolErr error) error {
 	if toolErr != nil {
 		return toolErr
 	}

@@ -1,14 +1,14 @@
-package agent_test
+package react_test
 
 import (
 	"testing"
 
-	"github.com/boxify/api-go/internal/core/agent"
+	"github.com/boxify/api-go/internal/core/agent/react"
 )
 
 // 验证点：兼容函数 ParseReactAction 应复用 ReActParser 解析 JSON object 输入。
 func TestParseReactAction(t *testing.T) {
-	action, ok := agent.ParseReactAction(`Thought: need memory
+	action, ok := react.ParseReactAction(`Thought: need memory
 Action: memory_search
 Action Input: {"query":"user preference"}`)
 	if !ok {
@@ -24,7 +24,7 @@ Action Input: {"query":"user preference"}`)
 
 // 验证点：兼容函数 ParseReactFinal 应复用 ReActParser 解析最终答案。
 func TestParseReactFinalAnswer(t *testing.T) {
-	final, ok := agent.ParseReactFinal("Thought: enough\nFinal Answer: hello world")
+	final, ok := react.ParseReactFinal("Thought: enough\nFinal Answer: hello world")
 	if !ok {
 		t.Fatal("expected final answer")
 	}

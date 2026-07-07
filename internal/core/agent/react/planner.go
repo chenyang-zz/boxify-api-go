@@ -1,4 +1,4 @@
-package agent
+package react
 
 import (
 	"context"
@@ -202,7 +202,7 @@ func (p *AutoPlanner) modelMessages(ctx context.Context, state State) ([]*llm.Me
 }
 
 func toolCallingMessages(input Input) []*llm.Message {
-	messages := cloneLLMMessages(input.Messages)
+	messages := llm.CloneMessages(input.Messages)
 	if strings.TrimSpace(input.Query) == "" {
 		return messages
 	}

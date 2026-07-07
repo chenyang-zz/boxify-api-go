@@ -1,4 +1,4 @@
-package agent
+package react
 
 import (
 	"context"
@@ -43,7 +43,7 @@ func (b *ReActPromptBuilder) Build(ctx context.Context, state State) ([]*llm.Mes
 	system = system + "\n\nAvailable tools:\n" + formatTools(state.Tools)
 
 	messages := []*llm.Message{llm.SystemMessage(system)}
-	messages = append(messages, cloneLLMMessages(state.Input.Messages)...)
+	messages = append(messages, llm.CloneMessages(state.Input.Messages)...)
 	userContent := strings.TrimSpace(state.Input.Query)
 	if userContent != "" {
 		messages = append(messages, llm.UserMessage(userContent))
