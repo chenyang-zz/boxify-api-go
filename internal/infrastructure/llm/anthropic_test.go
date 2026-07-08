@@ -146,6 +146,80 @@ func TestAnthropicClientInvokeResultMapsRichResponse(t *testing.T) {
 	}
 }
 
+// 验证 Anthropic InvokeWithTools 会把工具定义、工具选择和历史工具结果映射到请求体。
+func TestAnthropicClientInvokeWithToolsSendsToolHistory(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id":"msg_456",
+			"type":"message",
+			"role":"assistant",
+			"model":"claude-sonnet-4-5",
+			"content":[{"type":"text","text":"done"}],
+			"stop_reason":"end_turn",
+			"usage":{"input_tokens":4,"output_tokens":2}
+		}`))
+	}))
+	defer server.Close()
+
+	client := infra.NewAnthropicLLMClient("sk-ant", "claude-sonnet-4-5", infra.WithAnthropicBaseURL(server.URL))
+	result, err := client.(corellm.ToolCallingClient).InvokeWithTools(context.Background(),
+		[]*corellm.Message{
+			corellm.UserMessage("time?"),
+			{
+				Role: corellm.AssistantRole,
+				ToolCalls: []corellm.LLMToolCall{
+					{ID: "toolu_1", Name: "current_time", RawInput: `{"zone":"UTC"}`, Input: coretool.Input{"zone": "UTC"}},
+				},
+			},
+			{Role: corellm.ToolRole, ToolCallID: "toolu_1", ToolName: "current_time", Content: "12:00"},
+		},
+		corellm.WithTools(coretool.Descriptor{
+			Name:        "current_time",
+			Description: "get current time",
+			Schema: coretool.Schema{Parameters: coretool.ParametersSchema{
+				Type:       "object",
+				Properties: map[string]coretool.PropertySchema{"zone": {"type": "string"}},
+				Required:   []string{"zone"},
+			}},
+		}),
+		corellm.WithToolChoiceAuto(),
+	)
+	if err != nil {
+		t.Fatalf("InvokeWithTools error = %v, want nil", err)
+	}
+	if result.Text != "done" || result.ID != "msg_456" {
+		t.Fatalf("InvokeWithTools result = %#v, want done msg_456", result)
+	}
+	messages, ok := requestBody["messages"].([]any)
+	if !ok || len(messages) != 3 {
+		t.Fatalf("request messages = %#v, want user assistant tool_result", requestBody["messages"])
+	}
+	assistant := messages[1].(map[string]any)
+	assistantContent := assistant["content"].([]any)
+	toolUse := assistantContent[0].(map[string]any)
+	if assistant["role"] != "assistant" || toolUse["type"] != "tool_use" || toolUse["id"] != "toolu_1" || toolUse["name"] != "current_time" {
+		t.Fatalf("assistant message = %#v, want current_time tool_use", assistant)
+	}
+	toolResultMessage := messages[2].(map[string]any)
+	toolResultContent := toolResultMessage["content"].([]any)
+	toolResult := toolResultContent[0].(map[string]any)
+	toolResultText := toolResult["content"].([]any)[0].(map[string]any)
+	if toolResultMessage["role"] != "user" || toolResult["type"] != "tool_result" || toolResult["tool_use_id"] != "toolu_1" || toolResultText["text"] != "12:00" {
+		t.Fatalf("tool result message = %#v, want toolu_1 result 12:00", toolResultMessage)
+	}
+	if _, ok := requestBody["tools"].([]any); !ok {
+		t.Fatalf("request tools = %#v, want tools from WithTools", requestBody["tools"])
+	}
+	if requestBody["tool_choice"].(map[string]any)["type"] != "auto" {
+		t.Fatalf("request tool_choice = %#v, want auto", requestBody["tool_choice"])
+	}
+}
+
 // 验证 Anthropic Invoke 会使用默认最大 token。
 func TestAnthropicClientInvokeUsesDefaultMaxTokens(t *testing.T) {
 	var requestBody map[string]any

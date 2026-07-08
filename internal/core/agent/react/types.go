@@ -120,31 +120,3 @@ type ToolCallingPlanner interface {
 	Planner
 	SupportsToolCalling() bool
 }
-
-// ToolCallingClient 是 agent 消费侧定义的原生工具调用模型接口。
-//
-// 具体供应商 adapter 负责把 ToolCallingInput 转换成 OpenAI、Anthropic 或其他模型
-// 的消息格式，并把模型返回的 tool call 转成 ToolCallingOutput。
-type ToolCallingClient interface {
-	InvokeWithTools(ctx context.Context, input ToolCallingInput, opts ...llm.ModelCallOption) (ToolCallingOutput, error)
-}
-
-// ToolCallingInput 表示一次原生工具调用模型请求。
-type ToolCallingInput struct {
-	Messages []*llm.Message
-	Tools    []coretool.Descriptor
-	Steps    []Step
-}
-
-// ToolCallingOutput 表示原生工具调用模型输出。
-type ToolCallingOutput struct {
-	Content   string
-	ToolCalls []ModelToolCall
-}
-
-// ModelToolCall 表示模型请求执行的一次工具调用。
-type ModelToolCall struct {
-	ID    string
-	Name  string
-	Input coretool.Input
-}

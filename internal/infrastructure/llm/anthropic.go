@@ -145,6 +145,10 @@ func (c *anthropicLLMClient) InvokeResult(ctx context.Context, messages []*corel
 	}, nil
 }
 
+func (c *anthropicLLMClient) InvokeWithTools(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (*corellm.LLMResult, error) {
+	return c.InvokeResult(ctx, messages, opts...)
+}
+
 func (c *anthropicLLMClient) Stream(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (<-chan string, error) {
 	if err := c.validateChatConfig(); err != nil {
 		return nil, err
@@ -280,17 +284,51 @@ func toAnthropicMessages(messages []*corellm.Message) ([]anthropic.MessageParam,
 	out := make([]anthropic.MessageParam, 0, len(messages))
 	system := make([]anthropic.TextBlockParam, 0)
 	for _, m := range messages {
-		if m == nil || strings.TrimSpace(m.Content) == "" {
+		if m == nil {
+			continue
+		}
+		if strings.TrimSpace(m.Content) == "" && len(m.ToolCalls) == 0 && m.Role != corellm.ToolRole {
 			continue
 		}
 		switch m.Role {
 		case corellm.SystemRole:
 			system = append(system, anthropic.TextBlockParam{Text: m.Content})
 		case corellm.AssistantRole:
-			out = append(out, anthropic.NewAssistantMessage(anthropic.NewTextBlock(m.Content)))
+			blocks := make([]anthropic.ContentBlockParamUnion, 0, len(m.ToolCalls)+1)
+			if m.Content != "" {
+				blocks = append(blocks, anthropic.NewTextBlock(m.Content))
+			}
+			for _, call := range m.ToolCalls {
+				name := strings.TrimSpace(call.Name)
+				id := strings.TrimSpace(call.ID)
+				if name == "" || id == "" {
+					continue
+				}
+				blocks = append(blocks, anthropic.NewToolUseBlock(id, anthropicToolInput(call), name))
+			}
+			if len(blocks) > 0 {
+				out = append(out, anthropic.NewAssistantMessage(blocks...))
+			}
+		case corellm.ToolRole:
+			if strings.TrimSpace(m.ToolCallID) == "" {
+				continue
+			}
+			out = append(out, anthropic.NewUserMessage(anthropic.NewToolResultBlock(strings.TrimSpace(m.ToolCallID), m.Content, false)))
 		default:
 			out = append(out, anthropic.NewUserMessage(anthropic.NewTextBlock(m.Content)))
 		}
 	}
 	return out, system
 }
+
+func anthropicToolInput(call corellm.LLMToolCall) any {
+	if len(call.Input) > 0 {
+		return call.Input
+	}
+	if input := parseToolInput(call.RawInput); len(input) > 0 {
+		return input
+	}
+	return map[string]any{}
+}
+
+var _ corellm.ToolCallingClient = (*anthropicLLMClient)(nil)

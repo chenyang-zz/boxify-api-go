@@ -22,3 +22,12 @@ type Client interface {
 	// Vision(ctxt context.Context, prompt string) (string, error)
 	// Rerank(ctx context.Context, query string, documents []string, top_n int) error
 }
+
+// ToolCallingClient 表示支持原生工具调用的模型客户端。
+//
+// 工具描述和工具选择策略通过 ModelCallOption 传入，例如 WithTools 和 WithToolChoice。
+// messages 可以携带 assistant 工具调用消息和 tool 工具结果消息，由具体 provider 适配成
+// OpenAI、Anthropic 等供应商格式。
+type ToolCallingClient interface {
+	InvokeWithTools(ctx context.Context, messages []*Message, opts ...ModelCallOption) (*LLMResult, error)
+}

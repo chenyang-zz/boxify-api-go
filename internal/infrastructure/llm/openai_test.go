@@ -216,6 +216,74 @@ func TestOpenAIClientInvokeResultMapsRichResponse(t *testing.T) {
 	}
 }
 
+// 验证 OpenAI InvokeWithTools 会把工具定义、工具选择和历史工具结果映射到请求体。
+func TestOpenAIClientInvokeWithToolsSendsToolHistory(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id":"chatcmpl_456",
+			"model":"chat-model",
+			"choices":[{"finish_reason":"stop","message":{"content":"done"}}],
+			"usage":{"prompt_tokens":4,"completion_tokens":2,"total_tokens":6}
+		}`))
+	}))
+	defer server.Close()
+
+	client := infra.NewOpenaiLLMClient("sk-test", "chat-model", infra.WithBaseURL(server.URL+"/v1"))
+	result, err := client.(corellm.ToolCallingClient).InvokeWithTools(context.Background(),
+		[]*corellm.Message{
+			corellm.UserMessage("time?"),
+			{
+				Role: corellm.AssistantRole,
+				ToolCalls: []corellm.LLMToolCall{
+					{ID: "call_1", Name: "current_time", RawInput: `{"zone":"UTC"}`, Input: coretool.Input{"zone": "UTC"}},
+				},
+			},
+			{Role: corellm.ToolRole, ToolCallID: "call_1", ToolName: "current_time", Content: "12:00"},
+		},
+		corellm.WithTools(coretool.Descriptor{
+			Name:        "current_time",
+			Description: "get current time",
+			Schema: coretool.Schema{Parameters: coretool.ParametersSchema{
+				Type:       "object",
+				Properties: map[string]coretool.PropertySchema{"zone": {"type": "string"}},
+				Required:   []string{"zone"},
+			}},
+		}),
+		corellm.WithToolChoiceAuto(),
+	)
+	if err != nil {
+		t.Fatalf("InvokeWithTools error = %v, want nil", err)
+	}
+	if result.Text != "done" || result.ID != "chatcmpl_456" {
+		t.Fatalf("InvokeWithTools result = %#v, want done chatcmpl_456", result)
+	}
+	messages, ok := requestBody["messages"].([]any)
+	if !ok || len(messages) != 3 {
+		t.Fatalf("request messages = %#v, want user assistant tool", requestBody["messages"])
+	}
+	assistant := messages[1].(map[string]any)
+	calls := assistant["tool_calls"].([]any)
+	call := calls[0].(map[string]any)
+	if assistant["role"] != "assistant" || call["id"] != "call_1" || call["function"].(map[string]any)["name"] != "current_time" {
+		t.Fatalf("assistant message = %#v, want current_time tool call", assistant)
+	}
+	toolMessage := messages[2].(map[string]any)
+	if toolMessage["role"] != "tool" || toolMessage["tool_call_id"] != "call_1" || toolMessage["content"] != "12:00" {
+		t.Fatalf("tool message = %#v, want call_1 result 12:00", toolMessage)
+	}
+	if _, ok := requestBody["tools"].([]any); !ok {
+		t.Fatalf("request tools = %#v, want tools from WithTools", requestBody["tools"])
+	}
+	if requestBody["tool_choice"] != "auto" {
+		t.Fatalf("request tool_choice = %#v, want auto", requestBody["tool_choice"])
+	}
+}
+
 func TestOpenAIClientStreamReadsSSEDeltaContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")

@@ -136,6 +136,10 @@ func (c *openaiLLMClient) InvokeResult(ctx context.Context, messages []*corellm.
 	}, nil
 }
 
+func (c *openaiLLMClient) InvokeWithTools(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (*corellm.LLMResult, error) {
+	return c.InvokeResult(ctx, messages, opts...)
+}
+
 func (c *openaiLLMClient) Stream(ctx context.Context, messages []*corellm.Message, opts ...corellm.ModelCallOption) (<-chan string, error) {
 	if err := c.validateChatConfig(); err != nil {
 		return nil, err
@@ -385,11 +389,24 @@ func toOpenAIMessages(messages []*corellm.Message) []openai.ChatCompletionMessag
 				},
 			})
 		case corellm.AssistantRole:
+			assistant := &openai.ChatCompletionAssistantMessageParam{}
+			if m.Content != "" {
+				assistant.Content = openai.ChatCompletionAssistantMessageParamContentUnion{
+					OfString: openai.String(m.Content),
+				}
+			}
+			assistant.ToolCalls = toOpenAIToolCallParams(m.ToolCalls)
+			out = append(out, openai.ChatCompletionMessageParamUnion{OfAssistant: assistant})
+		case corellm.ToolRole:
+			if strings.TrimSpace(m.ToolCallID) == "" {
+				continue
+			}
 			out = append(out, openai.ChatCompletionMessageParamUnion{
-				OfAssistant: &openai.ChatCompletionAssistantMessageParam{
-					Content: openai.ChatCompletionAssistantMessageParamContentUnion{
+				OfTool: &openai.ChatCompletionToolMessageParam{
+					Content: openai.ChatCompletionToolMessageParamContentUnion{
 						OfString: openai.String(m.Content),
 					},
+					ToolCallID: strings.TrimSpace(m.ToolCallID),
 				},
 			})
 		default:
@@ -404,3 +421,43 @@ func toOpenAIMessages(messages []*corellm.Message) []openai.ChatCompletionMessag
 	}
 	return out
 }
+
+func toOpenAIToolCallParams(calls []corellm.LLMToolCall) []openai.ChatCompletionMessageToolCallUnionParam {
+	if len(calls) == 0 {
+		return nil
+	}
+	out := make([]openai.ChatCompletionMessageToolCallUnionParam, 0, len(calls))
+	for _, call := range calls {
+		name := strings.TrimSpace(call.Name)
+		id := strings.TrimSpace(call.ID)
+		if name == "" || id == "" {
+			continue
+		}
+		out = append(out, openai.ChatCompletionMessageToolCallUnionParam{
+			OfFunction: &openai.ChatCompletionMessageFunctionToolCallParam{
+				ID: id,
+				Function: openai.ChatCompletionMessageFunctionToolCallFunctionParam{
+					Name:      name,
+					Arguments: toolCallRawInput(call),
+				},
+			},
+		})
+	}
+	return out
+}
+
+func toolCallRawInput(call corellm.LLMToolCall) string {
+	if strings.TrimSpace(call.RawInput) != "" {
+		return call.RawInput
+	}
+	if len(call.Input) == 0 {
+		return "{}"
+	}
+	data, err := json.Marshal(call.Input)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+var _ corellm.ToolCallingClient = (*openaiLLMClient)(nil)

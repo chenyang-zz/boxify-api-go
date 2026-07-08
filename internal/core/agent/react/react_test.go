@@ -276,7 +276,7 @@ func TestAgentRunEmitsTransitionHooks(t *testing.T) {
 func TestAgentRunUsesToolCallingClientByDefault(t *testing.T) {
 	ctx := context.Background()
 	model := &fakeToolCallingLLM{
-		toolOutputs: []ToolCallingOutput{{Content: "tool calling final"}},
+		toolOutputs: []*llm.LLMResult{{Text: "tool calling final"}},
 	}
 
 	result, err := New(model, coretool.NewRegistry()).Run(ctx, Input{Query: "answer"})
@@ -289,6 +289,9 @@ func TestAgentRunUsesToolCallingClientByDefault(t *testing.T) {
 	if len(model.toolInputs) != 1 {
 		t.Fatalf("ToolCallingClient.InvokeWithTools calls = %d, want 1", len(model.toolInputs))
 	}
+	if len(model.toolOptions) != 1 {
+		t.Fatalf("ToolCallingClient.InvokeWithTools opts = %d, want 1", len(model.toolOptions))
+	}
 	if len(model.messages) != 0 {
 		t.Fatalf("llm.Client.Invoke calls = %d, want 0", len(model.messages))
 	}
@@ -298,9 +301,9 @@ func TestAgentRunUsesToolCallingClientByDefault(t *testing.T) {
 func TestAgentRunExecutesFunctionToolCallAndFeedsSteps(t *testing.T) {
 	ctx := context.Background()
 	model := &fakeToolCallingLLM{
-		toolOutputs: []ToolCallingOutput{
-			{ToolCalls: []ModelToolCall{{ID: "call_1", Name: "current_time", Input: coretool.Input{"zone": "UTC"}}}},
-			{Content: "It is noon."},
+		toolOutputs: []*llm.LLMResult{
+			{ToolCalls: []llm.LLMToolCall{{ID: "call_1", Name: "current_time", Input: coretool.Input{"zone": "UTC"}}}},
+			{Text: "It is noon."},
 		},
 	}
 	registry := coretool.NewRegistry()
@@ -321,8 +324,23 @@ func TestAgentRunExecutesFunctionToolCallAndFeedsSteps(t *testing.T) {
 	if len(result.Steps) != 2 || result.Steps[0].Observation != "12:00" || result.Steps[0].ToolCallID != "call_1" {
 		t.Fatalf("Agent.Run(function tool call).Steps = %#v, want observation 12:00 and tool call id call_1", result.Steps)
 	}
-	if len(model.toolInputs) != 2 || len(model.toolInputs[1].Steps) != 1 || model.toolInputs[1].Steps[0].Observation != "12:00" {
-		t.Fatalf("second ToolCallingInput = %#v, want previous observation 12:00", model.toolInputs)
+	if len(model.toolInputs) != 2 {
+		t.Fatalf("ToolCallingClient.InvokeWithTools calls = %d, want 2", len(model.toolInputs))
+	}
+	secondMessages := model.toolInputs[1]
+	if len(secondMessages) < 3 {
+		t.Fatalf("second tool calling messages = %#v, want history with tool call and result", secondMessages)
+	}
+	assistant := secondMessages[len(secondMessages)-2]
+	toolResult := secondMessages[len(secondMessages)-1]
+	if len(assistant.ToolCalls) != 1 || assistant.ToolCalls[0].ID != "call_1" || assistant.ToolCalls[0].Name != "current_time" {
+		t.Fatalf("assistant tool call message = %#v, want call_1 current_time", assistant)
+	}
+	if toolResult.Role != llm.ToolRole || toolResult.ToolCallID != "call_1" || toolResult.ToolName != "current_time" || toolResult.Content != "12:00" {
+		t.Fatalf("tool result message = %#v, want call_1 current_time observation 12:00", toolResult)
+	}
+	if len(model.toolOptions) != 2 || len(model.toolOptions[1].Tools) != 1 || model.toolOptions[1].Tools[0].Name != "current_time" {
+		t.Fatalf("tool calling options = %#v, want current_time passed through WithTools", model.toolOptions)
 	}
 }
 
@@ -331,7 +349,7 @@ func TestAgentRunDisablesToolCalling(t *testing.T) {
 	ctx := context.Background()
 	model := &fakeToolCallingLLM{
 		fakeAgentLLM: fakeAgentLLM{outputs: []string{"Thought: done\nFinal Answer: react final"}},
-		toolOutputs:  []ToolCallingOutput{{Content: "tool calling final"}},
+		toolOutputs:  []*llm.LLMResult{{Text: "tool calling final"}},
 	}
 
 	result, err := New(model, coretool.NewRegistry(), WithToolCallingEnabled(false)).Run(ctx, Input{Query: "answer"})
@@ -454,18 +472,20 @@ func (f *fakeAgentLLM) EmbedOne(ctx context.Context, text string, dimensions int
 
 type fakeToolCallingLLM struct {
 	fakeAgentLLM
-	toolOutputs []ToolCallingOutput
+	toolOutputs []*llm.LLMResult
 	toolErr     error
-	toolInputs  []ToolCallingInput
+	toolInputs  [][]*llm.Message
+	toolOptions []llm.ModelCallOptions
 }
 
-func (f *fakeToolCallingLLM) InvokeWithTools(ctx context.Context, input ToolCallingInput, opts ...llm.ModelCallOption) (ToolCallingOutput, error) {
-	f.toolInputs = append(f.toolInputs, cloneToolCallingInput(input))
+func (f *fakeToolCallingLLM) InvokeWithTools(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (*llm.LLMResult, error) {
+	f.toolInputs = append(f.toolInputs, cloneMessages(messages))
+	f.toolOptions = append(f.toolOptions, llm.NewChatOptions(opts...))
 	if f.toolErr != nil {
-		return ToolCallingOutput{}, f.toolErr
+		return nil, f.toolErr
 	}
 	if len(f.toolOutputs) == 0 {
-		return ToolCallingOutput{}, errors.New("no tool calling output")
+		return nil, errors.New("no tool calling output")
 	}
 	out := f.toolOutputs[0]
 	f.toolOutputs = f.toolOutputs[1:]
@@ -533,14 +553,6 @@ func (h *recordingHooks) OnError(ctx context.Context, state State, err error) er
 
 func cloneMessages(messages []*llm.Message) []*llm.Message {
 	return llm.CloneMessages(messages)
-}
-
-func cloneToolCallingInput(input ToolCallingInput) ToolCallingInput {
-	return ToolCallingInput{
-		Messages: cloneMessages(input.Messages),
-		Tools:    cloneToolDescriptors(input.Tools),
-		Steps:    cloneSteps(input.Steps),
-	}
 }
 
 func joinMessages(messages []*llm.Message) string {

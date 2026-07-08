@@ -2,11 +2,13 @@ package react
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/boxify/api-go/internal/core/llm"
+	coretool "github.com/boxify/api-go/internal/core/tool"
 )
 
 type plannerResult struct {
@@ -56,6 +58,7 @@ func (p *ReActTextPlanner) Plan(ctx context.Context, state State, opts ...llm.Mo
 	return result.Decision, nil
 }
 
+// planTrace 调用文本模型并解析 ReAct 决策。
 func (p *ReActTextPlanner) planTrace(ctx context.Context, state State, opts ...llm.ModelCallOption) (plannerResult, error) {
 	if p == nil {
 		return plannerResult{}, errors.New("react text planner is nil")
@@ -90,15 +93,15 @@ func (p *ReActTextPlanner) modelMessages(ctx context.Context, state State) ([]*l
 
 // FunctionCallingPlanner 使用模型原生工具调用能力生成决策。
 type FunctionCallingPlanner struct {
-	client ToolCallingClient
+	client llm.ToolCallingClient
 }
 
 // NewFunctionCallingPlanner 创建 function calling planner。
-func NewFunctionCallingPlanner(client ToolCallingClient) *FunctionCallingPlanner {
+func NewFunctionCallingPlanner(client llm.ToolCallingClient) *FunctionCallingPlanner {
 	return &FunctionCallingPlanner{client: client}
 }
 
-// SupportsToolCalling reports whether planner 持有可用的 ToolCallingClient。
+// SupportsToolCalling reports whether planner 持有可用的 llm.ToolCallingClient。
 func (p *FunctionCallingPlanner) SupportsToolCalling() bool {
 	return p != nil && p.client != nil
 }
@@ -112,16 +115,18 @@ func (p *FunctionCallingPlanner) Plan(ctx context.Context, state State, opts ...
 	return result.Decision, nil
 }
 
+// planTrace 调用支持工具调用的模型，并把输出规整为统一 Decision。
 func (p *FunctionCallingPlanner) planTrace(ctx context.Context, state State, opts ...llm.ModelCallOption) (plannerResult, error) {
 	if !p.SupportsToolCalling() {
 		return plannerResult{}, ErrToolCallingUnsupported
 	}
-	input := ToolCallingInput{
-		Messages: toolCallingMessages(state.Input),
-		Tools:    cloneToolDescriptors(state.Tools),
-		Steps:    cloneSteps(state.Steps),
+	messages := toolCallingMessages(state)
+	callOpts := make([]llm.ModelCallOption, 0, len(opts)+1)
+	callOpts = append(callOpts, opts...)
+	if len(state.Tools) > 0 {
+		callOpts = append(callOpts, llm.WithTools(state.Tools...))
 	}
-	output, err := p.client.InvokeWithTools(ctx, input, opts...)
+	output, err := p.client.InvokeWithTools(ctx, messages, callOpts...)
 	if err != nil {
 		return plannerResult{Output: outputSummary(output)}, err
 	}
@@ -136,7 +141,7 @@ func (p *FunctionCallingPlanner) planTrace(ctx context.Context, state State, opt
 }
 
 func (p *FunctionCallingPlanner) modelMessages(ctx context.Context, state State) ([]*llm.Message, error) {
-	return toolCallingMessages(state.Input), nil
+	return toolCallingMessages(state), nil
 }
 
 // AutoPlanner 按配置在 function calling 和文本 ReAct 之间选择执行路径。
@@ -149,12 +154,12 @@ type AutoPlanner struct {
 
 // NewAutoPlanner 创建自动选择 planner。
 //
-// 当 client 实现 ToolCallingClient 且 enabled 为 true 时优先使用 function calling；
+// 当 client 实现 llm.ToolCallingClient 且 enabled 为 true 时优先使用 function calling；
 // 否则直接使用文本 ReAct。function calling 返回 ErrToolCallingUnsupported 时，fallback
 // 为 true 会自动退回文本 ReAct。
 func NewAutoPlanner(client llm.Client, builder PromptBuilder, parser Parser, enabled bool, fallback bool) *AutoPlanner {
 	var toolPlanner *FunctionCallingPlanner
-	if toolClient, ok := client.(ToolCallingClient); ok {
+	if toolClient, ok := client.(llm.ToolCallingClient); ok {
 		toolPlanner = NewFunctionCallingPlanner(toolClient)
 	}
 	return &AutoPlanner{
@@ -201,18 +206,46 @@ func (p *AutoPlanner) modelMessages(ctx context.Context, state State) ([]*llm.Me
 	return p.reactPlanner.modelMessages(ctx, state)
 }
 
-func toolCallingMessages(input Input) []*llm.Message {
-	messages := llm.CloneMessages(input.Messages)
-	if strings.TrimSpace(input.Query) == "" {
-		return messages
+// toolCallingMessages 把当前对话历史规整为工具调用模型的输入。
+func toolCallingMessages(state State) []*llm.Message {
+	messages := llm.CloneMessages(state.Input.Messages)
+	if query := strings.TrimSpace(state.Input.Query); query != "" {
+		messages = append(messages, &llm.Message{
+			Role:    llm.UserRole,
+			Content: query,
+		})
 	}
-	return append(messages, &llm.Message{
-		Role:    llm.UserRole,
-		Content: input.Query,
-	})
+	for _, step := range state.Steps {
+		if strings.TrimSpace(step.Action) == "" || strings.TrimSpace(step.ToolCallID) == "" {
+			continue
+		}
+		// 原生工具调用模型需要看到上一轮 assistant tool_call 以及对应的 tool result。
+		messages = append(messages,
+			&llm.Message{
+				Role: llm.AssistantRole,
+				ToolCalls: []llm.LLMToolCall{{
+					ID:       step.ToolCallID,
+					Name:     strings.TrimSpace(step.Action),
+					Input:    cloneInput(step.ActionInput),
+					RawInput: rawToolInput(step.ActionInput),
+				}},
+			},
+			&llm.Message{
+				Role:       llm.ToolRole,
+				Content:    step.Observation,
+				ToolCallID: step.ToolCallID,
+				ToolName:   strings.TrimSpace(step.Action),
+			},
+		)
+	}
+	return messages
 }
 
-func decisionFromToolCallingOutput(output ToolCallingOutput) (Decision, error) {
+// decisionFromToolCallingOutput 把供应商无关的 LLMResult 规整成 ReAct 主循环决策。
+func decisionFromToolCallingOutput(output *llm.LLMResult) (Decision, error) {
+	if output == nil {
+		return Decision{}, fmt.Errorf("%w: empty tool calling output", ErrParseDecision)
+	}
 	if len(output.ToolCalls) > 0 {
 		call := output.ToolCalls[0]
 		return Decision{
@@ -222,24 +255,40 @@ func decisionFromToolCallingOutput(output ToolCallingOutput) (Decision, error) {
 			ToolCallID:  call.ID,
 		}, nil
 	}
-	if strings.TrimSpace(output.Content) == "" {
+	if strings.TrimSpace(output.Text) == "" {
 		return Decision{}, fmt.Errorf("%w: empty tool calling output", ErrParseDecision)
 	}
 	return Decision{
 		Kind:        DecisionFinal,
-		FinalAnswer: strings.TrimSpace(output.Content),
+		FinalAnswer: strings.TrimSpace(output.Text),
 	}, nil
 }
 
-func outputSummary(output ToolCallingOutput) string {
+// outputSummary 返回 hook 和调试链路可记录的简短模型输出摘要。
+func outputSummary(output *llm.LLMResult) string {
+	if output == nil {
+		return ""
+	}
 	if len(output.ToolCalls) == 0 {
-		return output.Content
+		return output.Text
 	}
 	names := make([]string, 0, len(output.ToolCalls))
 	for _, call := range output.ToolCalls {
 		names = append(names, call.Name)
 	}
 	return "tool_call:" + strings.Join(names, ",")
+}
+
+// rawToolInput 返回可回放给 provider 的工具调用 JSON 参数。
+func rawToolInput(input coretool.Input) string {
+	if len(input) == 0 {
+		return "{}"
+	}
+	data, err := json.Marshal(input)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }
 
 var _ Planner = (*ReActTextPlanner)(nil)

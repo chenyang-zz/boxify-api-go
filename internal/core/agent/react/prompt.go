@@ -44,6 +44,7 @@ func (b *ReActPromptBuilder) Build(ctx context.Context, state State) ([]*llm.Mes
 	return messages, nil
 }
 
+// renderSystemPrompt 渲染系统消息。
 func (b *ReActPromptBuilder) renderSystemPrompt(state State) (string, error) {
 	data := reactprompt.SystemData{
 		Tools:        toolDataFromDescriptors(state.Tools),
@@ -67,6 +68,7 @@ func toolDataFromDescriptors(tools []coretool.Descriptor) []reactprompt.ToolData
 	return out
 }
 
+// formatScratchpad 格式化 scratchpad。
 func formatScratchpad(steps []Step) string {
 	parts := make([]string, 0, len(steps))
 	for _, step := range steps {
