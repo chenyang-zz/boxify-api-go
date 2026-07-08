@@ -1,0 +1,19 @@
+cmd/codegen/README.md
+  s_8548d7e528694f::t_91fd0715d30035 3,5-8,10,12,14,16-43,46,48-134,136,138-220,223-226,242-274,276,278-285,287,289,291-313,316-323,325,328-334,337,339-432,435-524,526,528-533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4f3ad5913ffe8d0aea7d599f57d2afee610dfaa6",
+  "prompts": {},
+  "sessions": {
+    "s_8548d7e528694f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8548d7e528694f",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
