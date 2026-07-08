@@ -1,0 +1,55 @@
+.github/ISSUE_TEMPLATE/bug_report.yml
+  s_9bbbee736e8a3c::t_d6c9c49457e2d4 1-56
+.github/ISSUE_TEMPLATE/feature_request.yml
+  s_9bbbee736e8a3c::t_6661bf41dddbdd 1-38
+.github/PULL_REQUEST_TEMPLATE.md
+  s_9bbbee736e8a3c::t_a45a574d3ff1db 1-31
+.github/workflows/ci.yml
+  s_9bbbee736e8a3c::t_c09bc409b4ab90 1-62
+CHANGELOG.md
+  s_9bbbee736e8a3c::t_b9e941501de952 1-37
+CODE_OF_CONDUCT.md
+  s_9bbbee736e8a3c::t_f78c8c73edbcdf 1-43
+CONTRIBUTING.md
+  s_9bbbee736e8a3c::t_6e3ee3226a5225 1-112
+LICENSE
+  s_9bbbee736e8a3c::t_16b18c1cf0ffc1 1-21
+Makefile
+  s_9bbbee736e8a3c::t_cf8f7df7f63ada 1,21-26
+README.md
+  s_9bbbee736e8a3c::t_8b4a0dc2b1122d 357-394,396-411,413,417
+SECURITY.md
+  s_9bbbee736e8a3c::t_06782f6770fc83 1-28
+cmd/api/README.md
+  s_9bbbee736e8a3c::t_2f8ff8e982fbf3 1-33
+cmd/codegen/README.md
+  s_9bbbee736e8a3c::t_1af519d9071854 150
+cmd/codegen/generate_docs.go
+  s_9bbbee736e8a3c::t_6d89c8cc60be8d 49
+cmd/codegen/main.go
+  s_9bbbee736e8a3c::t_9c6e3ce320af34 139
+cmd/migration/README.md
+  s_9bbbee736e8a3c::t_0d1da6aaad84e0 1-30
+cmd/scheduler/README.md
+  s_9bbbee736e8a3c::t_42efbcba550da5 1-22
+cmd/worker/README.md
+  s_9bbbee736e8a3c::t_c8e719a625540a 1-37
+internal/transport/http/router.go
+  s_9bbbee736e8a3c::t_32fc399f6b0a7a 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cba1be002d8f01de08f16bfa0b4197e8c5d18575",
+  "prompts": {},
+  "sessions": {
+    "s_9bbbee736e8a3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_9bbbee736e8a3c",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
