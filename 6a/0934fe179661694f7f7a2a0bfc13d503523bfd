@@ -1,0 +1,52 @@
+internal/infrastructure/llm/openai.go
+  s_a5f282227fb606::t_502b767c6f160f 139-142,392-403,405-406,409,424-463
+internal/infrastructure/llm/anthropic_test.go
+  s_a5f282227fb606::t_86e26ade3e8d49 149-210,213-222
+  s_a5f282227fb606::t_665acfe8d1f6ce 211-212
+internal/core/agent/react/prompt.go
+  h_e1f1392360ad67 47,71
+internal/core/llm/client.go
+  s_a5f282227fb606::t_db33d2b80fd18b 25-33
+internal/infrastructure/llm/openai_test.go
+  s_a5f282227fb606::t_22d8d9c1d59849 219-286
+internal/core/llm/message.go
+  s_a5f282227fb606::t_4be14d93410f26 3-4,62,66
+  s_a5f282227fb606::t_9aff8d51ffa3c3 31-32,44,49-61,63-65,67-71
+internal/infrastructure/llm/anthropic.go
+  s_a5f282227fb606::t_6fb7f370e92ea0 287-290
+  s_a5f282227fb606::t_5b49c675d0b3fb 148-151,297-316,323-334
+internal/core/agent/react/planner.go
+  h_e1f1392360ad67 61,118,209
+  s_a5f282227fb606::t_e789a3c920de60 11
+  s_a5f282227fb606::t_dae4604060a4e9 244,267,282
+  s_a5f282227fb606::t_dabc306962186d 5,96,100,104,123-127,129,144,157,162,210-216,218-241,245-248,258,263,268-271,273,283-291
+  s_a5f282227fb606::t_283a255cfd24c3 292-293
+internal/core/llm/message_test.go
+  s_a5f282227fb606::t_b57757dc2e8820 10-22,27-29,31-32,43-48
+internal/core/llm/types.go
+  s_a5f282227fb606::t_05cd2d681a6cd6 17-20,22-26
+  s_a5f282227fb606::t_b118b453d1e9c1 3,7-11,13-14
+internal/core/agent/react/react_test.go
+  s_a5f282227fb606::t_a8eb1446520065 279,292-294,304-306,327-343,352,475,477-478,481-483,485,488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6a0934fe179661694f7f7a2a0bfc13d503523bfd",
+  "prompts": {},
+  "humans": {
+    "h_e1f1392360ad67": {
+      "author": "chenyang <904852749@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
