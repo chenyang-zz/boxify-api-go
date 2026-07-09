@@ -1,0 +1,71 @@
+internal/core/skill/types.go
+  s_f62bed105486b9::t_8d08b436aeb0b2 1-36
+AGENTS.md
+  s_f62bed105486b9::t_2cab6a018c9abe 4
+CLAUDE.md
+  s_f62bed105486b9::t_14296e5bf23aa7 4
+internal/core/skill/doc.go
+  s_f62bed105486b9::t_b57765ead3bf86 1-5
+internal/core/skill/document_test.go
+  s_f62bed105486b9::t_44793c2ef5a968 1-112
+internal/domain/skills/catalog.go
+  s_f62bed105486b9::t_52a15bd52b8d69 1-284
+internal/domain/skills/catalog_test.go
+  s_f62bed105486b9::t_36adcf867c234d 1-61
+internal/domain/skills/doc.go
+  s_f62bed105486b9::t_8af44afbb6d7cf 1-5
+internal/logic/skill/copy_builtin_skill.go
+  s_f62bed105486b9::t_0c9ce010d7aca0 5-7,34-48,51-56
+internal/logic/skill/create_skill.go
+  s_f62bed105486b9::t_f21e01c5b1a96b 41
+internal/logic/skill/list_builtin_skills.go
+  s_f62bed105486b9::t_19839f819f633b 5-6,33-36
+internal/logic/skill/skill_test.go
+  s_f62bed105486b9::t_d8f5d7445d1d9f 11,234-235,238-269,271-306
+internal/logic/skill/update_skill.go
+  s_f62bed105486b9::t_c147936081b753 68
+internal/mapper/skill.go
+  s_f62bed105486b9::t_6e79d81fbd6f5d 6,10,39-51,70-183,202
+internal/mapper/skill_test.go
+  s_f62bed105486b9::t_5f16316ec07c0f 6,45-163
+internal/svc/context.go
+  s_f62bed105486b9::t_5e23e7927f5005 18,75,103-106,123,255
+internal/transport/http/response/skill.go
+  s_f62bed105486b9::t_1f800fbef5ef4d 16
+internal/transport/http/router_test.go
+  s_f62bed105486b9::t_72ea9ea8c04dce 24,106-109,127,1456-1477
+internal/core/skill/document.go
+  s_3cff362bac5eb8::t_007cd594f826ad 1-198
+internal/domain/skills/builtin/kb_study/SKILL.md
+  s_3cff362bac5eb8::t_ddc7aab13a27ed 1-18
+internal/domain/skills/builtin/stock_analysis/SKILL.md
+  s_3cff362bac5eb8::t_f9e95ba920fdf6 1-18
+internal/domain/skills/builtin/translate_polish/SKILL.md
+  s_3cff362bac5eb8::t_ad89da0f3fcbfa 1-17
+internal/transport/http/response/auth.go
+  s_3cff362bac5eb8::t_7801f795887270 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c36aab5ada2fcfd135e70e926051e3b7e85e249",
+  "prompts": {},
+  "sessions": {
+    "s_3cff362bac5eb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_3cff362bac5eb8",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_f62bed105486b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f475b-5fc8-7762-a05c-e940c241c69b",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
