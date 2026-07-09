@@ -40,7 +40,7 @@ jobs:
           go-version: "1.25"
 
       - name: Run tests
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -race
 
   codegen-check:
     name: Codegen Check
@@ -60,3 +60,9 @@ jobs:
 
       - name: Check OpenAPI docs
         run: go run ./cmd/codegen docs --check --format json
+
+      - name: Check prompts
+        run: go run ./cmd/codegen prompt --check --format json
+
+      - name: Run doctor
+        run: go run ./cmd/codegen doctor --format json
