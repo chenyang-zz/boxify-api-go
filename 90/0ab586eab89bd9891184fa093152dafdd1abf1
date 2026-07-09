@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_78341a675698e4::t_3ef0ffef55b4de 43,63-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "900ab586eab89bd9891184fa093152dafdd1abf1",
+  "prompts": {},
+  "sessions": {
+    "s_78341a675698e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_78341a675698e4",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
