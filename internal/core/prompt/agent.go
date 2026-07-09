@@ -6,8 +6,8 @@
 
 // Package prompt 封装 agent 相关提示词入口。
 //
-// 本文件只负责把 agent 业务侧方法名映射到 prompt/agent 目录下的模板文件，模板读取
-// 和渲染仍由 Manager 统一处理。
+// 本文件只负责把 agent 业务侧方法名映射到 agent/... 逻辑模板名称，模板来源注册、
+// 读取和渲染仍由 Manager 统一处理。
 package prompt
 
 import "fmt"

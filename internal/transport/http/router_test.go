@@ -27,6 +27,7 @@ import (
 	"github.com/boxify/api-go/internal/infrastructure/realtime"
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/models"
+	appprompts "github.com/boxify/api-go/internal/prompts"
 	"github.com/boxify/api-go/internal/repository"
 	repositoryes "github.com/boxify/api-go/internal/repository/es"
 	"github.com/boxify/api-go/internal/svc"
@@ -96,6 +97,10 @@ func newTestRouterWithConfigAndOverrides(t *testing.T, cfg config.Config, config
 	ragChunkRepo := repositoryes.NewRAGChunkRepository(esClient, cfg.Rag.ChunkIndex)
 	llmManager := newTestLLMManager()
 	modelConfigRepo := &testModelConfigRepository{}
+	promptManager := prompt.NewManager("")
+	if err := appprompts.Register(promptManager); err != nil {
+		t.Fatalf("register prompts: %v", err)
+	}
 	svcCtx := &svc.ServiceContext{
 		Config:            cfg,
 		UserRepo:          newTestUserRepository(),
@@ -116,7 +121,7 @@ func newTestRouterWithConfigAndOverrides(t *testing.T, cfg config.Config, config
 		Realtime:          testRealtimeBroker{},
 		TaskProducer:      testTaskProducer{},
 		LLMManager:        llmManager,
-		PromptManager:     prompt.NewManager("../../prompts"),
+		PromptManager:     promptManager,
 		SecretCipher:      cipher,
 		TokenIssuer:       security.NewTokenIssuer("test-secret", time.Hour),
 	}

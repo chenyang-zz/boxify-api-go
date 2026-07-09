@@ -3,14 +3,19 @@
 // 这个包把模板来源和模板解析分离：Manager 适合长期持有多组模板来源，
 // Renderer 适合绑定单一文件系统来源，包级函数适合一次性读取或渲染。
 //
-// NewManager + RegisterFS + Render 示例：
+// 外部业务提示词注册与渲染示例：
 //
-//	manager := prompt.NewManager("internal/prompts")
-//	err := manager.RegisterFS("rag", ragprompt.Templates)
-//	out, err := manager.Render("rag/content_classifier.tmpl", ragprompt.ContentClassifierData{
-//		Existing: "技术、学习",
-//		Content:  "需要分类的正文",
+//	manager := prompt.NewManager("")
+//	err := appprompts.Register(manager)
+//	out, err := manager.Render("agent/optimize_prompt", prompt.OptimizePromptData{
+//		RawPrompt: "你是一个助手",
 //	})
+//
+// RegisterFS + Render 示例：
+//
+//	manager := prompt.NewManager("")
+//	err := manager.RegisterFS("rag", ragprompt.Templates)
+//	out, err := manager.Render("rag/content_classifier.tmpl", data)
 //
 // RegisterText + Render 示例：
 //

@@ -3,7 +3,6 @@ package svc
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/boxify/api-go/internal/infrastructure/security"
 	"github.com/boxify/api-go/internal/infrastructure/storage"
 	"github.com/boxify/api-go/internal/models"
+	appprompts "github.com/boxify/api-go/internal/prompts"
 	"github.com/boxify/api-go/internal/repository"
 	repositoryes "github.com/boxify/api-go/internal/repository/es"
 	"github.com/boxify/api-go/internal/repository/graph"
@@ -92,6 +92,11 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		return nil, xerr.BadRequest("JWT access token TTL 配置无效")
 	}
 
+	promptManager := prompt.NewManager("")
+	if err := appprompts.Register(promptManager); err != nil {
+		return nil, xerr.Wrapf(err, "注册提示词失败")
+	}
+
 	db, err := dbpostgres.NewGormDB(ctx, dbpostgres.Config{URL: cfg.Database.URL})
 	if err != nil {
 		return nil, err
@@ -103,7 +108,7 @@ func New(ctx context.Context, cfg config.Config) (*ServiceContext, error) {
 		SecretCipher: cipher,
 		TokenIssuer:  security.NewTokenIssuer(cfg.JWT.Secret, accessTokenTTL),
 
-		PromptManager:  prompt.NewManager(filepath.Join("internal", "prompts")),
+		PromptManager:  promptManager,
 		LLMManager:     BuildLLMManager(),
 		MCPToolService: coremcp.NewService(coremcp.Options{}),
 	}
@@ -197,10 +202,53 @@ func (s *ServiceContext) WithTx(ctx context.Context, fn func(txSvc *ServiceConte
 		return xerr.Internal("数据库未初始化", nil)
 	}
 	return s.GormDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		txSvc := *s
+		// 手动构造浅拷贝，避免复制 sync.Once（closeOnce）。
+		txSvc := newTxContext(s)
 		bindPostgresRepositories(&txSvc, tx)
 		return fn(&txSvc)
 	})
+}
+
+// newTxContext 返回仅包含事务内执行所需字段的浅拷贝，跳过 closeOnce 等锁字段。
+func newTxContext(s *ServiceContext) ServiceContext {
+	return ServiceContext{
+		Config:              s.Config,
+		Neo4j:               s.Neo4j,
+		Redis:               s.Redis,
+		Realtime:            s.Realtime,
+		TaskProducer:        s.TaskProducer,
+		Elasticsearch:       s.Elasticsearch,
+		Storage:             s.Storage,
+		URLSigner:           s.URLSigner,
+		UserRepo:            s.UserRepo,
+		RefreshTokenRepo:    s.RefreshTokenRepo,
+		MemoryGraphRepo:     s.MemoryGraphRepo,
+		ModelConfigRepo:     s.ModelConfigRepo,
+		ConversationRepo:    s.ConversationRepo,
+		MessageRepo:         s.MessageRepo,
+		MessageFeedbackRepo: s.MessageFeedbackRepo,
+		AgentConfigRepo:     s.AgentConfigRepo,
+		AgentPersonaRepo:    s.AgentPersonaRepo,
+		AgentTaskRepo:       s.AgentTaskRepo,
+		MCPServerRepo:       s.MCPServerRepo,
+		KnowledgeBaseRepo:   s.KnowledgeBaseRepo,
+		SkillRepo:           s.SkillRepo,
+		DocumentRepo:        s.DocumentRepo,
+		ImageRepo:           s.ImageRepo,
+		TagRepo:             s.TagRepo,
+		RAGChunkRepo:        s.RAGChunkRepo,
+		RAGSearcher:         s.RAGSearcher,
+		RAGClassifier:       s.RAGClassifier,
+		RAGDocumentParser:   s.RAGDocumentParser,
+		RAGChunker:          s.RAGChunker,
+		RAGWebCrawler:       s.RAGWebCrawler,
+		SecretCipher:        s.SecretCipher,
+		TokenIssuer:         s.TokenIssuer,
+		PromptManager:       s.PromptManager,
+		LLMManager:          s.LLMManager,
+		MCPToolService:      s.MCPToolService,
+		closeErr:            s.closeErr,
+	}
 }
 
 func (s *ServiceContext) Close(ctx context.Context) error {
