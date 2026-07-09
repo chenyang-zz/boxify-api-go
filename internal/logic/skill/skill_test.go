@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/boxify/api-go/internal/config"
 	corellm "github.com/boxify/api-go/internal/core/llm"
 	"github.com/boxify/api-go/internal/core/prompt"
 	domainskills "github.com/boxify/api-go/internal/domain/skills"
@@ -83,6 +84,42 @@ func TestCreateSkillRejectsForeignKnowledgeBase(t *testing.T) {
 	})
 	if xerr.From(err).Kind != xerr.KindNotFound {
 		t.Fatalf("CreateSkill foreign kb error kind = %v, want not_found", xerr.From(err).Kind)
+	}
+}
+
+// TestCreateSkillRejectsWhenUserReachesMaxCount 验证创建技能会在用户达到配置上限时拒绝写入。
+func TestCreateSkillRejectsWhenUserReachesMaxCount(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+	repo := newFakeSkillRepository(makeSkillRows(userID, 2)...)
+
+	_, err := NewCreateSkillLogic(ctx, &svc.ServiceContext{
+		Config:    config.Config{Skill: config.SkillConfig{MaxCount: 2}},
+		SkillRepo: repo,
+	}).CreateSkill(userID, &request.CreateSkillRequest{Name: "新技能"})
+	if xerr.From(err).Kind != xerr.KindBadRequest {
+		t.Fatalf("CreateSkill max count kind = %v, want bad_request", xerr.From(err).Kind)
+	}
+	if repo.created != nil {
+		t.Fatalf("CreateSkill created = %#v, want nil when max count reached", repo.created)
+	}
+}
+
+// TestCreateSkillUsesDefaultMaxCountWhenConfiguredInvalid 验证技能数量上限配置无效时会使用默认值兜底。
+func TestCreateSkillUsesDefaultMaxCountWhenConfiguredInvalid(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+	repo := newFakeSkillRepository(makeSkillRows(userID, defaultMaxSkillCount-1)...)
+
+	_, err := NewCreateSkillLogic(ctx, &svc.ServiceContext{
+		Config:    config.Config{Skill: config.SkillConfig{MaxCount: 0}},
+		SkillRepo: repo,
+	}).CreateSkill(userID, &request.CreateSkillRequest{Name: "新技能"})
+	if err != nil {
+		t.Fatalf("CreateSkill with invalid max count error = %v, want nil", err)
+	}
+	if repo.created == nil {
+		t.Fatalf("CreateSkill created = nil, want created before default max count is reached")
 	}
 }
 
@@ -293,6 +330,29 @@ func TestCopyBuiltinSkillCreatesUserEditableSkill(t *testing.T) {
 	}
 }
 
+// TestCopyBuiltinSkillRejectsWhenUserReachesMaxCount 验证复制内置技能也会受用户技能数量上限限制。
+func TestCopyBuiltinSkillRejectsWhenUserReachesMaxCount(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+	repo := newFakeSkillRepository(makeSkillRows(userID, 1)...)
+	registry, err := domainskills.NewRegistry()
+	if err != nil {
+		t.Fatalf("NewRegistry error = %v, want nil", err)
+	}
+
+	_, err = NewCopyBuiltinSkillLogic(ctx, &svc.ServiceContext{
+		Config:        config.Config{Skill: config.SkillConfig{MaxCount: 1}},
+		SkillRegistry: registry,
+		SkillRepo:     repo,
+	}).CopyBuiltinSkill(userID, &request.UriSkillIDRequest{ID: domainskills.IDKBStudy.String()})
+	if xerr.From(err).Kind != xerr.KindBadRequest {
+		t.Fatalf("CopyBuiltinSkill max count kind = %v, want bad_request", xerr.From(err).Kind)
+	}
+	if repo.created != nil {
+		t.Fatalf("CopyBuiltinSkill created = %#v, want nil when max count reached", repo.created)
+	}
+}
+
 // TestCopyBuiltinSkillRejectsUnknownBuiltinID 验证复制不存在的内置技能会返回 not_found。
 func TestCopyBuiltinSkillRejectsUnknownBuiltinID(t *testing.T) {
 	registry, err := domainskills.NewRegistry()
@@ -313,6 +373,14 @@ func stringPtr(v string) *string {
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func makeSkillRows(userID uuid.UUID, count int) []*models.Skill {
+	rows := make([]*models.Skill, 0, count)
+	for i := 0; i < count; i++ {
+		rows = append(rows, &models.Skill{ID: uuid.New(), UserID: userID, Name: "技能"})
+	}
+	return rows
 }
 
 func newSkillTestCipher(t *testing.T) *security.SecretCipher {

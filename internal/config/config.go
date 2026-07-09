@@ -25,6 +25,7 @@ type Config struct {
 	Rag           RagConfig           `yaml:"rag"`
 	Memory        MemoryConfig        `yaml:"memory"`
 	Agent         AgentConfig         `yaml:"agent"`
+	Skill         SkillConfig         `yaml:"skill"`
 }
 
 type AppConfig struct {
@@ -114,6 +115,10 @@ type AgentConfig struct {
 	MaxPersona int `yaml:"max_personas"`
 }
 
+type SkillConfig struct {
+	MaxCount int `yaml:"max_count"`
+}
+
 func Load() Config {
 	path := os.Getenv("CONFIG_PATH")
 	if path == "" {
@@ -179,6 +184,9 @@ func defaultConfig() Config {
 		Agent: AgentConfig{
 			MaxPersona: 200,
 		},
+		Skill: SkillConfig{
+			MaxCount: 200,
+		},
 	}
 }
 
@@ -220,6 +228,7 @@ func applyEnv(cfg *Config) {
 	cfg.LLM.APIKey = env("LLM_API_KEY", cfg.LLM.APIKey)
 	cfg.Rag.EmbeddingBatchSize = envInt("RAG_EMBEDDING_BATCH_SIZE", cfg.Rag.EmbeddingBatchSize)
 	cfg.Rag.ChunkIndex = env("RAG_CHUNK_INDEX", cfg.Rag.ChunkIndex)
+	cfg.Skill.MaxCount = envInt("SKILL_MAX_COUNT", cfg.Skill.MaxCount)
 }
 
 func env(key, fallback string) string {

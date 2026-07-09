@@ -8,6 +8,7 @@ import (
 	"github.com/boxify/api-go/internal/config"
 )
 
+// TestLoadFileUsesDefaultsWhenYAMLIsMissing 验证缺省配置包含运行所需的默认值。
 func TestLoadFileUsesDefaultsWhenYAMLIsMissing(t *testing.T) {
 	// 验证缺省配置包含 RAG chunk 索引、向量维度和 embedding 批次大小默认值，便于文档解析直接使用。
 	cfg, err := config.LoadFile(filepath.Join(t.TempDir(), "missing.yml"))
@@ -27,8 +28,12 @@ func TestLoadFileUsesDefaultsWhenYAMLIsMissing(t *testing.T) {
 	if cfg.Rag.ChunkIndex != "cove_chunks" || cfg.Rag.EmbeddingDim != 1024 || cfg.Rag.EmbeddingBatchSize != 10 {
 		t.Fatalf("rag defaults = %#v, want cove_chunks/1024/batch=10", cfg.Rag)
 	}
+	if cfg.Skill.MaxCount != 200 {
+		t.Fatalf("skill max count = %d, want 200", cfg.Skill.MaxCount)
+	}
 }
 
+// TestLoadFileReadsNestedYAML 验证嵌套 YAML 配置可以覆盖默认值。
 func TestLoadFileReadsNestedYAML(t *testing.T) {
 	// 验证 YAML 中的 RAG 配置可以覆盖默认 chunk 索引、向量维度和 embedding 批次大小。
 	path := writeConfig(t, `
@@ -82,6 +87,8 @@ rag:
   embedding_dim: 1536
   embedding_batch_size: 8
   chunk_index: yaml_chunks
+skill:
+  max_count: 12
 `)
 
 	cfg, err := config.LoadFile(path)
@@ -119,8 +126,12 @@ rag:
 	if cfg.Rag.EmbeddingDim != 1536 || cfg.Rag.EmbeddingBatchSize != 8 || cfg.Rag.ChunkIndex != "yaml_chunks" {
 		t.Fatalf("cfg rag = %#v", cfg.Rag)
 	}
+	if cfg.Skill.MaxCount != 12 {
+		t.Fatalf("cfg skill = %#v, want max_count=12", cfg.Skill)
+	}
 }
 
+// TestLoadFileEnvOverridesYAML 验证环境变量可以覆盖 YAML 配置。
 func TestLoadFileEnvOverridesYAML(t *testing.T) {
 	// 验证环境变量可以覆盖 RAG chunk 索引和 embedding 批次大小，便于不同模型供应商使用不同限制。
 	t.Setenv("APP_ENV", "test")
@@ -160,6 +171,7 @@ func TestLoadFileEnvOverridesYAML(t *testing.T) {
 	t.Setenv("LLM_API_KEY", "sk-env")
 	t.Setenv("RAG_CHUNK_INDEX", "env_chunks")
 	t.Setenv("RAG_EMBEDDING_BATCH_SIZE", "6")
+	t.Setenv("SKILL_MAX_COUNT", "9")
 
 	path := writeConfig(t, `
 app:
@@ -221,8 +233,12 @@ llm:
 	if cfg.Rag.ChunkIndex != "env_chunks" || cfg.Rag.EmbeddingBatchSize != 6 {
 		t.Fatalf("env override rag failed: %#v", cfg.Rag)
 	}
+	if cfg.Skill.MaxCount != 9 {
+		t.Fatalf("env override skill failed: %#v", cfg.Skill)
+	}
 }
 
+// TestLoadFileDocsDefaultDependsOnAppEnv 验证文档开关默认值会跟随应用环境变化。
 func TestLoadFileDocsDefaultDependsOnAppEnv(t *testing.T) {
 	// 验证 docs.enabled 未显式配置时，开发环境默认开启，生产环境默认关闭。
 	dev, err := config.LoadFile(filepath.Join(t.TempDir(), "missing.yml"))
@@ -246,6 +262,7 @@ app:
 	}
 }
 
+// TestLoadFileReturnsErrorForInvalidYAML 验证非法 YAML 会返回解析错误。
 func TestLoadFileReturnsErrorForInvalidYAML(t *testing.T) {
 	path := writeConfig(t, "app:\n  env: [broken\n")
 

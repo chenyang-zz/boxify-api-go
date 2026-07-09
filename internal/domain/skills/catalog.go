@@ -179,6 +179,7 @@ func (r *Registry) register(template Template) error {
 	return nil
 }
 
+// templateFromDocument 将 Markdown skill 文档转换为业务内置技能模板。
 func templateFromDocument(document *coreskill.Document) (Template, error) {
 	if document == nil {
 		return Template{}, fmt.Errorf("document is nil")

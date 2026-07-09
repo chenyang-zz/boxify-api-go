@@ -70,3 +70,6 @@ memory:
 
 agent:
     max_personas: 200
+
+skill:
+    max_count: 200

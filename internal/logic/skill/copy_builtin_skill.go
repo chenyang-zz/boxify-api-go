@@ -38,6 +38,9 @@ func (l *CopyBuiltinSkillLogic) CopyBuiltinSkill(userID uuid.UUID, input *reques
 	if l.svcCtx == nil || l.svcCtx.SkillRegistry == nil || l.svcCtx.SkillRepo == nil {
 		return nil, xerr.Internal("内置技能依赖未初始化", nil)
 	}
+	if err := ensureSkillLimit(l.ctx, l.svcCtx, userID, l.log); err != nil {
+		return nil, err
+	}
 	template, ok := l.svcCtx.SkillRegistry.LookupByID(skillID)
 	if !ok {
 		return nil, xerr.NotFound("内置技能不存在")

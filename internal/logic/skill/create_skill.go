@@ -30,6 +30,9 @@ func NewCreateSkillLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Creat
 
 // CreateSkill 创建skill
 func (l *CreateSkillLogic) CreateSkill(userID uuid.UUID, input *request.CreateSkillRequest) (*response.SkillResponse, error) {
+	if err := ensureSkillLimit(l.ctx, l.svcCtx, userID, l.log); err != nil {
+		return nil, err
+	}
 	var kbID *uuid.UUID
 	var err error
 	if input.KBID != nil {
