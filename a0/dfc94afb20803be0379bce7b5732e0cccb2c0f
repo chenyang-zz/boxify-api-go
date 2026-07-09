@@ -1,0 +1,19 @@
+docs/openapi.json
+  s_a5f282227fb606::t_e32372e25933ab 399-456,2234,2236-2237,2240,2243-2244,2247-2254,2258-2259,2331-2352,2354-2356,2366-2368,2422-2427,2500-2503,2581-2584,2595-2612,2623,2680-2683,2704,2761,2763-2764,2784-2786,4601-5634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a0dfc94afb20803be0379bce7b5732e0cccb2c0f",
+  "prompts": {},
+  "sessions": {
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.5"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
