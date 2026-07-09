@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_edfab13cd925e2::t_a3de1016cefe06 22,52,73,94,115
+docs/openapi.json
+  s_edfab13cd925e2::t_0c6ef22424aeec 422-424
+go.mod
+  s_edfab13cd925e2::t_2906a41082e63e 3-5,26,31,33,118-119,121
+go.sum
+  s_edfab13cd925e2::t_754bba49233885 193-194,275-276,284-285,297-298,322-323,343-344,353-354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "733a17351e5f3f63506d216f5b49b665977a29d8",
+  "prompts": {},
+  "sessions": {
+    "s_edfab13cd925e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_edfab13cd925e2",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
