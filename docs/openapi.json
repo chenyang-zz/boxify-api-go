@@ -419,6 +419,9 @@
           "kb_id": {
             "type": "string"
           },
+          "key": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
