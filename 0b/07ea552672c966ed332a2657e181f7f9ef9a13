@@ -1,0 +1,45 @@
+AGENTS.md
+  s_bed6061d2f5706::t_aa61580f2bd9a6 4
+CLAUDE.md
+  s_bed6061d2f5706::t_b820f157bb02a3 4
+configs/config.yml.example
+  s_bed6061d2f5706::t_af9a0ed0b5e4e1 73-75
+internal/config/config.go
+  s_bed6061d2f5706::t_27fa45b193b030 28,118-121,187-189,231
+internal/config/config_test.go
+  s_bed6061d2f5706::t_430f03adc5d212 11,31-33,36,90-91,129-131,134,174,236-238,241,265
+internal/logic/skill/copy_builtin_skill.go
+  s_bed6061d2f5706::t_f1920680816f4f 41-43
+internal/logic/skill/create_skill.go
+  s_bed6061d2f5706::t_65e69468e7cebf 33-35
+internal/logic/skill/helper.go
+  s_bed6061d2f5706::t_1dbfd6a14ab1fc 5,13-16,42-63
+internal/logic/skill/skill_test.go
+  s_bed6061d2f5706::t_52bcc5ce6f1752 9,90-125,333-355,378-385
+internal/domain/skills/catalog.go
+  s_d08ab1b3c966d6::t_7c32e18d4f2af0 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0b07ea552672c966ed332a2657e181f7f9ef9a13",
+  "prompts": {},
+  "sessions": {
+    "s_bed6061d2f5706": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1817-2478-7702-8e5a-fc4304ca0bc4",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_d08ab1b3c966d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_d08ab1b3c966d6",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
