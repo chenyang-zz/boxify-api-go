@@ -1,6 +1,9 @@
 package tool
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // Schema 表示模型或协议用于理解如何调用工具的 schema。
 //
@@ -16,10 +19,73 @@ type Schema struct {
 // Properties 的单个字段 schema 仍保持开放 map，便于表达 enum、items、oneOf、
 // default 等完整 JSON Schema 能力。
 type ParametersSchema struct {
+	Raw                  map[string]any            `json:"-"`
 	Type                 string                    `json:"type,omitempty"`
 	Properties           map[string]PropertySchema `json:"properties,omitempty"`
 	Required             []string                  `json:"required,omitempty"`
 	AdditionalProperties any                       `json:"additionalProperties,omitempty"`
+}
+
+// NewParametersSchema 从完整 JSON Schema 构建参数结构。
+//
+// 返回值会保留所有顶层字段到 Raw，同时投影 type、properties、required 和
+// additionalProperties，供现有模型适配器继续使用强类型字段。nil 输入返回默认对象 schema。
+func NewParametersSchema(raw map[string]any) ParametersSchema {
+	schema := ParametersSchema{Raw: cloneMap(raw)}
+	if value, ok := raw["type"].(string); ok {
+		schema.Type = value
+	}
+	if values, ok := raw["properties"].(map[string]any); ok {
+		schema.Properties = make(map[string]PropertySchema, len(values))
+		for key, value := range values {
+			if property, ok := value.(map[string]any); ok {
+				schema.Properties[key] = PropertySchema(cloneMap(property))
+			}
+		}
+	}
+	if values, ok := raw["required"].([]any); ok {
+		for _, value := range values {
+			if item, ok := value.(string); ok {
+				schema.Required = append(schema.Required, item)
+			}
+		}
+	} else if values, ok := raw["required"].([]string); ok {
+		schema.Required = cloneStrings(values)
+	}
+	if value, ok := raw["additionalProperties"]; ok {
+		schema.AdditionalProperties = cloneAny(value)
+	}
+	return schema
+}
+
+// Map 返回可直接发送给模型供应商的完整 JSON Schema 副本。
+//
+// Raw 中的扩展字段会保留，强类型字段具有更高优先级；缺少 type 时默认补为 object。
+func (s ParametersSchema) Map() map[string]any {
+	out := cloneMap(s.Raw)
+	if out == nil {
+		out = map[string]any{}
+	}
+	if s.Type != "" {
+		out["type"] = s.Type
+	} else if _, ok := out["type"]; !ok {
+		out["type"] = "object"
+	}
+	if len(s.Properties) > 0 {
+		out["properties"] = s.Properties
+	}
+	if len(s.Required) > 0 {
+		out["required"] = s.Required
+	}
+	if s.AdditionalProperties != nil {
+		out["additionalProperties"] = s.AdditionalProperties
+	}
+	return out
+}
+
+// MarshalJSON 将参数结构编码为完整 JSON Schema。
+func (s ParametersSchema) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.Map())
 }
 
 // PropertySchema 描述单个参数字段的 JSON Schema。

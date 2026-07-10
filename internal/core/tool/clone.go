@@ -29,6 +29,7 @@ func cloneDescriptor(descriptor Descriptor) Descriptor {
 }
 
 func cloneSchema(schema Schema) Schema {
+	schema.Parameters.Raw = cloneMap(schema.Parameters.Raw)
 	schema.Parameters.Properties = cloneProperties(schema.Parameters.Properties)
 	schema.Parameters.Required = cloneStrings(schema.Parameters.Required)
 	schema.Parameters.AdditionalProperties = cloneAny(schema.Parameters.AdditionalProperties)

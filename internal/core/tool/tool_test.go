@@ -277,6 +277,39 @@ func TestOutputCarriesPartsAndMetadata(t *testing.T) {
 	}
 }
 
+// TestParametersSchemaMapPreservesRawFields 验证完整 JSON Schema 扩展字段会保留，且强类型字段具有覆盖优先级。
+func TestParametersSchemaMapPreservesRawFields(t *testing.T) {
+	schema := NewParametersSchema(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query": map[string]any{"type": "string"},
+		},
+		"required": []any{"query"},
+		"$defs": map[string]any{
+			"filter": map[string]any{"type": "object"},
+		},
+		"oneOf": []any{map[string]any{"required": []any{"query"}}},
+	})
+	schema.Type = "custom"
+
+	got := schema.Map()
+	if got["type"] != "custom" {
+		t.Fatalf("ParametersSchema.Map type = %#v, want custom", got["type"])
+	}
+	if got["$defs"] == nil || got["oneOf"] == nil {
+		t.Fatalf("ParametersSchema.Map = %#v, want raw $defs and oneOf", got)
+	}
+	if len(schema.Required) != 1 || schema.Required[0] != "query" {
+		t.Fatalf("NewParametersSchema required = %#v, want query", schema.Required)
+	}
+
+	cloned := CloneDescriptor(Descriptor{Schema: Schema{Parameters: schema}})
+	schema.Raw["$defs"] = nil
+	if cloned.Schema.Parameters.Raw["$defs"] == nil {
+		t.Fatal("CloneDescriptor raw $defs = nil, want independent top-level map")
+	}
+}
+
 func descriptorNames(descriptors []Descriptor) []string {
 	names := make([]string, 0, len(descriptors))
 	for _, descriptor := range descriptors {
