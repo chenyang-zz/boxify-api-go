@@ -1,0 +1,19 @@
+docs/openapi.json
+  s_8e40dc0dac37fc::t_bae428a0aad60e 460-488,5667-5841
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "da8b576420b70141112f7dcd48bd07590d92ec82",
+  "prompts": {},
+  "sessions": {
+    "s_8e40dc0dac37fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8e40dc0dac37fc",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
