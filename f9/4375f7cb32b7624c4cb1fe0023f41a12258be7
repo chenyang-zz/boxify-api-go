@@ -1,0 +1,19 @@
+docs/openapi.json
+  s_9069c6f20f267e::t_a3a2d39cd4ba1e 460,462-466,468-472,5670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "f94375f7cb32b7624c4cb1fe0023f41a12258be7",
+  "prompts": {},
+  "sessions": {
+    "s_9069c6f20f267e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_9069c6f20f267e",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
