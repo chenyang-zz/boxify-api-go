@@ -1,0 +1,21 @@
+.github/workflows/ci.yml
+  s_e800ce58d2517f::t_e3fec962856f5f 8
+go.mod
+  s_e800ce58d2517f::t_3f99b4e47dbfd5 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "f03935f10c9aee9349c37bfb7bcd9d78a9ede1c1",
+  "prompts": {},
+  "sessions": {
+    "s_e800ce58d2517f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_e800ce58d2517f",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
