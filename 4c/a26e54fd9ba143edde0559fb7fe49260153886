@@ -1,0 +1,33 @@
+internal/domain/tools/mcp/tool.go
+  s_bed6061d2f5706::t_0c648016082f35 6,58,88
+  s_bed6061d2f5706::t_abd26d4ef1913b 86-87,89-90
+  s_bed6061d2f5706::t_d372a86ff9292b 109,116,121,124
+internal/domain/tools/mcp/mcp_test.go
+  s_bed6061d2f5706::t_abd26d4ef1913b 96-106,108
+  s_bed6061d2f5706::t_0c648016082f35 38,84-85,107
+internal/core/tool/tool_test.go
+  s_bed6061d2f5706::t_0c648016082f35 247-248,256,258,268,271,276-292
+  s_bed6061d2f5706::t_abd26d4ef1913b 249-255,257,259-267,269-270,272-275,293-295
+internal/domain/flow/chat/orchestrator_test.go
+  s_bed6061d2f5706::t_0c648016082f35 520
+  s_bed6061d2f5706::t_abd26d4ef1913b 489-519,521-527
+internal/core/tool/runner.go
+  s_bed6061d2f5706::t_45d92d5d1b24e7 38-39,70
+  s_bed6061d2f5706::t_0c648016082f35 46,54,58,63,71-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "4ca26e54fd9ba143edde0559fb7fe49260153886",
+  "prompts": {},
+  "sessions": {
+    "s_bed6061d2f5706": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1817-2478-7702-8e5a-fc4304ca0bc4",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
