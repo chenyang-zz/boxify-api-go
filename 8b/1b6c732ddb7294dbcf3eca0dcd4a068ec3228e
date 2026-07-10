@@ -1,0 +1,21 @@
+Dockerfile
+  s_3551f6be186729::t_a41618d31fc16e 31,43-44
+deployments/docker-compose.yml
+  s_3551f6be186729::t_b606ea82d02013 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "8b1b6c732ddb7294dbcf3eca0dcd4a068ec3228e",
+  "prompts": {},
+  "sessions": {
+    "s_3551f6be186729": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_3551f6be186729",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
