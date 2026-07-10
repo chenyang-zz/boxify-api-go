@@ -188,6 +188,55 @@ func TestAgentRunStreamsOnlyReActFinalAnswerTokens(t *testing.T) {
 	}
 }
 
+// 验证点：非流式文本模型应同步完成 ReAct 决策，且不会触发 token hook。
+func TestAgentRunUsesNonStreamingReActFallback(t *testing.T) {
+	ctx := context.Background()
+	model := &fakeNonStreamingLLM{outputs: []string{"Thought: done\nFinal Answer: hello"}}
+	hooks := &recordingHooks{}
+
+	result, err := newTestAgent(model, coretool.NewRegistry(), WithToolCallingEnabled(false), WithHooks(hooks)).Run(ctx, Input{Query: "say hello"})
+	if err != nil {
+		t.Fatalf("Agent.Run(non-streaming react) error = %v, want nil", err)
+	}
+	if result.Answer != "hello" || result.StoppedBy != StopFinalAnswer {
+		t.Fatalf("Agent.Run(non-streaming react) result = %#v, want final hello", result)
+	}
+	if len(model.messages) != 1 {
+		t.Fatalf("llm.Client.Invoke calls = %d, want 1", len(model.messages))
+	}
+	for _, event := range hooks.events {
+		if strings.HasPrefix(event, "on_token:") {
+			t.Fatalf("non-streaming token event = %q, want no token events", event)
+		}
+	}
+}
+
+// 验证点：非流式文本模型应完成工具循环，并将观察结果写回后续同步请求。
+func TestAgentRunExecutesToolsWithNonStreamingReActFallback(t *testing.T) {
+	ctx := context.Background()
+	model := &fakeNonStreamingLLM{outputs: []string{
+		"Thought: need time\nAction: current_time\nAction Input: {}",
+		"Thought: observed\nFinal Answer: It is noon.",
+	}}
+	registry := coretool.NewRegistry()
+	if err := registry.Register(ctx, coretool.NewFuncTool(coretool.Descriptor{Name: "current_time"}, func(context.Context, coretool.Input) (coretool.Output, error) {
+		return coretool.Output{Text: "12:00"}, nil
+	})); err != nil {
+		t.Fatalf("Registry.Register(current_time) error = %v, want nil", err)
+	}
+
+	result, err := newTestAgent(model, registry, WithToolCallingEnabled(false)).Run(ctx, Input{Query: "time?"})
+	if err != nil {
+		t.Fatalf("Agent.Run(non-streaming react tool) error = %v, want nil", err)
+	}
+	if result.Answer != "It is noon." || len(result.Steps) != 2 || result.Steps[0].Observation != "12:00" {
+		t.Fatalf("Agent.Run(non-streaming react tool) result = %#v, want tool observation and final answer", result)
+	}
+	if len(model.messages) != 2 || !strings.Contains(joinMessages(model.messages[1]), "Observation: 12:00") {
+		t.Fatalf("second non-streaming prompt = %q, want Observation: 12:00", joinMessages(model.messages[1]))
+	}
+}
+
 // 验证点：Agent 应执行工具调用，把 Observation 写回下一轮 prompt，并最终返回答案。
 func TestAgentRunExecutesToolAndFeedsObservation(t *testing.T) {
 	ctx := context.Background()
@@ -294,6 +343,35 @@ func TestAgentRunUsesToolCallingClientByDefault(t *testing.T) {
 	}
 	if len(model.toolOptions) != 1 {
 		t.Fatalf("ToolCallingClient.InvokeWithTools opts = %d, want 1", len(model.toolOptions))
+	}
+	if len(model.messages) != 0 {
+		t.Fatalf("llm.Client.Invoke calls = %d, want 0", len(model.messages))
+	}
+}
+
+// 验证点：缺少工具调用流接口时，应使用同步原生工具调用而非退回文本 ReAct。
+func TestAgentRunUsesNonStreamingToolCallingFallback(t *testing.T) {
+	ctx := context.Background()
+	model := &fakeNonStreamingToolCallingLLM{toolOutputs: []*llm.LLMResult{
+		{ToolCalls: []llm.LLMToolCall{{ID: "call_1", Name: "current_time", Input: coretool.Input{}}}},
+		{Text: "It is noon."},
+	}}
+	registry := coretool.NewRegistry()
+	if err := registry.Register(ctx, coretool.NewFuncTool(coretool.Descriptor{Name: "current_time"}, func(context.Context, coretool.Input) (coretool.Output, error) {
+		return coretool.Output{Text: "12:00"}, nil
+	})); err != nil {
+		t.Fatalf("Registry.Register(current_time) error = %v, want nil", err)
+	}
+
+	result, err := newTestAgent(model, registry).Run(ctx, Input{Query: "time?"})
+	if err != nil {
+		t.Fatalf("Agent.Run(non-streaming tool calling) error = %v, want nil", err)
+	}
+	if result.Answer != "It is noon." || len(result.Steps) != 2 || result.Steps[0].ToolCallID != "call_1" {
+		t.Fatalf("Agent.Run(non-streaming tool calling) result = %#v, want native tool call and final answer", result)
+	}
+	if len(model.toolInputs) != 2 {
+		t.Fatalf("ToolCallingClient.InvokeWithTools calls = %d, want 2", len(model.toolInputs))
 	}
 	if len(model.messages) != 0 {
 		t.Fatalf("llm.Client.Invoke calls = %d, want 0", len(model.messages))
@@ -424,6 +502,34 @@ func TestAgentRunFallsBackToReActWhenToolCallingUnsupported(t *testing.T) {
 	}
 }
 
+// 验证点：同步原生工具调用不支持时，应退回同步文本 ReAct 并保留 fallback 状态迁移。
+func TestAgentRunFallsBackToNonStreamingReActWhenToolCallingUnsupported(t *testing.T) {
+	ctx := context.Background()
+	model := &fakeNonStreamingToolCallingLLM{
+		fakeNonStreamingLLM: fakeNonStreamingLLM{outputs: []string{"Thought: fallback\nFinal Answer: react final"}},
+		toolErr:             ErrToolCallingUnsupported,
+	}
+	hooks := &recordingHooks{}
+
+	result, err := newTestAgent(model, coretool.NewRegistry(), WithHooks(hooks)).Run(ctx, Input{Query: "answer"})
+	if err != nil {
+		t.Fatalf("Agent.Run(non-streaming fallback) error = %v, want nil", err)
+	}
+	if result.Answer != "react final" {
+		t.Fatalf("Agent.Run(non-streaming fallback).Answer = %q, want react final", result.Answer)
+	}
+	if len(model.toolInputs) != 1 || len(model.messages) != 1 {
+		t.Fatalf("non-streaming fallback calls = tool:%d text:%d, want tool:1 text:1", len(model.toolInputs), len(model.messages))
+	}
+	want := []string{
+		"before_transition:model->fallback",
+		"before_transition:fallback->build_prompt",
+	}
+	if !containsInOrder(hooks.events, want) {
+		t.Fatalf("non-streaming fallback hook events = %#v, want transitions %#v", hooks.events, want)
+	}
+}
+
 // 验证点：关闭 fallback 后，function calling 不支持错误应直接返回，不再调用文本 ReAct。
 func TestAgentRunReturnsToolCallingErrorWhenFallbackDisabled(t *testing.T) {
 	ctx := context.Background()
@@ -493,6 +599,45 @@ type fakeAgentLLM struct {
 	streamBatches [][]llm.StreamEvent
 }
 
+type fakeNonStreamingLLM struct {
+	outputs  []string
+	err      error
+	messages [][]*llm.Message
+}
+
+func (f *fakeNonStreamingLLM) Invoke(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (string, error) {
+	f.messages = append(f.messages, cloneMessages(messages))
+	if f.err != nil {
+		return "", f.err
+	}
+	if len(f.outputs) == 0 {
+		return "", errors.New("no model output")
+	}
+	out := f.outputs[0]
+	f.outputs = f.outputs[1:]
+	return out, nil
+}
+
+func (f *fakeNonStreamingLLM) InvokeResult(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (*llm.LLMResult, error) {
+	text, err := f.Invoke(ctx, messages, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &llm.LLMResult{Text: text}, nil
+}
+
+func (f *fakeNonStreamingLLM) Stream(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (<-chan string, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeNonStreamingLLM) Embed(ctx context.Context, texts []string, dimensions int, opts ...llm.EmbeddingOption) ([][]float64, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeNonStreamingLLM) EmbedOne(ctx context.Context, text string, dimensions int) ([]float64, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (f *fakeAgentLLM) Invoke(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (string, error) {
 	f.messages = append(f.messages, cloneMessages(messages))
 	if f.err != nil {
@@ -554,6 +699,28 @@ type fakeToolCallingLLM struct {
 	toolErr     error
 	toolInputs  [][]*llm.Message
 	toolOptions []llm.ModelCallOptions
+}
+
+type fakeNonStreamingToolCallingLLM struct {
+	fakeNonStreamingLLM
+	toolOutputs []*llm.LLMResult
+	toolErr     error
+	toolInputs  [][]*llm.Message
+	toolOptions []llm.ModelCallOptions
+}
+
+func (f *fakeNonStreamingToolCallingLLM) InvokeWithTools(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (*llm.LLMResult, error) {
+	f.toolInputs = append(f.toolInputs, cloneMessages(messages))
+	f.toolOptions = append(f.toolOptions, llm.NewChatOptions(opts...))
+	if f.toolErr != nil {
+		return nil, f.toolErr
+	}
+	if len(f.toolOutputs) == 0 {
+		return nil, errors.New("no tool calling output")
+	}
+	out := f.toolOutputs[0]
+	f.toolOutputs = f.toolOutputs[1:]
+	return out, nil
 }
 
 func (f *fakeToolCallingLLM) InvokeWithTools(ctx context.Context, messages []*llm.Message, opts ...llm.ModelCallOption) (*llm.LLMResult, error) {

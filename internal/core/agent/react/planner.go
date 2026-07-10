@@ -64,12 +64,37 @@ func (p *ReActTextPlanner) Plan(ctx context.Context, state State, opts ...llm.Mo
 	return result.Decision, nil
 }
 
-// planTrace 调用文本模型并解析 ReAct 决策。
+// planTrace 通过同步文本调用生成并解析 ReAct 决策。
+//
+// 此路径不依赖结构化流接口，供不支持流式响应的模型使用。
 func (p *ReActTextPlanner) planTrace(ctx context.Context, state State, opts ...llm.ModelCallOption) (plannerResult, error) {
-	return p.planStreamTrace(ctx, state, nil, opts...)
+	if p == nil {
+		return plannerResult{}, errors.New("react text planner is nil")
+	}
+	if p.client == nil {
+		return plannerResult{}, errors.New("agent model client is nil")
+	}
+	messages, err := p.modelMessages(ctx, state)
+	if err != nil {
+		return plannerResult{}, err
+	}
+	text, err := p.client.Invoke(ctx, messages, opts...)
+	if err != nil {
+		return plannerResult{}, err
+	}
+	decision, err := p.parser.Parse(ctx, text)
+	if err != nil {
+		return plannerResult{Output: text}, err
+	}
+	return plannerResult{
+		Decision: decision,
+		Output:   text,
+	}, nil
 }
 
 // planStreamTrace 使用结构化流读取 ReAct 原文，并且只转发 Final Answer 之后的可展示内容。
+//
+// 模型不支持结构化流时会退回 planTrace，不会伪造 token 回调。
 func (p *ReActTextPlanner) planStreamTrace(ctx context.Context, state State, emit tokenEmitter, opts ...llm.ModelCallOption) (plannerResult, error) {
 	if p == nil {
 		return plannerResult{}, errors.New("react text planner is nil")
@@ -77,16 +102,16 @@ func (p *ReActTextPlanner) planStreamTrace(ctx context.Context, state State, emi
 	if p.client == nil {
 		return plannerResult{}, errors.New("agent model client is nil")
 	}
+	streamClient, ok := p.client.(llm.StreamEventClient)
+	if !ok {
+		return p.planTrace(ctx, state, opts...)
+	}
 	if p.promptBuilder == nil {
 		return plannerResult{}, errors.New("react prompt builder is nil")
 	}
 	messages, err := p.promptBuilder.Build(ctx, cloneState(state))
 	if err != nil {
 		return plannerResult{}, err
-	}
-	streamClient, ok := p.client.(llm.StreamEventClient)
-	if !ok {
-		return plannerResult{}, ErrStreamingUnsupported
 	}
 	events, err := streamClient.StreamEvents(ctx, messages, opts...)
 	if err != nil {
@@ -162,19 +187,43 @@ func (p *FunctionCallingPlanner) Plan(ctx context.Context, state State, opts ...
 	return result.Decision, nil
 }
 
-// planTrace 调用支持工具调用的模型，并把输出规整为统一 Decision。
+// planTrace 通过同步原生工具调用生成决策，并把输出规整为统一 Decision。
+//
+// 此路径不依赖工具调用流接口，供不支持流式响应的模型使用。
 func (p *FunctionCallingPlanner) planTrace(ctx context.Context, state State, opts ...llm.ModelCallOption) (plannerResult, error) {
-	return p.planStreamTrace(ctx, state, nil, opts...)
+	if !p.SupportsToolCalling() {
+		return plannerResult{}, ErrToolCallingUnsupported
+	}
+	messages := toolCallingMessages(state)
+	callOpts := make([]llm.ModelCallOption, 0, len(opts)+1)
+	callOpts = append(callOpts, opts...)
+	if len(state.Tools) > 0 {
+		callOpts = append(callOpts, llm.WithTools(state.Tools...))
+	}
+	output, err := p.client.InvokeWithTools(ctx, messages, callOpts...)
+	if err != nil {
+		return plannerResult{}, err
+	}
+	decision, err := decisionFromToolCallingOutput(output)
+	if err != nil {
+		return plannerResult{Output: outputSummary(output)}, err
+	}
+	return plannerResult{
+		Decision: decision,
+		Output:   outputSummary(output),
+	}, nil
 }
 
 // planStreamTrace 使用原生工具调用流聚合工具参数，并即时转发供应商给出的文本增量。
+//
+// 模型不支持工具调用流时会退回 planTrace，不会伪造 token 回调。
 func (p *FunctionCallingPlanner) planStreamTrace(ctx context.Context, state State, emit tokenEmitter, opts ...llm.ModelCallOption) (plannerResult, error) {
 	if !p.SupportsToolCalling() {
 		return plannerResult{}, ErrToolCallingUnsupported
 	}
 	streamClient, ok := p.client.(llm.ToolStreamEventClient)
 	if !ok {
-		return plannerResult{}, ErrToolCallingUnsupported
+		return p.planTrace(ctx, state, opts...)
 	}
 	messages := toolCallingMessages(state)
 	callOpts := make([]llm.ModelCallOption, 0, len(opts)+1)
