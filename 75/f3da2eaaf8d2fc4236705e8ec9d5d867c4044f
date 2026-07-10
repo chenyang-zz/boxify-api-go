@@ -1,0 +1,23 @@
+.github/workflows/cd.yml
+  s_ec11ea1e697160::t_b1aaa2a4a43a17 31,33-34,62,78,80-151,164,174,182,186,196,198-251
+Dockerfile
+  s_ec11ea1e697160::t_9434791fee5614 6,10-12,24,27-28,35,40,45,48,52
+deployments/docker-compose.yml
+  s_ec11ea1e697160::t_bf039110929f64 46-47,65-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "75f3da2eaaf8d2fc4236705e8ec9d5d867c4044f",
+  "prompts": {},
+  "sessions": {
+    "s_ec11ea1e697160": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ec11ea1e697160",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
