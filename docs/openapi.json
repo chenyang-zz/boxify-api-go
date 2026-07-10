@@ -457,31 +457,19 @@
         },
         "type": "object"
       },
-      "ToolConfigResponse": {
+      "ToolConfigListResponse": {
         "properties": {
-          "config_hit": {
-            "type": "string"
+          "builtin_tools": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
           },
-          "description": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "icon": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "needs_config": {
-            "type": "boolean"
-          },
-          "tool_key": {
-            "type": "string"
-          },
-          "tool_type": {
-            "type": "string"
+          "mcp_servers": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -5679,15 +5667,7 @@
                       "type": "integer"
                     },
                     "data": {
-                      "properties": {
-                        "list": {
-                          "items": {
-                            "$ref": "#/components/schemas/ToolConfigResponse"
-                          },
-                          "type": "array"
-                        }
-                      },
-                      "type": "object"
+                      "$ref": "#/components/schemas/ToolConfigListResponse"
                     },
                     "message": {
                       "type": "string"
