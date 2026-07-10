@@ -1,0 +1,29 @@
+.githooks/pre-push
+  s_bed6061d2f5706::t_96052e532ddf14 1-54
+Makefile
+  s_dc6023a83aae9b::t_5729c4daa118e0 1,31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "0b9494d050377777d16feff70aaab528c3a11771",
+  "prompts": {},
+  "sessions": {
+    "s_bed6061d2f5706": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1817-2478-7702-8e5a-fc4304ca0bc4",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_dc6023a83aae9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dc6023a83aae9b",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
