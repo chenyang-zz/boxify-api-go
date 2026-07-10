@@ -28,10 +28,10 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   # ------------------------------------------------------------------ #
-  # 阶段 2: 构建镜像并通过 tarball artifact 传递
+  # 阶段 2a: 构建 api 镜像并通过 tarball artifact 传递
   # ------------------------------------------------------------------ #
-  build-and-push:
-    name: Build Image
+  build-api:
+    name: Build Image (API)
     needs: ci-gate
     runs-on: ubuntu-latest
     outputs:
@@ -59,6 +59,7 @@ jobs:
           docker buildx build \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
+            --build-arg CMD_TARGET=api \
             --load \
             -t cove-api:${{ steps.meta.outputs.version }} \
             .
@@ -74,11 +75,80 @@ jobs:
           retention-days: 1
 
   # ------------------------------------------------------------------ #
-  # 阶段 3: SCP 传输镜像到服务器并部署
+  # 阶段 2b: 构建 worker 镜像（仅在 worker 相关代码变更时触发）
   # ------------------------------------------------------------------ #
-  deploy:
-    name: Deploy to Server
-    needs: build-and-push
+  build-worker:
+    name: Build Image (Worker)
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    outputs:
+      worker-changed: ${{ steps.check.outputs.changed }}
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Check worker files changed
+        id: check
+        run: |
+          # 检测 worker 相关路径的增量变更
+          CHANGED=$(git diff --name-only HEAD~1 -- 'cmd/worker/**' 'internal/worker/**')
+          if [ -n "$CHANGED" ]; then
+            echo "Worker files changed:"
+            echo "$CHANGED"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No worker changes detected, skipping build."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Docker meta
+        if: steps.check.outputs.changed == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: suffix=-worker
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build worker image
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          docker buildx build \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --build-arg CMD_TARGET=worker \
+            --load \
+            -t cove-worker:${{ steps.meta.outputs.version }} \
+            .
+
+      - name: Save worker image as tarball
+        if: steps.check.outputs.changed == 'true'
+        run: docker save cove-worker:${{ steps.meta.outputs.version }} | gzip > /tmp/cove-worker.tar.gz
+
+      - name: Upload worker image artifact
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-worker-image
+          path: /tmp/cove-worker.tar.gz
+          retention-days: 1
+
+  # ------------------------------------------------------------------ #
+  # 阶段 3a: SCP 传输 api 镜像到服务器并部署
+  # ------------------------------------------------------------------ #
+  deploy-api:
+    name: Deploy to Server (API)
+    needs: build-api
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -91,7 +161,7 @@ jobs:
           path: .
 
       - name: SCP image to server
-        uses: appleboy/scp-action@v1.2.0
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -101,7 +171,7 @@ jobs:
           target: "/tmp/cove-api.tar.gz"
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -109,11 +179,11 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             set -e
-            echo "🚀 开始部署镜像: cove-api:${{ needs.build-and-push.outputs.image-tag }}"
+            echo "🚀 开始部署镜像: cove-api:${{ needs.build-api.outputs.image-tag }}"
 
             # 加载镜像并 tag 为 compose 引用的本地名
             docker load -i /tmp/cove-api.tar.gz
-            docker tag cove-api:${{ needs.build-and-push.outputs.image-tag }} cove-api:latest
+            docker tag cove-api:${{ needs.build-api.outputs.image-tag }} cove-api:latest
 
             # 滚动更新 api 容器
             cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
@@ -123,5 +193,59 @@ jobs:
             rm -f /tmp/cove-api.tar.gz
             docker image prune -f
 
-            echo "✅ 部署完成"
+            echo "✅ API 部署完成"
             docker compose -f deployments/docker-compose.yml ps api
+
+  # ------------------------------------------------------------------ #
+  # 阶段 3b: SCP 传输 worker 镜像到服务器并部署（增量条件触发）
+  # ------------------------------------------------------------------ #
+  deploy-worker:
+    name: Deploy to Server (Worker)
+    needs: build-worker
+    if: needs.build-worker.outputs.worker-changed == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download worker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-worker-image
+          path: .
+
+      - name: SCP worker image to server
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: "cove-worker.tar.gz"
+          target: "/tmp/cove-worker.tar.gz"
+
+      - name: Deploy worker via SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            echo "🚀 开始部署 worker 镜像"
+
+            # 加载 worker 镜像并 tag 为 compose 引用的本地名
+            docker load -i /tmp/cove-worker.tar.gz
+            docker tag cove-worker:${{ needs.build-worker.outputs.image-tag }} cove-worker:latest
+
+            # 滚动更新 worker 容器
+            cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
+            docker compose -f deployments/docker-compose.yml up -d --no-deps worker
+
+            # 清理
+            rm -f /tmp/cove-worker.tar.gz
+            docker image prune -f
+
+            echo "✅ Worker 部署完成"
+            docker compose -f deployments/docker-compose.yml ps worker
