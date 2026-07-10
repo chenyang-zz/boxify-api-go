@@ -65,7 +65,10 @@ func (l *UpdateSkillLogic) UpdateSkill(userID uuid.UUID, input *request.UpdateSk
 		changed = append(changed, "prompt")
 	}
 	if input.ToolKeys != nil {
-		patch.ToolKeys = mapper.SkillToolKeysFromRequest(input.ToolKeys)
+		patch.ToolKeys, err = validateSkillToolKeys(l.ctx, l.svcCtx, input.ToolKeys)
+		if err != nil {
+			return nil, err
+		}
 		fields.ToolKeys()
 		changed = append(changed, "tool_keys")
 	}

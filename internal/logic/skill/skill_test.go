@@ -34,7 +34,7 @@ func TestCreateSkillPersistsNormalizedFields(t *testing.T) {
 		Name:        "  写作助手  ",
 		Description: "  desc  ",
 		Prompt:      "  prompt  ",
-		ToolKeys:    []string{" search ", "", "time"},
+		ToolKeys:    []string{" knowledge_search ", "", "current_time"},
 		KBID:        stringPtr(kbID.String()),
 		Enabled:     boolPtr(false),
 		Config: &request.SkillConfig{
@@ -54,8 +54,8 @@ func TestCreateSkillPersistsNormalizedFields(t *testing.T) {
 	if skillRepo.created.Name != "写作助手" || skillRepo.created.Description != "desc" || skillRepo.created.Icon != "🧩" || skillRepo.created.Prompt != "prompt" {
 		t.Fatalf("created skill fields = %#v", skillRepo.created)
 	}
-	if !slices.Equal([]string(skillRepo.created.ToolKeys), []string{"search", "time"}) {
-		t.Fatalf("ToolKeys = %#v, want [search time]", skillRepo.created.ToolKeys)
+	if !slices.Equal([]string(skillRepo.created.ToolKeys), []string{"knowledge_search", "current_time"}) {
+		t.Fatalf("ToolKeys = %#v, want [knowledge_search current_time]", skillRepo.created.ToolKeys)
 	}
 	if skillRepo.created.KBID == nil || *skillRepo.created.KBID != kbID {
 		t.Fatalf("KBID = %v, want %s", skillRepo.created.KBID, kbID)
@@ -68,6 +68,21 @@ func TestCreateSkillPersistsNormalizedFields(t *testing.T) {
 	}
 	if out.Config == nil || len(out.Config.QuickPrompt) != 1 || out.Config.QuickPrompt[0] != "快速问题" {
 		t.Fatalf("response Config = %#v, want normalized quick prompt", out.Config)
+	}
+}
+
+// TestCreateSkillRejectsUnknownTool 验证创建技能会拒绝未注册工具且不写入仓储。
+func TestCreateSkillRejectsUnknownTool(t *testing.T) {
+	repo := newFakeSkillRepository()
+	_, err := NewCreateSkillLogic(context.Background(), &svc.ServiceContext{SkillRepo: repo}).CreateSkill(uuid.New(), &request.CreateSkillRequest{
+		Name:     "技能",
+		ToolKeys: []string{"unknown_tool"},
+	})
+	if xerr.From(err).Kind != xerr.KindNotFound {
+		t.Fatalf("CreateSkill unknown tool error kind = %v, want not_found", xerr.From(err).Kind)
+	}
+	if repo.created != nil {
+		t.Fatalf("CreateSkill created = %#v, want nil for unknown tool", repo.created)
 	}
 }
 
@@ -189,6 +204,45 @@ func TestUpdateSkillSendsOnlyChangedFields(t *testing.T) {
 	}
 	if out.Name != "新名称" || out.KBID != nil || out.Enabled {
 		t.Fatalf("UpdateSkill response = %#v, want updated fields", out)
+	}
+}
+
+// TestUpdateSkillPersistsRegisteredTool 验证更新技能可持久化已注册的规范化工具键。
+func TestUpdateSkillPersistsRegisteredTool(t *testing.T) {
+	userID := uuid.New()
+	skillID := uuid.New()
+	repo := newFakeSkillRepository(&models.Skill{ID: skillID, UserID: userID, Name: "技能"})
+
+	_, err := NewUpdateSkillLogic(context.Background(), &svc.ServiceContext{SkillRepo: repo}).UpdateSkill(userID, &request.UpdateSkillRequest{
+		UriSkillIDRequest: request.UriSkillIDRequest{ID: skillID.String()},
+		ToolKeys:          []string{" current_time ", ""},
+	})
+	if err != nil {
+		t.Fatalf("UpdateSkill registered tool error = %v, want nil", err)
+	}
+	if !slices.Equal(repo.updatedColumns, []string{"tool_keys"}) {
+		t.Fatalf("UpdateSkill updated columns = %#v, want [tool_keys]", repo.updatedColumns)
+	}
+	if !slices.Equal([]string(repo.updatedPatch.ToolKeys), []string{"current_time"}) {
+		t.Fatalf("UpdateSkill tool keys = %#v, want [current_time]", repo.updatedPatch.ToolKeys)
+	}
+}
+
+// TestUpdateSkillRejectsUnknownTool 验证更新技能会拒绝未注册工具且不写入仓储。
+func TestUpdateSkillRejectsUnknownTool(t *testing.T) {
+	userID := uuid.New()
+	skillID := uuid.New()
+	repo := newFakeSkillRepository(&models.Skill{ID: skillID, UserID: userID, Name: "技能"})
+
+	_, err := NewUpdateSkillLogic(context.Background(), &svc.ServiceContext{SkillRepo: repo}).UpdateSkill(userID, &request.UpdateSkillRequest{
+		UriSkillIDRequest: request.UriSkillIDRequest{ID: skillID.String()},
+		ToolKeys:          []string{"unknown_tool"},
+	})
+	if xerr.From(err).Kind != xerr.KindNotFound {
+		t.Fatalf("UpdateSkill unknown tool error kind = %v, want not_found", xerr.From(err).Kind)
+	}
+	if repo.updatedPatch != nil {
+		t.Fatalf("UpdateSkill updated patch = %#v, want nil for unknown tool", repo.updatedPatch)
 	}
 }
 

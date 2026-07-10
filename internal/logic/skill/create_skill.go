@@ -41,7 +41,12 @@ func (l *CreateSkillLogic) CreateSkill(userID uuid.UUID, input *request.CreateSk
 			return nil, err
 		}
 	}
+	toolKeys, err := validateSkillToolKeys(l.ctx, l.svcCtx, input.ToolKeys)
+	if err != nil {
+		return nil, err
+	}
 	row := mapper.SkillFromCreateRequest(input, userID, uuid.New(), kbID, defaultSkillIcon)
+	row.ToolKeys = toolKeys
 	row, err = l.svcCtx.SkillRepo.Create(l.ctx, userID, row)
 	if err != nil {
 		return nil, err

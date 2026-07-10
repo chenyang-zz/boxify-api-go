@@ -1544,8 +1544,17 @@ func TestSkillRoutesSupportCRUDAndOptimizePrompt(t *testing.T) {
 		}
 	})
 
+	legacyTool := httptest.NewRecorder()
+	legacyToolReq := httptest.NewRequest(http.MethodPost, "/api/skill/create", strings.NewReader(`{"name":"写作技能","tool_keys":["time"]}`))
+	legacyToolReq.Header.Set("Content-Type", "application/json")
+	legacyToolReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(legacyTool, legacyToolReq)
+	if legacyTool.Code != http.StatusNotFound {
+		t.Fatalf("legacy time tool status = %d body=%s, want 404", legacyTool.Code, legacyTool.Body.String())
+	}
+
 	create := httptest.NewRecorder()
-	createReq := httptest.NewRequest(http.MethodPost, "/api/skill/create", strings.NewReader(`{"name":"  写作技能  ","description":"说明","prompt":"帮我写","tool_keys":[" time ",""],"config":{"quick_prompt":[" 快问 "],"few_shots":[{"input":"问","output":"答"}]}}`))
+	createReq := httptest.NewRequest(http.MethodPost, "/api/skill/create", strings.NewReader(`{"name":"  写作技能  ","description":"说明","prompt":"帮我写","tool_keys":[" current_time ",""],"config":{"quick_prompt":[" 快问 "],"few_shots":[{"input":"问","output":"答"}]}}`))
 	createReq.Header.Set("Content-Type", "application/json")
 	createReq.Header.Set("Authorization", "Bearer dev-token")
 	router.ServeHTTP(create, createReq)
@@ -1570,7 +1579,7 @@ func TestSkillRoutesSupportCRUDAndOptimizePrompt(t *testing.T) {
 	if createBody.Data.ID == "" || createBody.Data.Name != "写作技能" || createBody.Data.Icon != "🧩" || createBody.Data.KBID != nil {
 		t.Fatalf("create skill body = %+v, want normalized skill", createBody.Data)
 	}
-	if !slices.Equal(createBody.Data.ToolKeys, []string{"time"}) || !slices.Equal(createBody.Data.Config.QuickPrompt, []string{"快问"}) {
+	if !slices.Equal(createBody.Data.ToolKeys, []string{"current_time"}) || !slices.Equal(createBody.Data.Config.QuickPrompt, []string{"快问"}) {
 		t.Fatalf("create normalized arrays = tool_keys:%v quick_prompt:%v", createBody.Data.ToolKeys, createBody.Data.Config.QuickPrompt)
 	}
 

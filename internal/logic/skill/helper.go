@@ -4,6 +4,10 @@ import (
 	"context"
 	"log/slog"
 
+	coretool "github.com/boxify/api-go/internal/core/tool"
+	domaintools "github.com/boxify/api-go/internal/domain/tools"
+	"github.com/boxify/api-go/internal/mapper"
+	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/boxify/api-go/internal/transport/http/request"
 	"github.com/boxify/api-go/internal/xerr"
@@ -38,6 +42,30 @@ func resolveSkillKnowledgeBaseID(ctx context.Context, svcCtx *svc.ServiceContext
 		return nil, err
 	}
 	return &id, nil
+}
+
+// validateSkillToolKeys 规范化工具键并确认每个键均存在于当前内置工具目录中。
+func validateSkillToolKeys(ctx context.Context, svcCtx *svc.ServiceContext, raw []string) (models.StringList, error) {
+	toolKeys := mapper.SkillToolKeysFromRequest(raw)
+	if len(toolKeys) == 0 {
+		return toolKeys, nil
+	}
+
+	// 通过领域工具目录构建完整注册表，避免技能层维护重复的工具键清单。
+	catalog, err := domaintools.NewCatalog(svcCtx)
+	if err != nil {
+		return nil, err
+	}
+	registry, err := catalog.BuildRegistry(ctx, coretool.Selection{})
+	if err != nil {
+		return nil, err
+	}
+	for _, toolKey := range toolKeys {
+		if _, exists := registry.Lookup(toolKey); !exists {
+			return nil, xerr.NotFound("工具不存在")
+		}
+	}
+	return toolKeys, nil
 }
 
 func ensureSkillLimit(ctx context.Context, svcCtx *svc.ServiceContext, userID uuid.UUID, log *slog.Logger) error {
