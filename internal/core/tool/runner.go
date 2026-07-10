@@ -35,14 +35,15 @@ func NewRunner(registry *Registry, opts ...RunnerOption) *Runner {
 // Invoke 调用指定名称的工具。
 //
 // name 会先做 strings.TrimSpace 规整。input 为 nil 时按空输入处理。默认配置下，
-// 未知工具和工具执行错误会被转换成 Output；关闭 ErrorAsOutput 后则直接返回 error。
+// 未知工具和工具执行错误会被转换成 Output；工具同时返回 Output 和 error 时会保留
+// 原始 Parts、Metadata 并将 Text 规范为失败 observation。关闭 ErrorAsOutput 后则直接返回 error。
 func (r *Runner) Invoke(ctx context.Context, name string, input Input) (Output, error) {
 	if r == nil {
 		return Output{}, fmt.Errorf("runner is nil")
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return r.handleError(fmt.Errorf("tool name is empty"))
+		return r.handleError(Output{}, fmt.Errorf("tool name is empty"))
 	}
 	if input == nil {
 		input = Input{}
@@ -50,26 +51,32 @@ func (r *Runner) Invoke(ctx context.Context, name string, input Input) (Output, 
 
 	tool, ok := r.registry.Lookup(name)
 	if !ok {
-		return r.handleError(fmt.Errorf("tool %q not found", name))
+		return r.handleError(Output{}, fmt.Errorf("tool %q not found", name))
 	}
 	output, err := tool.Invoke(ctx, input)
 	if err != nil {
-		return r.handleError(err)
+		return r.handleError(output, err)
 	}
 	return output, nil
 }
 
-func (r *Runner) handleError(err error) (Output, error) {
+func (r *Runner) handleError(output Output, err error) (Output, error) {
 	if err == nil {
 		return Output{}, nil
 	}
 	if !r.errorAsOutput {
 		return Output{}, err
 	}
-	return Output{
-		Text: err.Error(),
-		Metadata: map[string]any{
-			"error": err.Error(),
-		},
-	}, nil
+	// 工具可能同时返回部分结果和错误；默认策略将完整结果转换为模型可观察文本。
+	errorText := output.Text
+	if errorText == "" {
+		errorText = err.Error()
+	}
+	output.Text = "tool invocation failed:\n" + errorText
+	output.Metadata = cloneMap(output.Metadata)
+	if output.Metadata == nil {
+		output.Metadata = map[string]any{}
+	}
+	output.Metadata["error"] = err.Error()
+	return output, nil
 }

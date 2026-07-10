@@ -486,6 +486,45 @@ func TestOrchestratorRunKeepsToolRunnerErrorAsObservation(t *testing.T) {
 	}
 }
 
+// TestOrchestratorRunKeepsMCPIsErrorAsObservation 验证 MCP IsError 经默认 Runner 恢复为完整 observation，不会中断聊天 Flow。
+func TestOrchestratorRunKeepsMCPIsErrorAsObservation(t *testing.T) {
+	userID := uuid.New()
+	server := &models.MCPServer{ID: uuid.New(), UserID: userID, Name: "故障搜索", Enabled: true}
+	toolKey := domaintoolmcp.ToolKey(server.ID, "search")
+	llmClient := &fakeFlowChatLLMClient{invokeResponses: []fakeFlowInvokeResponse{
+		{text: "Thought: search\nAction: " + toolKey + "\nAction Input: {\"query\":\"hello\"}"},
+		{text: "Thought: recovered\nFinal Answer: 已处理"},
+	}}
+	session := &fakeFlowMCPSession{
+		tools: []coremcp.ToolInfo{{Name: "search", Description: "搜索"}},
+		result: &coremcp.CallResult{
+			Content:           []coremcp.Content{{Type: "text", Text: "远端拒绝请求"}},
+			StructuredContent: map[string]any{"code": "bad_request"},
+			IsError:           true,
+		},
+	}
+	svcCtx := newFlowChatTestServiceContext(t, userID, llmClient)
+	svcCtx.MCPServerRepo.(*fakeFlowMCPServerRepo).rows = []*models.MCPServer{server}
+	svcCtx.MCPToolService = coremcp.NewService(coremcp.Options{SessionOpener: &fakeFlowMCPOpener{session: session}})
+
+	messages, err := collectFlowMessages(NewOrchestrator(svcCtx).Run(context.Background(), Input{
+		UserID: userID, ConversationID: uuid.New(), CurrentUserMessageID: uuid.New(), Message: "搜索", Temperature: 0.2,
+	}))
+	if err != nil {
+		t.Fatalf("Orchestrator.Run error = %v, want nil", err)
+	}
+	if gotKinds := flowMessageKinds(messages); !slices.Equal(gotKinds, []flow.MessageKind{flow.MessageToolCall, flow.MessageToolResult, flow.MessageAssistant, flow.MessageDone}) {
+		t.Fatalf("message kinds = %#v, want tool_call/tool_result/assistant/done", gotKinds)
+	}
+	result, ok := messages[1].(*flow.ToolResultMessage)
+	if !ok || result.Error != "" || !strings.HasPrefix(result.Observation, "tool invocation failed:\n") || !strings.Contains(result.Observation, "远端拒绝请求") || !strings.Contains(result.Observation, `"code":"bad_request"`) {
+		t.Fatalf("tool result message = %#v, want recovered MCP error observation", messages[1])
+	}
+	if session.closeCalls != 1 {
+		t.Fatalf("MCP session close calls = %d, want 1 after flow completion", session.closeCalls)
+	}
+}
+
 // 验证 AfterTool 收到真实 toolErr 时直接返回错误，不额外发送工具结束消息。
 func TestAgentHooksAfterToolReturnsToolErrorWithoutEmittingResult(t *testing.T) {
 	ch := make(chan flow.Message, 1)

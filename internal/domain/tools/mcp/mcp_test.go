@@ -35,7 +35,7 @@ func TestToolKeyIsStableValidAndServerScoped(t *testing.T) {
 	}
 }
 
-// TestNewToolPreservesSchemaAndMCPResult 验证 MCP 工具适配会透传完整 schema、调用原始名称并保留错误结果内容。
+// TestNewToolPreservesSchemaAndMCPResult 验证 MCP IsError 直接返回完整 Output 和普通错误，并由默认 Runner 生成观察结果。
 func TestNewToolPreservesSchemaAndMCPResult(t *testing.T) {
 	server := &models.MCPServer{ID: uuid.New(), Name: "搜索服务", Enabled: true}
 	info := coremcp.ToolInfo{
@@ -81,8 +81,8 @@ func TestNewToolPreservesSchemaAndMCPResult(t *testing.T) {
 		t.Fatalf("Describe schema = %#v, want $defs", descriptor.Schema.Parameters.Map())
 	}
 	output, err := tool.Invoke(context.Background(), coretool.Input{"query": "hello"})
-	if err != nil {
-		t.Fatalf("Invoke error = %v, want nil for MCP IsError result", err)
+	if err == nil || err.Error() != "mcp tool returned error" {
+		t.Fatalf("Invoke error = %v, want MCP IsError", err)
 	}
 	if session.lastName != "remote-search" || session.lastInput["query"] != "hello" {
 		t.Fatalf("CallTool name/input = %q/%#v, want remote raw name and input", session.lastName, session.lastInput)
@@ -93,8 +93,19 @@ func TestNewToolPreservesSchemaAndMCPResult(t *testing.T) {
 	if len(output.Parts) != 2 || output.Parts[1].MIME != "image/png" || len(output.Parts[1].Data) != 2 {
 		t.Fatalf("Output parts = %#v, want preserved image", output.Parts)
 	}
-	if output.Metadata["mcp_is_error"] != true || output.Metadata["error"] == nil {
-		t.Fatalf("Output metadata = %#v, want MCP error observation", output.Metadata)
+	if output.Metadata["mcp_is_error"] != true || output.Metadata["error"] != nil {
+		t.Fatalf("Output metadata = %#v, want MCP marker without adapter-level error field", output.Metadata)
+	}
+	registry := coretool.NewRegistry()
+	if err := registry.Register(context.Background(), tool); err != nil {
+		t.Fatalf("Registry.Register error = %v, want nil", err)
+	}
+	output, err = coretool.NewRunner(registry).Invoke(context.Background(), descriptor.Name, coretool.Input{"query": "hello"})
+	if err != nil {
+		t.Fatalf("Runner.Invoke error = %v, want nil", err)
+	}
+	if !strings.HasPrefix(output.Text, "tool invocation failed:\n") || !strings.Contains(output.Text, "远端失败") || len(output.Parts) != 2 || output.Metadata["error"] == nil {
+		t.Fatalf("Runner.Invoke output = %#v, want full MCP observation with standard error metadata", output)
 	}
 }
 

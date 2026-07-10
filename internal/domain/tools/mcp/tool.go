@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -54,7 +55,7 @@ func SnapshotDefinitions(server *models.MCPServer) []*Definition {
 
 // NewTool 将领域定义适配为可由 core agent 调用的工具。
 //
-// transport/protocol error 会直接返回；MCP IsError 仍作为完整 Output 返回，供模型观察。
+// transport/protocol error 会直接返回；MCP IsError 会返回完整 Output 和普通错误交给 Runner 处理。
 func NewTool(definition *Definition, opened *coremcp.OpenedTools) coretool.Tool {
 	if definition == nil {
 		return nil
@@ -82,7 +83,11 @@ func NewTool(definition *Definition, opened *coremcp.OpenedTools) coretool.Tool 
 		if err != nil {
 			return coretool.Output{}, err
 		}
-		return outputFromResult(result), nil
+		output := outputFromResult(result)
+		if result != nil && result.IsError {
+			return output, errors.New("mcp tool returned error")
+		}
+		return output, nil
 	})
 }
 
@@ -101,18 +106,22 @@ func schemaFromAny(value any) coretool.ParametersSchema {
 	return coretool.NewParametersSchema(raw)
 }
 
+// outputFromResult 将 MCP 调用结果适配为 core agent 输出。
 func outputFromResult(result *coremcp.CallResult) coretool.Output {
 	if result == nil {
 		return coretool.Output{}
 	}
 	parts := make([]coretool.Part, 0, len(result.Content))
 	texts := make([]string, 0, len(result.Content)+1)
+	// MCP 调用结果可能包含多个内容块，按顺序拼接文本输出，并将每个内容块作为 Part 返回。
 	for _, item := range result.Content {
 		part := coretool.Part{Type: item.Type, Text: item.Text, Data: item.Data, MIME: item.MIMEType}
 		switch item.Type {
 		case "text":
+			// text 类型的内容块直接拼接文本输出
 			texts = appendNonEmpty(texts, item.Text)
 		case "image", "audio":
+			// image/audio 类型的内容块拼接 MIMEType 信息
 			texts = append(texts, fmt.Sprintf("[MCP %s content: %s]", item.Type, item.MIMEType))
 		default:
 			if len(item.Raw) > 0 {
@@ -131,9 +140,6 @@ func outputFromResult(result *coremcp.CallResult) coretool.Output {
 		if data, err := json.Marshal(result.StructuredContent); err == nil {
 			texts = append(texts, string(data))
 		}
-	}
-	if result.IsError {
-		metadata["error"] = strings.Join(texts, "\n")
 	}
 	return coretool.Output{
 		Text:     strings.Join(texts, "\n"),

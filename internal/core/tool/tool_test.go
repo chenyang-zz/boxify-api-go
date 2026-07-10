@@ -244,6 +244,55 @@ func TestRunnerInvokeReturnsErrorWhenErrorAsOutputDisabled(t *testing.T) {
 	}
 }
 
+// TestRunnerInvokePreservesOutputWhenToolReturnsError 验证默认 Runner 保留错误携带的完整输出，严格模式则只返回原始错误。
+func TestRunnerInvokePreservesOutputWhenToolReturnsError(t *testing.T) {
+	ctx := context.Background()
+	registry := NewRegistry()
+	want := Output{
+		Text:     "remote rejected request",
+		Parts:    []Part{{Type: "image", Data: []byte{1, 2, 3}, MIME: "image/png"}},
+		Metadata: map[string]any{"mcp_is_error": true, "structured_content": map[string]any{"code": "bad_request"}},
+	}
+	invokeErr := errors.New("mcp tool returned error")
+	err := registry.Register(ctx, NewFuncTool(Descriptor{Name: "remote"}, func(context.Context, Input) (Output, error) {
+		return want, invokeErr
+	}))
+	if err != nil {
+		t.Fatalf("Registry.Register(remote) error = %v, want nil", err)
+	}
+
+	got, err := NewRunner(registry).Invoke(ctx, "remote", nil)
+	if err != nil {
+		t.Fatalf("Runner.Invoke(remote) error = %v, want nil", err)
+	}
+	if got.Text != "tool invocation failed:\n"+want.Text || len(got.Parts) != 1 || !reflect.DeepEqual(got.Parts[0].Data, want.Parts[0].Data) {
+		t.Fatalf("Runner.Invoke(remote) output = %#v, want preserved text and parts", got)
+	}
+	if got.Metadata["mcp_is_error"] != true || got.Metadata["error"] != invokeErr.Error() {
+		t.Fatalf("Runner.Invoke(remote) metadata = %#v, want preserved MCP marker and standard error", got.Metadata)
+	}
+
+	strictOutput, strictErr := NewRunner(registry, WithErrorAsOutput(false)).Invoke(ctx, "remote", nil)
+	if !errors.Is(strictErr, invokeErr) {
+		t.Fatalf("strict Runner.Invoke(remote) error = %v, want %v", strictErr, invokeErr)
+	}
+	if !reflect.DeepEqual(strictOutput, Output{}) {
+		t.Fatalf("strict Runner.Invoke(remote) output = %#v, want zero Output", strictOutput)
+	}
+
+	emptyErr := errors.New("backend unavailable")
+	err = registry.Register(ctx, NewFuncTool(Descriptor{Name: "empty"}, func(context.Context, Input) (Output, error) {
+		return Output{}, emptyErr
+	}))
+	if err != nil {
+		t.Fatalf("Registry.Register(empty) error = %v, want nil", err)
+	}
+	emptyOutput, err := NewRunner(registry).Invoke(ctx, "empty", nil)
+	if err != nil || emptyOutput.Text != "tool invocation failed:\n"+emptyErr.Error() {
+		t.Fatalf("Runner.Invoke(empty) output/error = %#v/%v, want prefixed fallback text", emptyOutput, err)
+	}
+}
+
 // 验证点：工具输出应保留结构化 part 和 metadata，便于后续扩展图片或文件结果。
 func TestOutputCarriesPartsAndMetadata(t *testing.T) {
 	ctx := context.Background()
