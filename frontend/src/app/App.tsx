@@ -1,4 +1,9 @@
 import { useEffect, useState } from 'react'
+import coveIcon from '../../../build/appicon.png'
+import './App.css'
+import { AuthScreen } from '../features/auth/AuthScreen'
+import { clearSession, restoreSession } from '../features/auth/api'
+import type { StoredSession } from '../features/auth/types'
 import { getAppInfo, type AppInfo } from '../shared/api/appInfo'
 
 type LoadState =
@@ -6,7 +11,17 @@ type LoadState =
   | { status: 'ready'; appInfo: AppInfo }
   | { status: 'error'; message: string }
 
-function App() {
+type AuthState =
+  | { status: 'restoring' }
+  | { status: 'anonymous' }
+  | { status: 'authenticated'; session: StoredSession }
+
+type AuthenticatedAppProps = {
+  session: StoredSession
+  onLogout: () => void
+}
+
+function AuthenticatedApp({ session, onLogout }: AuthenticatedAppProps) {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
 
   useEffect(() => {
@@ -32,20 +47,38 @@ function App() {
     }
   }, [])
 
+  const displayName = session.user.nickname || session.user.username
+
   return (
-    <main className="app-shell">
-      <section className="status-panel">
-        <div className="status-panel__header">
-          <span className="status-panel__eyebrow">Wails v3</span>
-          <h1>Cove</h1>
+    <main className="app-shell app-shell--authenticated">
+      <section className="home-panel">
+        <header className="home-header">
+          <div className="brand-lockup">
+            <img className="brand-lockup__icon" src={coveIcon} alt="" />
+            <span>Cove</span>
+          </div>
+          <button className="secondary-button" type="button" onClick={onLogout}>
+            退出登录
+          </button>
+        </header>
+
+        <div className="welcome-block">
+          <p className="welcome-block__label">已登录</p>
+          <h1>你好，{displayName}</h1>
+          <p>你的 Cove 已准备就绪。</p>
         </div>
 
         {state.status === 'loading' && (
-          <p className="status-panel__message">Loading application metadata...</p>
+          <div className="metadata-skeleton" aria-label="正在加载应用信息">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
         )}
 
         {state.status === 'error' && (
-          <p className="status-panel__message status-panel__message--error">
+          <p className="status-message status-message--error" role="alert">
             {state.message}
           </p>
         )}
@@ -53,19 +86,19 @@ function App() {
         {state.status === 'ready' && (
           <dl className="metadata-grid">
             <div>
-              <dt>Name</dt>
+              <dt>应用</dt>
               <dd>{state.appInfo.name}</dd>
             </div>
             <div>
-              <dt>Version</dt>
+              <dt>版本</dt>
               <dd>{state.appInfo.version}</dd>
             </div>
             <div>
-              <dt>Platform</dt>
+              <dt>平台</dt>
               <dd>{state.appInfo.platform}</dd>
             </div>
             <div>
-              <dt>Architecture</dt>
+              <dt>架构</dt>
               <dd>{state.appInfo.arch}</dd>
             </div>
           </dl>
@@ -73,6 +106,48 @@ function App() {
       </section>
     </main>
   )
+}
+
+function App() {
+  const [authState, setAuthState] = useState<AuthState>({ status: 'restoring' })
+
+  useEffect(() => {
+    let active = true
+    restoreSession().then((session) => {
+      if (!active) {
+        return
+      }
+      setAuthState(session ? { status: 'authenticated', session } : { status: 'anonymous' })
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function handleLogout() {
+    clearSession()
+    setAuthState({ status: 'anonymous' })
+  }
+
+  if (authState.status === 'restoring') {
+    return (
+      <main className="launch-screen" aria-label="正在恢复登录状态">
+        <img src={coveIcon} alt="" />
+        <strong>Cove</strong>
+        <span className="launch-screen__progress" />
+      </main>
+    )
+  }
+
+  if (authState.status === 'anonymous') {
+    return (
+      <AuthScreen
+        onAuthenticated={(session) => setAuthState({ status: 'authenticated', session })}
+      />
+    )
+  }
+
+  return <AuthenticatedApp session={authState.session} onLogout={handleLogout} />
 }
 
 export default App

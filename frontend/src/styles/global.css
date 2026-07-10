@@ -1,0 +1,156 @@
+:root {
+  font-family: "PingFang SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "Segoe UI", sans-serif;
+  color: #14221f;
+  background: #edf3f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light dark;
+
+  --page: #edf3f0;
+  --surface: #f9fcfa;
+  --surface-muted: #e5ece9;
+  --input: #f5f9f7;
+  --text: #14221f;
+  --text-muted: #52635e;
+  --text-soft: #6b7b76;
+  --border: #ccd8d4;
+  --border-strong: #9caea8;
+  --accent: #176b5f;
+  --accent-hover: #10594f;
+  --accent-text: #f5fbf8;
+  --danger: #a92b23;
+  --danger-surface: #fae9e7;
+  --danger-border: #e6b5b0;
+  --focus: rgba(23, 107, 95, 0.24);
+  --shadow: 0 28px 80px rgba(28, 68, 57, 0.13);
+  --radius-panel: 28px;
+  --radius-control: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--page);
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input {
+  border-radius: var(--radius-control);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.auth-shell,
+.app-shell,
+.launch-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-right: max(20px, env(safe-area-inset-right));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(20px, env(safe-area-inset-left));
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.brand-lockup__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 5px 16px rgba(23, 75, 62, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #edf5f2;
+    background: #101714;
+    --page: #101714;
+    --surface: #18221e;
+    --surface-muted: #25312d;
+    --input: #121b18;
+    --text: #edf5f2;
+    --text-muted: #abbcb6;
+    --text-soft: #8fa39c;
+    --border: #35453f;
+    --border-strong: #52665f;
+    --accent: #76d3c2;
+    --accent-hover: #8bddcf;
+    --accent-text: #10211d;
+    --danger: #ffaaa2;
+    --danger-surface: #35201e;
+    --danger-border: #71423e;
+    --focus: rgba(118, 211, 194, 0.28);
+    --shadow: 0 30px 84px rgba(5, 17, 13, 0.4);
+  }
+
+  .brand-lockup__icon {
+    box-shadow: 0 8px 24px rgba(5, 17, 13, 0.44);
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-shell,
+  .app-shell {
+    display: block;
+    padding-right: max(22px, env(safe-area-inset-right));
+    padding-left: max(22px, env(safe-area-inset-left));
+  }
+}
+
+@media (max-width: 350px) {
+  .auth-shell,
+  .app-shell {
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(16px, env(safe-area-inset-left));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
