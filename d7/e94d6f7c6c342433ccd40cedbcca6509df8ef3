@@ -1,0 +1,30 @@
+internal/logic/skill/create_skill.go
+  s_31bc8e9b2d7b6c::t_bba63acb4c236d 44-47,49
+internal/logic/skill/skill_test.go
+  s_31bc8e9b2d7b6c::t_3eea96c4e2f62e 210-230,247
+  s_31bc8e9b2d7b6c::t_bba63acb4c236d 37,57-58,74-88,231-246
+  s_31bc8e9b2d7b6c::t_e368184d0988d8 248
+internal/logic/skill/helper.go
+  s_31bc8e9b2d7b6c::t_bba63acb4c236d 7-10,47-68
+  s_31bc8e9b2d7b6c::t_8fe1c0165a1d33 69-70
+internal/transport/http/router_test.go
+  s_31bc8e9b2d7b6c::t_bba63acb4c236d 1547-1555,1557,1582
+internal/logic/skill/update_skill.go
+  s_31bc8e9b2d7b6c::t_bba63acb4c236d 68-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "d7e94d6f7c6c342433ccd40cedbcca6509df8ef3",
+  "prompts": {},
+  "sessions": {
+    "s_31bc8e9b2d7b6c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4a80-7e64-7662-ac3f-6c8c5966299b",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
