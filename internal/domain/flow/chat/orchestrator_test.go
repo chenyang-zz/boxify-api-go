@@ -212,6 +212,74 @@ func TestOrchestratorRunUsesNormalizedKnowledgeFlag(t *testing.T) {
 	}
 }
 
+// 验证没有用户配置时，聊天 Flow 默认注册当前上下文允许的全部内置工具。
+func TestToolRegistryDefaultsBuiltinToolsEnabled(t *testing.T) {
+	userID := uuid.New()
+	svcCtx := newFlowChatTestServiceContext(t, userID, &fakeFlowChatLLMClient{})
+	orchestrator := NewOrchestrator(svcCtx)
+
+	registry, err := orchestrator.toolRegistry(context.Background(), userID, []uuid.UUID{uuid.New()})
+	if err != nil {
+		t.Fatalf("toolRegistry error = %v, want nil", err)
+	}
+	for _, toolKey := range []string{"current_time", "knowledge_search"} {
+		if _, ok := registry.Lookup(toolKey); !ok {
+			t.Fatalf("toolRegistry Lookup(%q) = false, want default enabled", toolKey)
+		}
+	}
+}
+
+// 验证用户显式关闭的内置工具不会注册到聊天 Agent。
+func TestToolRegistryExcludesPersistedDisabledTool(t *testing.T) {
+	userID := uuid.New()
+	svcCtx := newFlowChatTestServiceContext(t, userID, &fakeFlowChatLLMClient{})
+	svcCtx.ToolConfigRepo.(*fakeFlowToolConfigRepo).rows = []*models.ToolConfig{
+		{ID: uuid.New(), UserID: userID, ToolKey: "current_time", Enabled: false},
+		{ID: uuid.New(), UserID: userID, ToolKey: "current_time", Enabled: true},
+	}
+	orchestrator := NewOrchestrator(svcCtx)
+
+	registry, err := orchestrator.toolRegistry(context.Background(), userID, nil)
+	if err != nil {
+		t.Fatalf("toolRegistry error = %v, want nil", err)
+	}
+	if _, ok := registry.Lookup("current_time"); ok {
+		t.Fatal("toolRegistry Lookup(current_time) = true, want disabled tool excluded")
+	}
+}
+
+// 验证本轮未开启知识库时，即使用户配置启用也不会注册知识库工具。
+func TestToolRegistryKeepsKnowledgeRequestOverride(t *testing.T) {
+	userID := uuid.New()
+	svcCtx := newFlowChatTestServiceContext(t, userID, &fakeFlowChatLLMClient{})
+	svcCtx.ToolConfigRepo.(*fakeFlowToolConfigRepo).rows = []*models.ToolConfig{{
+		ID: uuid.New(), UserID: userID, ToolKey: "knowledge_search", Enabled: true,
+	}}
+	orchestrator := NewOrchestrator(svcCtx)
+
+	registry, err := orchestrator.toolRegistry(context.Background(), userID, nil)
+	if err != nil {
+		t.Fatalf("toolRegistry error = %v, want nil", err)
+	}
+	if _, ok := registry.Lookup("knowledge_search"); ok {
+		t.Fatal("toolRegistry Lookup(knowledge_search) = true, want request override excluded")
+	}
+}
+
+// 验证用户工具配置查询失败时聊天 Flow 会返回错误。
+func TestToolRegistryReturnsToolConfigRepositoryError(t *testing.T) {
+	userID := uuid.New()
+	svcCtx := newFlowChatTestServiceContext(t, userID, &fakeFlowChatLLMClient{})
+	want := errors.New("list tool configs")
+	svcCtx.ToolConfigRepo.(*fakeFlowToolConfigRepo).listErr = want
+	orchestrator := NewOrchestrator(svcCtx)
+
+	_, err := orchestrator.toolRegistry(context.Background(), userID, nil)
+	if !errors.Is(err, want) {
+		t.Fatalf("toolRegistry error = %v, want %v", err, want)
+	}
+}
+
 // 验证模型失败时聊天 Flow 会输出携带部分回复的 error 消息。
 func TestOrchestratorRunEmitsErrorWithPartial(t *testing.T) {
 	userID := uuid.New()
@@ -401,9 +469,55 @@ func newFlowChatTestServiceContext(t *testing.T, userID uuid.UUID, llmClient *fa
 		ModelConfigRepo:   &fakeFlowModelConfigRepo{rows: []*models.ModelConfig{{ID: uuid.New(), UserID: userID, Type: string(types.ChatModelType), Provider: "fake", ModelName: "fake-chat", APIKeyEncrypted: encrypted, IsDefault: true}}},
 		MessageRepo:       &fakeFlowMessageRepo{},
 		KnowledgeBaseRepo: &fakeFlowKnowledgeBaseRepo{},
+		ToolConfigRepo:    &fakeFlowToolConfigRepo{},
 		PromptManager:     promptManager,
 		PromptClient:      promptsgen.NewClient(promptManager),
 	}
+}
+
+type fakeFlowToolConfigRepo struct {
+	rows    []*models.ToolConfig
+	listErr error
+}
+
+func (r *fakeFlowToolConfigRepo) Create(_ context.Context, userID uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	row.UserID = userID
+	r.rows = append(r.rows, row)
+	return row, nil
+}
+
+func (r *fakeFlowToolConfigRepo) List(_ context.Context, userID uuid.UUID) ([]*models.ToolConfig, error) {
+	if r.listErr != nil {
+		return nil, r.listErr
+	}
+	out := make([]*models.ToolConfig, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row != nil && row.UserID == userID {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (r *fakeFlowToolConfigRepo) FindByID(_ context.Context, userID uuid.UUID, id uuid.UUID) (*models.ToolConfig, error) {
+	for _, row := range r.rows {
+		if row != nil && row.UserID == userID && row.ID == id {
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("工具配置不存在")
+}
+
+func (r *fakeFlowToolConfigRepo) Update(_ context.Context, _ uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	return row, nil
+}
+
+func (r *fakeFlowToolConfigRepo) UpdateFields(_ context.Context, _ uuid.UUID, _ uuid.UUID, row *models.ToolConfig, _ *repository.ToolConfigUpdateFields) (*models.ToolConfig, error) {
+	return row, nil
+}
+
+func (r *fakeFlowToolConfigRepo) Delete(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+	return nil
 }
 
 type fakeFlowInvokeResponse struct {

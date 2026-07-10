@@ -11,5 +11,5 @@ type UriToolKeyRequest struct {
 
 type ToggleToolRequest struct {
 	UriToolKeyRequest
-	Enabled bool `json:"enabled" binding:"required"`
+	Enabled *bool `json:"enabled" binding:"required"`
 }

@@ -28,7 +28,7 @@ func TestModelConfigTableName(t *testing.T) {
 }
 
 func TestUserGormTags(t *testing.T) {
-	userType := reflect.TypeOf(User{})
+	userType := reflect.TypeFor[User]()
 	tests := map[string][]string{
 		"ID":             {"type:uuid", "primaryKey"},
 		"Username":       {"column:username", "size:64", "uniqueIndex", "not null"},
@@ -55,7 +55,7 @@ func TestUserGormTags(t *testing.T) {
 }
 
 func TestModelConfigGormTags(t *testing.T) {
-	modelType := reflect.TypeOf(ModelConfig{})
+	modelType := reflect.TypeFor[ModelConfig]()
 	tests := map[string][]string{
 		"ID":              {"column:id", "type:uuid", "primaryKey"},
 		"UserID":          {"column:user_id", "type:uuid", "not null", "index"},
@@ -87,7 +87,7 @@ func TestModelConfigGormTags(t *testing.T) {
 
 func TestKnowledgeBaseGormTags(t *testing.T) {
 	// 验证知识库模型包含展示字段和用户隔离所需的 GORM 标签。
-	modelType := reflect.TypeOf(KnowledgeBase{})
+	modelType := reflect.TypeFor[KnowledgeBase]()
 	tests := map[string][]string{
 		"ID":          {"column:id", "type:uuid", "primaryKey"},
 		"UserID":      {"column:user_id", "type:uuid", "not null", "index"},
@@ -136,7 +136,7 @@ func TestStringListScansAndValuesJSON(t *testing.T) {
 }
 
 func TestRefreshTokenGormTags(t *testing.T) {
-	tokenType := reflect.TypeOf(RefreshToken{})
+	tokenType := reflect.TypeFor[RefreshToken]()
 	tests := map[string][]string{
 		"ID":        {"column:id", "type:uuid", "primaryKey"},
 		"UserID":    {"column:user_id", "type:uuid", "not null", "index"},

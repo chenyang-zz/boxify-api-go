@@ -116,6 +116,7 @@ func newTestRouterWithConfigAndOverrides(t *testing.T, cfg config.Config, config
 		MessageRepo:       newTestMessageRepository(),
 		KnowledgeBaseRepo: newTestKnowledgeBaseRepository(),
 		SkillRepo:         newTestSkillRepository(),
+		ToolConfigRepo:    newTestToolConfigRepository(),
 		DocumentRepo:      newTestDocumentRepository(),
 		ImageRepo:         newTestImageRepository(),
 		TagRepo:           newTestTagRepository(),
@@ -242,6 +243,79 @@ type testWebCrawlerGuard struct{}
 
 func (testWebCrawlerGuard) Validate(ctx context.Context, rawURL string) error {
 	return nil
+}
+
+type testToolConfigRepository struct {
+	rows []*models.ToolConfig
+}
+
+func newTestToolConfigRepository() *testToolConfigRepository {
+	return &testToolConfigRepository{}
+}
+
+func (r *testToolConfigRepository) Create(_ context.Context, userID uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	if row.ID == uuid.Nil {
+		row.ID = uuid.New()
+	}
+	row.UserID = userID
+	r.rows = append([]*models.ToolConfig{row}, r.rows...)
+	return row, nil
+}
+
+func (r *testToolConfigRepository) List(_ context.Context, userID uuid.UUID) ([]*models.ToolConfig, error) {
+	out := make([]*models.ToolConfig, 0, len(r.rows))
+	for _, row := range r.rows {
+		if row != nil && row.UserID == userID {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (r *testToolConfigRepository) FindByID(_ context.Context, userID uuid.UUID, id uuid.UUID) (*models.ToolConfig, error) {
+	for _, row := range r.rows {
+		if row != nil && row.UserID == userID && row.ID == id {
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("工具配置不存在")
+}
+
+func (r *testToolConfigRepository) Update(_ context.Context, userID uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	for i, existing := range r.rows {
+		if existing != nil && existing.UserID == userID && existing.ID == row.ID {
+			row.UserID = userID
+			r.rows[i] = row
+			return row, nil
+		}
+	}
+	return nil, xerr.NotFound("工具配置不存在")
+}
+
+func (r *testToolConfigRepository) UpdateFields(_ context.Context, userID uuid.UUID, id uuid.UUID, patch *models.ToolConfig, fields *repository.ToolConfigUpdateFields) (*models.ToolConfig, error) {
+	for _, row := range r.rows {
+		if row == nil || row.UserID != userID || row.ID != id {
+			continue
+		}
+		for _, column := range fields.Columns() {
+			switch column {
+			case "enabled":
+				row.Enabled = patch.Enabled
+			}
+		}
+		return row, nil
+	}
+	return nil, xerr.NotFound("工具配置不存在")
+}
+
+func (r *testToolConfigRepository) Delete(_ context.Context, userID uuid.UUID, id uuid.UUID) error {
+	for i, row := range r.rows {
+		if row != nil && row.UserID == userID && row.ID == id {
+			r.rows = append(r.rows[:i], r.rows[i+1:]...)
+			return nil
+		}
+	}
+	return xerr.NotFound("工具配置不存在")
 }
 
 type testModelConfigRepository struct {
@@ -1396,6 +1470,64 @@ func TestKnowledgeBaseListCreatesDefaultForFreshUser(t *testing.T) {
 	if got.Name != "默认知识库" || got.Description != "未分类资料默认归入此库" || got.Icon != "📚" ||
 		got.Color != "#155EEF" || !got.IsDefault || !got.ChatEnabled {
 		t.Fatalf("default knowledge base = %+v, want configured default", got)
+	}
+}
+
+// 验证工具配置列表来自内置 Catalog，且 HTTP 开关接口可以持久化 enabled=false。
+func TestToolConfigRoutesListBuiltinToolsAndToggleFalse(t *testing.T) {
+	router := newTestRouter(t)
+
+	list := httptest.NewRecorder()
+	listReq := httptest.NewRequest(http.MethodGet, "/api/tool-config/", nil)
+	listReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(list, listReq)
+	if list.Code != http.StatusOK {
+		t.Fatalf("initial list status = %d body=%s", list.Code, list.Body.String())
+	}
+	var initial struct {
+		Data struct {
+			List []struct {
+				ToolKey string `json:"tool_key"`
+				Enabled bool   `json:"enabled"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &initial); err != nil {
+		t.Fatalf("unmarshal initial list body: %v", err)
+	}
+	if len(initial.Data.List) != 2 || !initial.Data.List[0].Enabled || !initial.Data.List[1].Enabled {
+		t.Fatalf("initial tools = %+v, want two default-enabled builtin tools", initial.Data.List)
+	}
+
+	toggle := httptest.NewRecorder()
+	toggleReq := httptest.NewRequest(http.MethodPost, "/api/tool-config/current_time/toggle", strings.NewReader(`{"enabled":false}`))
+	toggleReq.Header.Set("Content-Type", "application/json")
+	toggleReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(toggle, toggleReq)
+	if toggle.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d body=%s", toggle.Code, toggle.Body.String())
+	}
+
+	after := httptest.NewRecorder()
+	afterReq := httptest.NewRequest(http.MethodGet, "/api/tool-config/list", nil)
+	afterReq.Header.Set("Authorization", "Bearer dev-token")
+	router.ServeHTTP(after, afterReq)
+	if after.Code != http.StatusOK {
+		t.Fatalf("after list status = %d body=%s", after.Code, after.Body.String())
+	}
+	var afterBody struct {
+		Data struct {
+			List []struct {
+				ToolKey string `json:"tool_key"`
+				Enabled bool   `json:"enabled"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(after.Body.Bytes(), &afterBody); err != nil {
+		t.Fatalf("unmarshal after list body: %v", err)
+	}
+	if len(afterBody.Data.List) != 2 || afterBody.Data.List[0].ToolKey != "current_time" || afterBody.Data.List[0].Enabled {
+		t.Fatalf("after tools = %+v, want current_time disabled", afterBody.Data.List)
 	}
 }
 

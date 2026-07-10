@@ -61,6 +61,13 @@ func NewKnowledgeSearchTool(svcCtx *svc.ServiceContext) coretool.Tool {
 	return coretool.NewFuncTool(coretool.Descriptor{
 		Name:        ToolKnowledgeSearch,
 		Description: "在当前上下文授权的知识库范围内检索相关内容。",
+		Annotations: map[string]any{
+			"display_name":        "知识库检索",
+			"display_description": "从你的文档、图片知识库中检索相关内容并带引用来源。",
+			"icon":                "🔍",
+			"needs_config":        false,
+			"config_hint":         "",
+		},
 		Schema: coretool.Schema{
 			Parameters: coretool.ParametersSchema{
 				Type: "object",

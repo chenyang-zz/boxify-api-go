@@ -19,6 +19,13 @@ func NewCurrentTimeTool(opts ...Option) coretool.Tool {
 	return coretool.NewFuncTool(coretool.Descriptor{
 		Name:        ToolCurrentTime,
 		Description: "获取当前时间，可按指定 IANA 时区返回。",
+		Annotations: map[string]any{
+			"display_name":        "时间",
+			"display_description": "获取当前日期、时间和时区。",
+			"icon":                "🕐",
+			"needs_config":        false,
+			"config_hint":         "",
+		},
 		Schema: coretool.Schema{
 			Parameters: coretool.ParametersSchema{
 				Type: "object",

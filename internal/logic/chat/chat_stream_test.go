@@ -212,10 +212,37 @@ func newChatStreamTestServiceContext(t *testing.T, userID uuid.UUID, llmClient *
 		ConversationRepo:  &fakeChatConversationRepo{},
 		MessageRepo:       &fakeChatMessageRepo{},
 		KnowledgeBaseRepo: &fakeChatKnowledgeBaseRepo{},
+		ToolConfigRepo:    &fakeChatToolConfigRepo{},
 		Realtime:          newFakeChatRealtimeBroker(),
 		PromptManager:     promptManager,
 		PromptClient:      promptsgen.NewClient(promptManager),
 	}
+}
+
+type fakeChatToolConfigRepo struct{}
+
+func (r *fakeChatToolConfigRepo) Create(_ context.Context, _ uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	return row, nil
+}
+
+func (r *fakeChatToolConfigRepo) List(_ context.Context, _ uuid.UUID) ([]*models.ToolConfig, error) {
+	return nil, nil
+}
+
+func (r *fakeChatToolConfigRepo) FindByID(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.ToolConfig, error) {
+	return nil, xerr.NotFound("工具配置不存在")
+}
+
+func (r *fakeChatToolConfigRepo) Update(_ context.Context, _ uuid.UUID, row *models.ToolConfig) (*models.ToolConfig, error) {
+	return row, nil
+}
+
+func (r *fakeChatToolConfigRepo) UpdateFields(_ context.Context, _ uuid.UUID, _ uuid.UUID, row *models.ToolConfig, _ *repository.ToolConfigUpdateFields) (*models.ToolConfig, error) {
+	return row, nil
+}
+
+func (r *fakeChatToolConfigRepo) Delete(_ context.Context, _ uuid.UUID, _ uuid.UUID) error {
+	return nil
 }
 
 func collectChatEvents(t *testing.T, events <-chan types.Event) []types.Event {

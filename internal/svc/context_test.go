@@ -130,7 +130,7 @@ func TestWithTxRollsBackAndCommitsWhenPostgresEnvIsConfigured(t *testing.T) {
 	rollbackUsername := "tx-rollback-" + uuid.NewString()
 	rollbackErr := errors.New("rollback")
 	err := svcCtx.WithTx(ctx, func(txSvc *svc.ServiceContext) error {
-		if txSvc.GormDB == nil || txSvc.UserRepo == nil || txSvc.ConversationRepo == nil || txSvc.SkillRepo == nil {
+		if txSvc.GormDB == nil || txSvc.UserRepo == nil || txSvc.ConversationRepo == nil || txSvc.SkillRepo == nil || txSvc.ToolConfigRepo == nil {
 			return errors.New("transaction repositories were not rebound")
 		}
 		user, err := txSvc.UserRepo.Create(ctx, &models.User{
@@ -155,7 +155,7 @@ func TestWithTxRollsBackAndCommitsWhenPostgresEnvIsConfigured(t *testing.T) {
 	commitUsername := "tx-commit-" + uuid.NewString()
 	var committedUserID uuid.UUID
 	err = svcCtx.WithTx(ctx, func(txSvc *svc.ServiceContext) error {
-		if txSvc.GormDB == nil || txSvc.UserRepo == nil || txSvc.ConversationRepo == nil || txSvc.SkillRepo == nil {
+		if txSvc.GormDB == nil || txSvc.UserRepo == nil || txSvc.ConversationRepo == nil || txSvc.SkillRepo == nil || txSvc.ToolConfigRepo == nil {
 			return errors.New("transaction repositories were not rebound")
 		}
 		user, err := txSvc.UserRepo.Create(ctx, &models.User{

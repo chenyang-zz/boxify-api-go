@@ -63,6 +63,7 @@ type ServiceContext struct {
 	MCPServerRepo       repository.MCPServerRepository
 	KnowledgeBaseRepo   repository.KnowledgeBaseRepository
 	SkillRepo           repository.SkillRepository
+	ToolConfigRepo      repository.ToolConfigRepository
 	DocumentRepo        repository.DocumentRepository
 	ImageRepo           repository.ImageRepository
 	TagRepo             repository.TagRepository
@@ -202,6 +203,7 @@ func bindPostgresRepositories(s *ServiceContext, db *gorm.DB) {
 	s.MCPServerRepo = repositorypostgres.NewMCPServerRepository(db)
 	s.KnowledgeBaseRepo = repositorypostgres.NewKnowledgeBaseRepository(db)
 	s.SkillRepo = repositorypostgres.NewSkillRepository(db)
+	s.ToolConfigRepo = repositorypostgres.NewToolConfigRepository(db)
 	s.DocumentRepo = repositorypostgres.NewDocumentRepository(db)
 	s.ImageRepo = repositorypostgres.NewImageRepository(db)
 	s.TagRepo = repositorypostgres.NewTagRepository(db)
@@ -243,6 +245,7 @@ func newTxContext(s *ServiceContext) ServiceContext {
 		MCPServerRepo:       s.MCPServerRepo,
 		KnowledgeBaseRepo:   s.KnowledgeBaseRepo,
 		SkillRepo:           s.SkillRepo,
+		ToolConfigRepo:      s.ToolConfigRepo,
 		DocumentRepo:        s.DocumentRepo,
 		ImageRepo:           s.ImageRepo,
 		TagRepo:             s.TagRepo,

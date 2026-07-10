@@ -87,7 +87,7 @@ func (o *Orchestrator) generate(ctx context.Context, input Input, events chan<- 
 	if err != nil {
 		return generationResult{}, err
 	}
-	registry, err := o.toolRegistry(runCtx, kbIDs)
+	registry, err := o.toolRegistry(runCtx, input.UserID, kbIDs)
 	if err != nil {
 		return generationResult{}, err
 	}
@@ -137,7 +137,7 @@ func (o *Orchestrator) historyMessages(ctx context.Context, userID uuid.UUID, co
 	return messages, nil
 }
 
-func (o *Orchestrator) toolRegistry(ctx context.Context, kbIDs []uuid.UUID) (*coretool.Registry, error) {
+func (o *Orchestrator) toolRegistry(ctx context.Context, userID uuid.UUID, kbIDs []uuid.UUID) (*coretool.Registry, error) {
 	if o.svcCtx == nil {
 		return coretool.NewRegistry(), nil
 	}
@@ -149,7 +149,43 @@ func (o *Orchestrator) toolRegistry(ctx context.Context, kbIDs []uuid.UUID) (*co
 	if len(kbIDs) > 0 {
 		setNames = append(setNames, domaintools.ToolSetKnowledge)
 	}
-	return catalog.BuildRegistry(ctx, coretool.Selection{SetNames: setNames})
+	registry, err := catalog.BuildRegistry(ctx, coretool.Selection{SetNames: setNames})
+	if err != nil {
+		return nil, err
+	}
+	if o.svcCtx.ToolConfigRepo == nil {
+		return nil, errors.New("tool config repository is nil")
+	}
+	rows, err := o.svcCtx.ToolConfigRepo.List(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 未持久化配置的内置工具默认启用，只覆盖用户显式保存过的状态。
+	enabled := make(map[string]bool)
+	for _, descriptor := range registry.List(nil) {
+		enabled[descriptor.Name] = true
+	}
+	configured := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		if _, exists := configured[row.ToolKey]; exists {
+			continue
+		}
+		if _, exists := enabled[row.ToolKey]; exists {
+			enabled[row.ToolKey] = row.Enabled
+			configured[row.ToolKey] = struct{}{}
+		}
+	}
+	filtered := coretool.NewRegistry()
+	for _, tool := range registry.Tools(enabled) {
+		if err := filtered.Register(ctx, tool); err != nil {
+			return nil, err
+		}
+	}
+	return filtered, nil
 }
 
 func toolContext(ctx context.Context, svcCtx *svc.ServiceContext, userID uuid.UUID, enableKnowledge bool) (context.Context, []uuid.UUID, error) {
