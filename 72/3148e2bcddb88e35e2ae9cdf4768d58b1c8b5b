@@ -1,0 +1,24 @@
+internal/core/tool/clone.go
+  s_bed6061d2f5706::t_dc29206c25ae2f 32
+internal/core/tool/types.go
+  s_bed6061d2f5706::t_dc29206c25ae2f 3-6,22,29-89
+  s_bed6061d2f5706::t_47b10b1a3b4f5e 90
+internal/core/tool/tool_test.go
+  s_bed6061d2f5706::t_1992903bd9e8ae 280-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "723148e2bcddb88e35e2ae9cdf4768d58b1c8b5b",
+  "prompts": {},
+  "sessions": {
+    "s_bed6061d2f5706": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1817-2478-7702-8e5a-fc4304ca0bc4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
