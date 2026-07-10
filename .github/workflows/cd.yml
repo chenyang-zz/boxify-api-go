@@ -93,16 +93,17 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             set -e
-            echo "🚀 开始部署镜像: ${{ needs.build-and-push.outputs.image-uri }}"
+            echo "🚀 开始部署镜像: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }}"
 
             # 登录 GHCR
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
-            # 拉取最新镜像
-            cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
-            docker compose -f deployments/docker-compose.yml pull api
+            # 从 GHCR 拉取镜像并 tag 为 compose 中引用的本地名
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }}
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image-tag }} cove-api:latest
 
             # 滚动更新 api 容器
+            cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
             docker compose -f deployments/docker-compose.yml up -d --no-deps api
 
             # 清理悬空镜像
