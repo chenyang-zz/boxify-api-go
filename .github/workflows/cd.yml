@@ -77,7 +77,10 @@ jobs:
           fi
 
           if test -z "$previous_tag"; then
-            version=0.1.0
+            major=0
+            minor=1
+            patch=0
+            version="${major}.${minor}.${patch}"
           else
             current="${previous_tag#v}"
             IFS=. read -r major minor patch <<< "$current"
