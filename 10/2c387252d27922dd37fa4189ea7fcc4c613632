@@ -1,0 +1,35 @@
+configs/config.yml.example
+  s_04841a806fdf70::t_b8945f49229db5 76-82
+docs/mcp-tool-flow.md
+  s_04841a806fdf70::t_b5dbfef24d8116 320-323
+internal/config/config.go
+  s_04841a806fdf70::t_be846caa5ee118 29,123-138,207-213,256-260
+internal/config/config_test.go
+  s_04841a806fdf70::t_0978d472086827 34-37,96-101,142-145,189-193,258-261
+internal/core/mcp/README.md
+  s_04841a806fdf70::t_2e35a1ebb9c86b 41
+internal/domain/flow/chat/orchestrator.go
+  s_04841a806fdf70::t_839e03d9315315 14,254-255,368-382
+internal/domain/flow/chat/orchestrator_test.go
+  s_04841a806fdf70::t_1988c8fc9e8492 410,449-450
+internal/svc/context.go
+  s_04841a806fdf70::t_7e6f45e4fef744 99-102,127,367-405
+internal/svc/context_test.go
+  s_04841a806fdf70::t_eb8cc7275ef9b2 50-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "102c387252d27922dd37fa4189ea7fcc4c613632",
+  "prompts": {},
+  "sessions": {
+    "s_04841a806fdf70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_04841a806fdf70",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
