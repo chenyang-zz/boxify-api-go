@@ -1,0 +1,45 @@
+internal/core/mcp/README.md
+  s_e3078b7a7a7582::t_55e8e09b7d5796 32-40,184-185
+internal/core/mcp/service_test.go
+  s_e3078b7a7a7582::t_af0b7d9021ce82 111-139,160,186,213,245,262,284,309,346,371,395,404,417,485-489,510-514,534-539,566,600-605,632,662,679
+internal/core/mcp/options.go
+  s_01d6ed5a6b46b8::t_574bb3cfa488a1 1-108
+internal/core/mcp/service.go
+  s_01d6ed5a6b46b8::t_ae219cb7f9dd69 50-59,61-67,69-70,72-73,75-76,79-80,82-84,86,89,91-97,329
+internal/domain/flow/chat/orchestrator_test.go
+  s_01d6ed5a6b46b8::t_e273d11bc63e0e 309,356,386,415-418,461-464,495,636,754
+internal/domain/tools/mcp/mcp_test.go
+  s_01d6ed5a6b46b8::t_906910484b7855 65
+internal/logic/mcpserver/mcpserver_test.go
+  s_01d6ed5a6b46b8::t_f1ad4b1d71b45b 657,696,742,778
+internal/logic/toolconfig/toolconfig_test.go
+  s_01d6ed5a6b46b8::t_fc3a4d24229732 67,95,113,135,245
+internal/svc/context.go
+  s_01d6ed5a6b46b8::t_bc0e9f5e20be22 123
+internal/transport/http/router_test.go
+  s_01d6ed5a6b46b8::t_327c7ff6bb4e81 136,1615,1617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "07f05fa38a7101035c878a8d4de8cf6f62dc7a21",
+  "prompts": {},
+  "sessions": {
+    "s_01d6ed5a6b46b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_01d6ed5a6b46b8",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_e3078b7a7a7582": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4fa9-f0d2-7b33-b7bc-bf22f65eeb0a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
