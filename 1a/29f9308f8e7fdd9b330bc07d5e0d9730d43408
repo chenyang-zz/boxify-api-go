@@ -1,0 +1,19 @@
+internal/domain/flow/chat/orchestrator_test.go
+  s_09133d228f1470::t_b42fbb36bd3aec 775-783
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "1a29f9308f8e7fdd9b330bc07d5e0d9730d43408",
+  "prompts": {},
+  "sessions": {
+    "s_09133d228f1470": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_09133d228f1470",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
