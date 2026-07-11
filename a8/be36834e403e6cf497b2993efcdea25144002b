@@ -1,0 +1,24 @@
+docs/acr-ghcr-cd-deployment.md
+  s_25c85e34faf67e::t_d73f3c230711ea 5-6,37,42-55,57,93-102
+  s_25c85e34faf67e::t_f651180e44bbe4 103
+.github/workflows/cd.yml
+  s_25c85e34faf67e::t_e39011c2e6b039 28-29,43,99,147-149,153,167-195,198
+  s_25c85e34faf67e::t_0b43f28edbb4e2 8,10-11,14,30-42,44-54,56-96,146,152,201-203,271-298,304-337,350-352,354,356,358
+  s_25c85e34faf67e::t_1e005c7c77bb9f 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "a8be36834e403e6cf497b2993efcdea25144002b",
+  "prompts": {},
+  "sessions": {
+    "s_25c85e34faf67e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4d27-9ecb-7661-b833-cae45e885091",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
