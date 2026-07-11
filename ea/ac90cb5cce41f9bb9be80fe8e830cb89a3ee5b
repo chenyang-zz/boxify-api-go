@@ -1,0 +1,35 @@
+.gitignore
+  s_25c85e34faf67e::t_8ceac15f141530 44
+docs/acr-ghcr-cd-deployment.md
+  s_25c85e34faf67e::t_0fa9054e9c2f36 48
+  s_25c85e34faf67e::t_ed4db2318e4f7e 1-47,49-50,58-77
+  s_25c85e34faf67e::t_c5312090d1303d 52-57
+  s_25c85e34faf67e::t_aae55751ef4362 51
+deployments/docker-compose.production.yml
+  s_25c85e34faf67e::t_8ceac15f141530 9,26
+  s_25c85e34faf67e::t_77082b5131ce63 1-2,4-8,10,13-21,23-25,27,30-39
+  s_25c85e34faf67e::t_ed4db2318e4f7e 3,22
+  s_25c85e34faf67e::t_c5312090d1303d 11-12,28-29,40-44
+.github/workflows/cd.yml
+  s_25c85e34faf67e::t_7af6458aad4ebc 33,69,77,80,91
+  s_25c85e34faf67e::t_c5312090d1303d 138
+  s_25c85e34faf67e::t_ed4db2318e4f7e 19-20,24,47-50,52,55-64,73-75,81-82,84-85,92,103-104,106,109-110,113-114,122,131,167-168,170-171,175,207
+  s_25c85e34faf67e::t_0fa9054e9c2f36 143
+  s_25c85e34faf67e::t_77082b5131ce63 21,29-30,34-43,51,53,86,88-90,93-98,101-102,108,111-112,120-121,124-130,132-137,139-142,144-166,169,172-174,176-204,206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "eaac90cb5cce41f9bb9be80fe8e830cb89a3ee5b",
+  "prompts": {},
+  "sessions": {
+    "s_25c85e34faf67e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4d27-9ecb-7661-b833-cae45e885091",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
