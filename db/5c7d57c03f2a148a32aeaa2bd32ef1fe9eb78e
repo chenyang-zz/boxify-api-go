@@ -1,0 +1,19 @@
+internal/core/mcp/service_test.go
+  s_636947edd5bb90::t_1a08d65c0c92b3 459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "db5c7d57c03f2a148a32aeaa2bd32ef1fe9eb78e",
+  "prompts": {},
+  "sessions": {
+    "s_636947edd5bb90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_636947edd5bb90",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
