@@ -772,15 +772,15 @@ func (c *fakeFlowMCPClient) ListTools(context.Context, coremcp.ServerConfig) ([]
 }
 
 type fakeFlowMCPOpener struct {
-	mu         sync.Mutex
-	session    coremcp.ToolSession
-	err        error
-	calls      int
-	block      bool
-	inFlight   int
-	maxFlight  int
-	byServer   map[uuid.UUID]coremcp.ToolSession
-	errByID    map[uuid.UUID]error
+	mu        sync.Mutex
+	session   coremcp.ToolSession
+	err       error
+	calls     int
+	block     bool
+	inFlight  int
+	maxFlight int
+	byServer  map[uuid.UUID]coremcp.ToolSession
+	errByID   map[uuid.UUID]error
 }
 
 func (o *fakeFlowMCPOpener) OpenSession(ctx context.Context, server coremcp.ServerConfig) (coremcp.ToolSession, error) {
