@@ -41,6 +41,7 @@ coverage.txt
 # Local config / Secrets
 # =============================================================================
 configs/config.yml
+configs/config.production.yml
 *.env
 *.env.local
 *.env.*.local

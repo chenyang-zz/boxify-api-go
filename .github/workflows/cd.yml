@@ -14,238 +14,194 @@ concurrency:
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 env:
-  IMAGE_NAME: ${{ github.repository }}
+  ALIYUN_REGISTRY: ${{ vars.ALIYUN_REGISTRY }}
+  ALIYUN_NAMESPACE: ${{ vars.ALIYUN_NAMESPACE }}
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  # ------------------------------------------------------------------ #
-  # 阶段 1: 复用 CI 的质量门禁
-  # ------------------------------------------------------------------ #
+  # 只有质量门禁通过的提交才允许发布生产镜像。
   ci-gate:
     name: CI Quality Gate
     uses: ./.github/workflows/ci.yml
 
-  # ------------------------------------------------------------------ #
-  # 阶段 2a: 构建 api 镜像并通过 tarball artifact 传递
-  # ------------------------------------------------------------------ #
-  build-api:
-    name: Build Image (API)
+  build-and-push:
+    name: Build and Push ${{ matrix.service }}
     needs: ci-gate
     runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
+    environment: production
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api
+            image: cove-api
+            target: api
+          - service: worker
+            image: cove-worker
+            target: worker
     steps:
       - uses: actions/checkout@v4
 
-      - name: Docker meta
+      - name: Validate Alibaba Cloud Registry configuration
+        run: |
+          test -n "$ALIYUN_REGISTRY"
+          test -n "$ALIYUN_NAMESPACE"
+
+      - name: Log in to Alibaba Cloud Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image tags
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ matrix.image }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
+            type=raw,value=${{ env.IMAGE_TAG }}
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build image
-        run: |
-          docker buildx build \
-            --cache-from type=gha \
-            --cache-to type=gha,mode=max \
-            --build-arg CMD_TARGET=api \
-            --load \
-            -t cove-api:${{ steps.meta.outputs.version }} \
-            .
-
-      - name: Save image as tarball
-        run: docker save cove-api:${{ steps.meta.outputs.version }} | gzip > /tmp/cove-api.tar.gz
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
+      # Buildx 以同一构建产物为两个 registry 打 tag；任一推送失败会阻止后续部署。
+      - name: Build and push image to Alibaba Cloud and GHCR
+        uses: docker/build-push-action@v6
         with:
-          name: docker-image
-          path: /tmp/cove-api.tar.gz
-          retention-days: 1
+          context: .
+          push: true
+          build-args: CMD_TARGET=${{ matrix.target }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # ------------------------------------------------------------------ #
-  # 阶段 2b: 构建 worker 镜像（仅在 worker 相关代码变更时触发）
-  # ------------------------------------------------------------------ #
-  build-worker:
-    name: Build Image (Worker)
-    needs: ci-gate
-    runs-on: ubuntu-latest
-    outputs:
-      worker-changed: ${{ steps.check.outputs.changed }}
-      image-tag: ${{ steps.meta.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 50
-
-      - name: Check worker files changed
-        id: check
-        run: |
-          # 检测 worker 相关路径的增量变更
-          CHANGED=$(git diff --name-only HEAD~1 -- 'cmd/worker/**' 'internal/worker/**')
-          if [ -n "$CHANGED" ]; then
-            echo "Worker files changed:"
-            echo "$CHANGED"
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No worker changes detected, skipping build."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Docker meta
-        if: steps.check.outputs.changed == 'true'
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          flavor: suffix=-worker
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha
-
-      - name: Set up Docker Buildx
-        if: steps.check.outputs.changed == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build worker image
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          docker buildx build \
-            --cache-from type=gha \
-            --cache-to type=gha,mode=max \
-            --build-arg CMD_TARGET=worker \
-            --load \
-            -t cove-worker:${{ steps.meta.outputs.version }} \
-            .
-
-      - name: Save worker image as tarball
-        if: steps.check.outputs.changed == 'true'
-        run: docker save cove-worker:${{ steps.meta.outputs.version }} | gzip > /tmp/cove-worker.tar.gz
-
-      - name: Upload worker image artifact
-        if: steps.check.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-worker-image
-          path: /tmp/cove-worker.tar.gz
-          retention-days: 1
-
-  # ------------------------------------------------------------------ #
-  # 阶段 3a: SCP 传输 api 镜像到服务器并部署
-  # ------------------------------------------------------------------ #
-  deploy-api:
-    name: Deploy to Server (API)
-    needs: build-api
+  deploy:
+    name: Deploy API and Worker
+    needs: build-and-push
     runs-on: ubuntu-latest
     environment: production
+    env:
+      DEPLOY_COMPOSE_DIR: ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
+      DEPLOY_ALIYUN_USERNAME: ${{ secrets.DEPLOY_ALIYUN_USERNAME }}
+      DEPLOY_ALIYUN_PASSWORD: ${{ secrets.DEPLOY_ALIYUN_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: .
-
-      - name: SCP image to server
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "cove-api.tar.gz"
-          target: "/tmp/cove-api.tar.gz"
-
-      - name: Deploy via SSH
+      - name: Deploy the immutable Alibaba Cloud release through SSH
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          ALIYUN_REGISTRY: ${{ env.ALIYUN_REGISTRY }}
+          ALIYUN_NAMESPACE: ${{ env.ALIYUN_NAMESPACE }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          DEPLOY_COMPOSE_DIR: ${{ env.DEPLOY_COMPOSE_DIR }}
+          DEPLOY_ALIYUN_USERNAME: ${{ env.DEPLOY_ALIYUN_USERNAME }}
+          DEPLOY_ALIYUN_PASSWORD: ${{ env.DEPLOY_ALIYUN_PASSWORD }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_FINGERPRINT }}
+          command_timeout: 20m
+          envs: ALIYUN_REGISTRY,ALIYUN_NAMESPACE,IMAGE_TAG,DEPLOY_COMPOSE_DIR,DEPLOY_ALIYUN_USERNAME,DEPLOY_ALIYUN_PASSWORD
           script: |
-            set -e
-            echo "🚀 开始部署镜像: cove-api:${{ needs.build-api.outputs.image-tag }}"
+            set -eu
 
-            # 加载镜像并 tag 为 compose 引用的本地名
-            docker load -i /tmp/cove-api.tar.gz
-            docker tag cove-api:${{ needs.build-api.outputs.image-tag }} cove-api:latest
+            fail() {
+              echo "ERROR: $*" >&2
+              exit 1
+            }
 
-            # 滚动更新 api 容器
-            cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
-            docker compose -f deployments/docker-compose.yml up -d --no-deps api
+            for value in ALIYUN_REGISTRY ALIYUN_NAMESPACE IMAGE_TAG DEPLOY_COMPOSE_DIR DEPLOY_ALIYUN_USERNAME DEPLOY_ALIYUN_PASSWORD; do
+              eval "current=\${$value:-}"
+              test -n "$current" || fail "$value is required"
+            done
 
-            # 清理临时文件和悬空镜像
-            rm -f /tmp/cove-api.tar.gz
+            command -v docker >/dev/null || fail "docker is not installed"
+            docker compose version >/dev/null || fail "docker compose is not available"
+            docker network inspect boxify_default >/dev/null || fail "required Docker network is missing: boxify_default"
+            test -d "$DEPLOY_COMPOSE_DIR" || fail "deployment directory does not exist: $DEPLOY_COMPOSE_DIR"
+            cd "$DEPLOY_COMPOSE_DIR"
+
+            compose_file="deployments/docker-compose.production.yml"
+            config_file="configs/config.production.yml"
+            test -f "$compose_file" || fail "production compose file is missing: $compose_file"
+            test -f "$config_file" || fail "production config is missing: $config_file"
+
+            compose() {
+              docker compose -f "$compose_file" "$@"
+            }
+
+            state_dir=".deploy"
+            state_file="$state_dir/image-tag"
+            previous_tag=""
+            if test -f "$state_file"; then
+              previous_tag=$(tr -d '\r\n' < "$state_file")
+            fi
+
+            rollback() {
+              if test -z "$previous_tag"; then
+                echo "No previous release is recorded; skipping rollback." >&2
+                return
+              fi
+              echo "Rolling back to $previous_tag" >&2
+              IMAGE_TAG="$previous_tag" compose config >/dev/null && IMAGE_TAG="$previous_tag" compose up -d --no-build --no-deps api worker || true
+            }
+
+            # 先验证变量替换后的配置，再从阿里云拉取指定 SHA 镜像，避免 compose 回退到本地构建。
+            export ALIYUN_REGISTRY ALIYUN_NAMESPACE IMAGE_TAG
+            compose config >/dev/null || fail "invalid production compose configuration"
+            printf '%s' "$DEPLOY_ALIYUN_PASSWORD" | docker login "$ALIYUN_REGISTRY" --username "$DEPLOY_ALIYUN_USERNAME" --password-stdin
+            trap 'docker logout "$ALIYUN_REGISTRY" >/dev/null 2>&1 || true' EXIT
+
+            if ! compose pull api worker; then
+              rollback
+              fail "failed to pull candidate images from Alibaba Cloud"
+            fi
+            if ! compose up -d --no-build --no-deps api worker; then
+              rollback
+              fail "failed to start candidate containers"
+            fi
+
+            api_id=$(compose ps -q api)
+            worker_id=$(compose ps -q worker)
+            test -n "$api_id" || { rollback; fail "api container was not created"; }
+            test -n "$worker_id" || { rollback; fail "worker container was not created"; }
+
+            healthy=false
+            for attempt in $(seq 1 18); do
+              api_health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$api_id")
+              worker_running=$(docker inspect --format '{{.State.Running}}' "$worker_id")
+              if test "$api_health" = healthy && test "$worker_running" = true; then
+                healthy=true
+                break
+              fi
+              sleep 5
+            done
+            if test "$healthy" != true; then
+              rollback
+              fail "candidate release did not become healthy"
+            fi
+
+            mkdir -p "$state_dir"
+            printf '%s\n' "$IMAGE_TAG" > "$state_file.tmp"
+            mv "$state_file.tmp" "$state_file"
             docker image prune -f
-
-            echo "✅ API 部署完成"
-            docker compose -f deployments/docker-compose.yml ps api
-
-  # ------------------------------------------------------------------ #
-  # 阶段 3b: SCP 传输 worker 镜像到服务器并部署（增量条件触发）
-  # ------------------------------------------------------------------ #
-  deploy-worker:
-    name: Deploy to Server (Worker)
-    needs: build-worker
-    if: needs.build-worker.outputs.worker-changed == 'true'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download worker image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-worker-image
-          path: .
-
-      - name: SCP worker image to server
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          source: "cove-worker.tar.gz"
-          target: "/tmp/cove-worker.tar.gz"
-
-      - name: Deploy worker via SSH
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          script: |
-            set -e
-            echo "🚀 开始部署 worker 镜像"
-
-            # 加载 worker 镜像并 tag 为 compose 引用的本地名
-            docker load -i /tmp/cove-worker.tar.gz
-            docker tag cove-worker:${{ needs.build-worker.outputs.image-tag }} cove-worker:latest
-
-            # 滚动更新 worker 容器
-            cd ${{ secrets.DEPLOY_COMPOSE_DIR || '/opt/cove' }}
-            docker compose -f deployments/docker-compose.yml up -d --no-deps worker
-
-            # 清理
-            rm -f /tmp/cove-worker.tar.gz
-            docker image prune -f
-
-            echo "✅ Worker 部署完成"
-            docker compose -f deployments/docker-compose.yml ps worker
+            compose ps api worker
+            echo "Deployment completed from Alibaba Cloud: $IMAGE_TAG"

@@ -1,0 +1,44 @@
+services:
+  api:
+    image: ${ALIYUN_REGISTRY:?ALIYUN_REGISTRY is required}/${ALIYUN_NAMESPACE:?ALIYUN_NAMESPACE is required}/cove-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production
+    volumes:
+      - ../configs/config.production.yml:/app/configs/config.yml:ro
+      - storage_data:/app/storage
+    networks:
+      - boxify
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    image: ${ALIYUN_REGISTRY:?ALIYUN_REGISTRY is required}/${ALIYUN_NAMESPACE:?ALIYUN_NAMESPACE is required}/cove-worker:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      APP_ENV: production
+    volumes:
+      - ../configs/config.production.yml:/app/configs/config.yml:ro
+      - storage_data:/app/storage
+    networks:
+      - boxify
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pidof app >/dev/null"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  storage_data:
+
+networks:
+  boxify:
+    external: true
+    name: boxify_default
