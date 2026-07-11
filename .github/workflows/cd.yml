@@ -151,6 +151,12 @@ jobs:
     needs: [prepare-version, build-and-push]
     runs-on: ubuntu-latest
     steps:
+      # --generate-notes 需要本地 git 历史；本 job 原先未 checkout 会导致 gh 报 not a git repository。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       # tag 已由推送触发 CD，这里只补建 GitHub Release（若尚未创建）。
       - name: Ensure GitHub Release for tag
         if: needs.prepare-version.outputs.has_release == 'true'
