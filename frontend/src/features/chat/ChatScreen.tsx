@@ -6,8 +6,10 @@ import {
   GlobeHemisphereWest,
   List,
   Paperclip,
+  PencilSimple,
   Plus,
   SignOut,
+  Trash,
   WarningCircle,
   X,
 } from '@phosphor-icons/react'
@@ -23,9 +25,18 @@ import {
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { StoredSession } from '../auth/types'
-import { listConversations, listMessages, streamChat } from './api'
+import {
+  deleteConversation,
+  getAgentConfig,
+  listConversations,
+  listMessages,
+  renameConversation,
+  streamChat,
+} from './api'
 import type {
+  ChatAttachment,
   ChatMessage,
+  ChatSubmission,
   ChatStreamEvent,
   Conversation,
   ResourceState,
@@ -35,6 +46,9 @@ import type {
 import './ChatScreen.css'
 
 const coveIcon = '/cove-mark.svg'
+const maxAttachmentCount = 3
+const maxAttachmentBytes = 1024 * 1024
+const textFilePattern = /\.(?:txt|md|markdown|csv|json|log|ya?ml|xml|html?|css|jsx?|tsx?|py|go|rs|java|c|cpp|h|sh|sql)$/i
 
 type ChatScreenProps = {
   session: StoredSession
@@ -94,6 +108,10 @@ function updateTool(tools: ToolActivity[], event: Extract<ChatStreamEvent, { typ
   return [...tools.filter((item) => item.id !== activity.id), activity]
 }
 
+function isTextAttachment(file: File) {
+  return file.type.startsWith('text/') || file.type === 'application/json' || textFilePattern.test(file.name)
+}
+
 export function ChatScreen({ session, onLogout }: ChatScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [conversationState, setConversationState] = useState<ResourceState>('loading')
@@ -104,19 +122,32 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
   const [messageError, setMessageError] = useState('')
   const [streamState, setStreamState] = useState<StreamState>({ status: 'idle' })
   const [draft, setDraft] = useState('')
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([])
+  const [attachmentError, setAttachmentError] = useState('')
+  const [knowledgeEnabled, setKnowledgeEnabled] = useState(false)
+  const [knowledgeState, setKnowledgeState] = useState<ResourceState>('loading')
+  const [knowledgeError, setKnowledgeError] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [conversationMenuId, setConversationMenuId] = useState<string | null>(null)
+  const [renameTarget, setRenameTarget] = useState<Conversation | null>(null)
+  const [renameTitle, setRenameTitle] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
+  const [conversationActionError, setConversationActionError] = useState('')
+  const [conversationActionPending, setConversationActionPending] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const skipHistoryForRef = useRef<string | null>(null)
   const viewportRootRef = useRef<HTMLElement | null>(null)
   const accountMenuRef = useRef<HTMLDivElement | null>(null)
+  const conversationMenuRef = useRef<HTMLDivElement | null>(null)
   const messageScrollRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const hasMessagesRef = useRef(false)
   const keyboardHeightRef = useRef(Number(sessionStorage.getItem('cove-keyboard-height')) || 0)
   const keyboardPreparationTimerRef = useRef<number | null>(null)
 
-  const displayName = session.user.nickname || session.user.username
+  const displayName = session.user.nickname?.trim() || '用户'
   const activeConversation = conversations.find((item) => item.id === selectedId)
   const isEmptyConversation = messageState === 'ready' && messages.length === 0
 
@@ -152,9 +183,23 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
     }
   }, [])
 
+  const loadKnowledgeConfig = useCallback(async () => {
+    setKnowledgeState('loading')
+    setKnowledgeError('')
+    try {
+      const config = await getAgentConfig()
+      setKnowledgeEnabled(Boolean(config.enable_knowledge))
+      setKnowledgeState('ready')
+    } catch (error: unknown) {
+      setKnowledgeState('error')
+      setKnowledgeError(error instanceof Error ? error.message : '知识库配置加载失败。')
+    }
+  }, [])
+
   useEffect(() => {
     void loadConversations(true)
-  }, [loadConversations])
+    void loadKnowledgeConfig()
+  }, [loadConversations, loadKnowledgeConfig])
 
   useEffect(() => {
     if (!selectedId) {
@@ -209,6 +254,46 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
       document.removeEventListener('keydown', closeAccountMenuWithEscape)
     }
   }, [accountOpen])
+
+  useEffect(() => {
+    if (!conversationMenuId) {
+      return
+    }
+
+    function closeConversationMenu(event: PointerEvent) {
+      if (!conversationMenuRef.current?.contains(event.target as Node)) {
+        setConversationMenuId(null)
+      }
+    }
+
+    function closeConversationMenuWithEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setConversationMenuId(null)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeConversationMenu)
+    document.addEventListener('keydown', closeConversationMenuWithEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeConversationMenu)
+      document.removeEventListener('keydown', closeConversationMenuWithEscape)
+    }
+  }, [conversationMenuId])
+
+  useEffect(() => {
+    if (!renameTarget && !deleteTarget) {
+      return
+    }
+    function closeDialogWithEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape' && !conversationActionPending) {
+        setRenameTarget(null)
+        setDeleteTarget(null)
+        setConversationActionError('')
+      }
+    }
+    document.addEventListener('keydown', closeDialogWithEscape)
+    return () => document.removeEventListener('keydown', closeDialogWithEscape)
+  }, [conversationActionPending, deleteTarget, renameTarget])
 
   useLayoutEffect(() => {
     document.documentElement.classList.add('chat-document')
@@ -329,6 +414,9 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
     setMessageState('ready')
     setMessageError('')
     setStreamState({ status: 'idle' })
+    setAttachments([])
+    setAttachmentError('')
+    setConversationMenuId(null)
     setDrawerOpen(false)
     window.requestAnimationFrame(() => {
       const textarea = textareaRef.current
@@ -346,16 +434,123 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
     abortRef.current?.abort()
     abortRef.current = null
     setStreamState({ status: 'idle' })
+    setAttachments([])
+    setAttachmentError('')
+    setConversationMenuId(null)
     setSelectedId(conversationId)
     setDrawerOpen(false)
+  }
+
+  function beginRename(conversation: Conversation) {
+    setConversationMenuId(null)
+    setConversationActionError('')
+    setRenameTitle(conversation.title || '新对话')
+    setRenameTarget(conversation)
+  }
+
+  async function submitRename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const title = renameTitle.trim()
+    if (!renameTarget || !title || title.length > 256 || conversationActionPending) {
+      if (!title) {
+        setConversationActionError('请输入会话名称。')
+      } else if (title.length > 256) {
+        setConversationActionError('会话名称不能超过 256 个字符。')
+      }
+      return
+    }
+
+    setConversationActionPending(true)
+    setConversationActionError('')
+    try {
+      const updated = await renameConversation(renameTarget.id, title)
+      setConversations((current) =>
+        current.map((conversation) => (conversation.id === updated.id ? updated : conversation)),
+      )
+      setRenameTarget(null)
+    } catch (error: unknown) {
+      setConversationActionError(error instanceof Error ? error.message : '重命名失败。')
+    } finally {
+      setConversationActionPending(false)
+    }
+  }
+
+  async function confirmDeleteConversation() {
+    if (!deleteTarget || conversationActionPending) {
+      return
+    }
+    setConversationActionPending(true)
+    setConversationActionError('')
+    try {
+      await deleteConversation(deleteTarget.id)
+      setConversations((current) => current.filter((conversation) => conversation.id !== deleteTarget.id))
+      if (selectedId === deleteTarget.id) {
+        abortRef.current?.abort()
+        abortRef.current = null
+        setSelectedId(null)
+        setMessages([])
+        setMessageState('ready')
+        setStreamState({ status: 'idle' })
+        setAttachments([])
+        setAttachmentError('')
+        setDrawerOpen(false)
+      }
+      setDeleteTarget(null)
+    } catch (error: unknown) {
+      setConversationActionError(error instanceof Error ? error.message : '删除会话失败。')
+    } finally {
+      setConversationActionPending(false)
+    }
+  }
+
+  async function handleAttachmentSelection(files: FileList | null) {
+    if (!files?.length) {
+      return
+    }
+    const next = [...attachments]
+    let errorMessage = ''
+    for (const file of Array.from(files)) {
+      if (next.length >= maxAttachmentCount) {
+        errorMessage = `最多添加 ${maxAttachmentCount} 个附件。`
+        break
+      }
+      if (!isTextAttachment(file)) {
+        errorMessage = `${file.name} 不是支持的文本文件。`
+        continue
+      }
+      if (file.size > maxAttachmentBytes) {
+        errorMessage = `${file.name} 超过 1 MiB。`
+        continue
+      }
+      if (next.some((attachment) => attachment.file_name === file.name)) {
+        errorMessage = `${file.name} 已经添加。`
+        continue
+      }
+      const text = await file.text()
+      if (!text) {
+        errorMessage = `${file.name} 是空文件。`
+        continue
+      }
+      next.push({ file_name: file.name, text })
+    }
+    setAttachments(next)
+    setAttachmentError(errorMessage)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   function updateAssistant(id: string, updater: (message: ChatMessage) => ChatMessage) {
     setMessages((current) => current.map((message) => (message.id === id ? updater(message) : message)))
   }
 
-  async function sendMessage(prompt = draft) {
-    const text = prompt.trim()
+  async function sendMessage(submission?: ChatSubmission) {
+    const request: ChatSubmission = submission ?? {
+      message: draft.trim(),
+      attachments: attachments.map((attachment) => ({ ...attachment })),
+      enableKnowledge: knowledgeEnabled,
+    }
+    const text = request.message.trim()
     if (!text || streamState.status === 'streaming') {
       return
     }
@@ -366,6 +561,8 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
     const controller = new AbortController()
     abortRef.current = controller
     setDraft('')
+    setAttachments([])
+    setAttachmentError('')
     setMessageError('')
     setMessageState('ready')
     setStreamState({ status: 'streaming' })
@@ -377,6 +574,8 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
         {
           ...(conversationIdAtSend ? { conversation_id: conversationIdAtSend } : {}),
           message: text,
+          ...(request.attachments.length > 0 ? { attachments: request.attachments } : {}),
+          enable_knowledge: request.enableKnowledge,
         },
         controller.signal,
         (event) => {
@@ -424,7 +623,7 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
             reachedTerminalEvent = true
             const streamError = event as { type: 'error'; content: string }
             updateAssistant(assistantMessage.id, (message) => ({ ...message, pending: false }))
-            setStreamState({ status: 'error', message: streamError.content, prompt: text })
+            setStreamState({ status: 'error', message: streamError.content, submission: request })
             return
           }
           if (import.meta.env.DEV) {
@@ -437,14 +636,14 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
         setStreamState({
           status: 'error',
           message: '消息流提前结束，请重新发送。',
-          prompt: text,
+          submission: request,
         })
       }
     } catch (error: unknown) {
       if (!controller.signal.aborted) {
         const message = error instanceof Error ? error.message : '回复中断，请稍后重试。'
         updateAssistant(assistantMessage.id, (item) => ({ ...item, pending: false }))
-        setStreamState({ status: 'error', message, prompt: text })
+        setStreamState({ status: 'error', message, submission: request })
       }
     } finally {
       if (abortRef.current === controller) {
@@ -521,19 +720,54 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
             <p className="conversation-list__empty">发送第一条消息后，会话会保存在这里。</p>
           )}
           {conversations.map((conversation) => (
-            <button
+            <div
               className={conversation.id === selectedId ? 'conversation-row conversation-row--active' : 'conversation-row'}
-              type="button"
               key={conversation.id}
-              onClick={() => selectConversation(conversation.id)}
             >
-              <span>{conversation.title || '新对话'}</span>
-              <time dateTime={conversation.updated_at}>
-                {new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(
-                  new Date(conversation.updated_at),
+              <button className="conversation-row__select" type="button" onClick={() => selectConversation(conversation.id)}>
+                <span>{conversation.title || '新对话'}</span>
+                <time dateTime={conversation.updated_at}>
+                  {new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(
+                    new Date(conversation.updated_at),
+                  )}
+                </time>
+              </button>
+              <div
+                className="conversation-row__menu-wrap"
+                ref={conversationMenuId === conversation.id ? conversationMenuRef : undefined}
+              >
+                <button
+                  className="conversation-row__menu-trigger"
+                  type="button"
+                  aria-label={`管理会话：${conversation.title || '新对话'}`}
+                  aria-expanded={conversationMenuId === conversation.id}
+                  onClick={() => setConversationMenuId((current) => current === conversation.id ? null : conversation.id)}
+                >
+                  <DotsThree size={18} weight="bold" />
+                </button>
+                {conversationMenuId === conversation.id && (
+                  <div className="conversation-row__menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={streamState.status === 'streaming' && selectedId === conversation.id}
+                      onClick={() => beginRename(conversation)}
+                    >
+                      <PencilSimple size={16} /> 重命名
+                    </button>
+                    <button
+                      className="conversation-row__delete"
+                      type="button"
+                      role="menuitem"
+                      disabled={streamState.status === 'streaming' && selectedId === conversation.id}
+                      onClick={() => { setConversationMenuId(null); setConversationActionError(''); setDeleteTarget(conversation) }}
+                    >
+                      <Trash size={16} /> 删除
+                    </button>
+                  </div>
                 )}
-              </time>
-            </button>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -542,6 +776,57 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
           <span className="drawer-account__name">{displayName}</span>
         </div>
       </aside>
+
+      {renameTarget && (
+        <div
+          className="conversation-dialog-backdrop"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget && !conversationActionPending) {
+              setRenameTarget(null)
+              setConversationActionError('')
+            }
+          }}
+        >
+          <form className="conversation-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-conversation-title" onSubmit={submitRename}>
+            <h2 id="rename-conversation-title">重命名会话</h2>
+            <input
+              autoFocus
+              value={renameTitle}
+              maxLength={256}
+              aria-label="会话名称"
+              disabled={conversationActionPending}
+              onChange={(event) => setRenameTitle(event.target.value)}
+            />
+            {conversationActionError && <p role="alert">{conversationActionError}</p>}
+            <div className="conversation-dialog__actions">
+              <button type="button" disabled={conversationActionPending} onClick={() => { setRenameTarget(null); setConversationActionError('') }}>取消</button>
+              <button className="conversation-dialog__primary" type="submit" disabled={conversationActionPending || !renameTitle.trim()}>保存</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="conversation-dialog-backdrop"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget && !conversationActionPending) {
+              setDeleteTarget(null)
+              setConversationActionError('')
+            }
+          }}
+        >
+          <section className="conversation-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-conversation-title">
+            <h2 id="delete-conversation-title">删除会话？</h2>
+            <p>“{deleteTarget.title || '新对话'}”及其消息将被永久删除。</p>
+            {conversationActionError && <p className="conversation-dialog__error" role="alert">{conversationActionError}</p>}
+            <div className="conversation-dialog__actions">
+              <button type="button" disabled={conversationActionPending} onClick={() => { setDeleteTarget(null); setConversationActionError('') }}>取消</button>
+              <button className="conversation-dialog__danger" type="button" disabled={conversationActionPending} onClick={() => void confirmDeleteConversation()}>删除</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <section className="chat-workspace">
         <header className="chat-header">
@@ -656,7 +941,7 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
               <div className="stream-error" role="alert">
                 <WarningCircle size={19} />
                 <span>{streamState.message}</span>
-                <button type="button" onClick={() => void sendMessage(streamState.prompt)}>
+                <button type="button" onClick={() => void sendMessage(streamState.submission)}>
                   重新发送
                 </button>
               </div>
@@ -700,15 +985,67 @@ export function ChatScreen({ session, onLogout }: ChatScreenProps) {
               onChange={(event) => handleDraftChange(event.target.value)}
               onKeyDown={handleComposerKeyDown}
             />
+            <input
+              className="composer__file-input"
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="text/*,.md,.markdown,.csv,.json,.log,.yaml,.yml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.c,.cpp,.h,.sh,.sql"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={(event) => void handleAttachmentSelection(event.target.files)}
+            />
+            {attachments.length > 0 && (
+              <div className="composer-attachments" aria-label="已添加附件">
+                {attachments.map((attachment) => (
+                  <span className="composer-attachment" key={attachment.file_name}>
+                    <Paperclip size={13} />
+                    <span>{attachment.file_name}</span>
+                    <button
+                      type="button"
+                      aria-label={`移除附件 ${attachment.file_name}`}
+                      disabled={streamState.status === 'streaming'}
+                      onClick={() => setAttachments((current) => current.filter((item) => item.file_name !== attachment.file_name))}
+                    >
+                      <X size={13} weight="bold" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {(attachmentError || knowledgeError) && (
+              <p className="composer__error" role="alert">{attachmentError || knowledgeError}</p>
+            )}
             <div className="composer__toolbar">
               <div>
-                <button className="composer-tool" type="button" disabled aria-label="添加附件，暂未开放" title="附件功能即将开放">
+                <button
+                  className="composer-tool"
+                  type="button"
+                  aria-label="添加文本附件"
+                  title="添加文本附件"
+                  disabled={streamState.status === 'streaming' || attachments.length >= maxAttachmentCount}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Paperclip size={18} />
                 </button>
-                <button className="composer-tool" type="button" disabled aria-label="知识库，暂未开放" title="知识库功能即将开放">
+                <button
+                  className={knowledgeEnabled ? 'composer-tool composer-tool--active' : 'composer-tool'}
+                  type="button"
+                  aria-label={knowledgeState === 'error' ? '重新加载知识库配置' : '使用知识库'}
+                  aria-pressed={knowledgeEnabled}
+                  title={knowledgeState === 'error' ? '配置加载失败，点击重试' : knowledgeEnabled ? '知识库已开启' : '知识库已关闭'}
+                  disabled={streamState.status === 'streaming' || knowledgeState === 'loading'}
+                  onClick={() => {
+                    if (knowledgeState === 'error') {
+                      void loadKnowledgeConfig()
+                    } else {
+                      setKnowledgeEnabled((enabled) => !enabled)
+                    }
+                  }}
+                >
                   <Books size={18} />
                 </button>
-                <button className="composer-tool" type="button" disabled aria-label="联网搜索，暂未开放" title="联网搜索功能即将开放">
+                <button className="composer-tool" type="button" disabled aria-label="联网搜索，服务端暂未接入" title="联网搜索服务端暂未接入">
                   <GlobeHemisphereWest size={18} />
                 </button>
               </div>

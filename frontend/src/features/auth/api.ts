@@ -85,7 +85,7 @@ function sessionFromAuth(response: AuthResponse, currentUser?: StoredSession['us
   }
 }
 
-async function performRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function performEnvelope<T>(path: string, init: RequestInit = {}): Promise<ApiEnvelope<T>> {
   const headers = new Headers(init.headers)
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
@@ -116,11 +116,39 @@ async function performRequest<T>(path: string, init: RequestInit = {}): Promise<
     )
   }
 
-  if (envelope.data === undefined) {
-    throw new ApiError(response.status, '服务器响应缺少必要数据。')
-  }
+  return envelope
+}
 
+async function performRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const envelope = await performEnvelope<T>(path, init)
+  if (envelope.data === undefined) {
+    throw new ApiError(200, '服务器响应缺少必要数据。')
+  }
   return envelope.data
+}
+
+async function hydrateAuthenticatedSession(response: AuthResponse): Promise<StoredSession> {
+  const initial = saveSession(sessionFromAuth(response))
+  try {
+    const user = await getCurrentUser()
+    const current = loadSession() ?? initial
+    return saveSession({
+      ...current,
+      user: {
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    })
+  } catch (error: unknown) {
+    if (error instanceof ApiError && error.status === 401) {
+      clearSession()
+      throw error
+    }
+    return loadSession() ?? initial
+  }
 }
 
 export async function login(input: LoginInput): Promise<StoredSession> {
@@ -128,7 +156,7 @@ export async function login(input: LoginInput): Promise<StoredSession> {
     method: 'POST',
     body: JSON.stringify(input),
   })
-  return saveSession(sessionFromAuth(response))
+  return hydrateAuthenticatedSession(response)
 }
 
 export async function register(input: RegisterInput): Promise<StoredSession> {
@@ -136,7 +164,7 @@ export async function register(input: RegisterInput): Promise<StoredSession> {
     method: 'POST',
     body: JSON.stringify(input),
   })
-  return saveSession(sessionFromAuth(response))
+  return hydrateAuthenticatedSession(response)
 }
 
 export function refreshSession(): Promise<StoredSession | null> {
@@ -155,7 +183,9 @@ export function refreshSession(): Promise<StoredSession | null> {
   })
     .then((response) => saveSession(sessionFromAuth(response, current.user)))
     .catch((error: unknown) => {
-      clearSession()
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession()
+      }
       throw error
     })
     .finally(() => {
@@ -196,6 +226,35 @@ export async function authenticatedRequest<T>(
   }
 }
 
+export async function authenticatedCommand(
+  path: string,
+  init: RequestInit = {},
+  retryAfterRefresh = true,
+): Promise<void> {
+  const session = loadSession()
+  if (!session) {
+    throw new ApiError(401, '请先登录。')
+  }
+
+  const headers = new Headers(init.headers)
+  headers.set('Authorization', `Bearer ${session.accessToken}`)
+
+  try {
+    await performEnvelope<never>(path, { ...init, headers })
+  } catch (error: unknown) {
+    if (!(error instanceof ApiError) || error.status !== 401 || !retryAfterRefresh) {
+      throw error
+    }
+    const refreshed = await refreshSession()
+    if (!refreshed) {
+      throw new ApiError(401, '登录状态已失效，请重新登录。')
+    }
+    const retryHeaders = new Headers(init.headers)
+    retryHeaders.set('Authorization', `Bearer ${refreshed.accessToken}`)
+    await performEnvelope<never>(path, { ...init, headers: retryHeaders })
+  }
+}
+
 export function getCurrentUser(): Promise<UserResponse> {
   return authenticatedRequest<UserResponse>('/api/auth/me')
 }
@@ -226,9 +285,12 @@ export function restoreSession(): Promise<StoredSession | null> {
         },
       })
     })
-    .catch(() => {
-      clearSession()
-      return null
+    .catch((error: unknown) => {
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession()
+        return null
+      }
+      return loadSession()
     })
     .finally(() => {
       restoreInFlight = null

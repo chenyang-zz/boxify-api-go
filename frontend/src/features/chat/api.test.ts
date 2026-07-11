@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
+  authenticatedCommand: vi.fn(),
   authenticatedRequest: vi.fn(),
   refreshSession: vi.fn(),
 }))
@@ -16,10 +17,19 @@ vi.mock('../auth/api', () => ({
     }
   },
   authenticatedRequest: mocks.authenticatedRequest,
+  authenticatedCommand: mocks.authenticatedCommand,
   refreshSession: mocks.refreshSession,
 }))
 
-import { consumeChatStream, listConversations, listMessages, streamChat } from './api'
+import {
+  consumeChatStream,
+  deleteConversation,
+  getAgentConfig,
+  listConversations,
+  listMessages,
+  renameConversation,
+  streamChat,
+} from './api'
 import type { ChatStreamEvent } from './types'
 
 function chunkedStream(chunks: string[]): ReadableStream<Uint8Array> {
@@ -37,6 +47,7 @@ function chunkedStream(chunks: string[]): ReadableStream<Uint8Array> {
 beforeEach(() => {
   vi.restoreAllMocks()
   mocks.authenticatedRequest.mockReset()
+  mocks.authenticatedCommand.mockReset()
   mocks.refreshSession.mockReset()
   window.localStorage.clear()
 })
@@ -52,6 +63,29 @@ describe('chat API', () => {
     expect(mocks.authenticatedRequest).toHaveBeenNthCalledWith(
       2,
       '/api/conversation/conversation%20%2F%201/messages',
+    )
+  })
+
+  it('connects agent config and conversation mutation endpoints', async () => {
+    mocks.authenticatedRequest
+      .mockResolvedValueOnce({ enable_knowledge: true })
+      .mockResolvedValueOnce({ id: 'conversation-1', title: '新名称' })
+    mocks.authenticatedCommand.mockResolvedValueOnce(undefined)
+
+    await expect(getAgentConfig()).resolves.toEqual({ enable_knowledge: true })
+    expect(mocks.authenticatedRequest).toHaveBeenNthCalledWith(1, '/api/agent-config')
+
+    await renameConversation('conversation / 1', '新名称')
+    expect(mocks.authenticatedRequest).toHaveBeenNthCalledWith(
+      2,
+      '/api/conversation/conversation%20%2F%201',
+      { method: 'PATCH', body: JSON.stringify({ title: '新名称' }) },
+    )
+
+    await deleteConversation('conversation / 1')
+    expect(mocks.authenticatedCommand).toHaveBeenCalledWith(
+      '/api/conversation/conversation%20%2F%201',
+      { method: 'DELETE' },
     )
   })
 
@@ -107,6 +141,35 @@ describe('chat API', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer new')
     expect(events).toEqual([{ type: 'done', text: 'm1' }])
+  })
+
+  it('sends text attachments and the explicit knowledge setting', async () => {
+    window.localStorage.setItem(
+      'cove.auth.session.v1',
+      JSON.stringify({ accessToken: 'token', refreshToken: 'refresh', user: { id: 'u1' } }),
+    )
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(chunkedStream(['event: done\ndata: {"type":"done","text":"m1"}\n\n']), {
+        status: 200,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await streamChat(
+      {
+        message: '总结附件',
+        attachments: [{ file_name: 'notes.md', text: '# Notes' }],
+        enable_knowledge: true,
+      },
+      new AbortController().signal,
+      vi.fn(),
+    )
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      message: '总结附件',
+      attachments: [{ file_name: 'notes.md', text: '# Notes' }],
+      enable_knowledge: true,
+    })
   })
 
   it('propagates aborts without converting them to a network error', async () => {

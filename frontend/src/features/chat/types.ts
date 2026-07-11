@@ -8,6 +8,15 @@ export type Conversation = {
   updated_at: string
 }
 
+export type AgentConfig = {
+  enable_knowledge: boolean
+}
+
+export type ChatAttachment = {
+  file_name: string
+  text: string
+}
+
 export type MessageMetadata = {
   image_keys?: string[]
   sender_name?: string
@@ -34,7 +43,7 @@ export type ChatStreamRequest = {
   greeting?: string
   skill_id?: string
   image_keys?: string[]
-  attachments?: Array<{ file_name: string; text?: string }>
+  attachments?: ChatAttachment[]
   enable_knowledge?: boolean
   enable_memory?: boolean
   enable_web_search?: boolean
@@ -86,7 +95,13 @@ export type ToolActivity = {
 
 export type ResourceState = 'idle' | 'loading' | 'ready' | 'error'
 
+export type ChatSubmission = {
+  message: string
+  attachments: ChatAttachment[]
+  enableKnowledge: boolean
+}
+
 export type StreamState =
   | { status: 'idle' }
   | { status: 'streaming' }
-  | { status: 'error'; message: string; prompt: string }
+  | { status: 'error'; message: string; submission: ChatSubmission }

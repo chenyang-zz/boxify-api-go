@@ -1,6 +1,12 @@
-import { ApiError, authenticatedRequest, refreshSession } from '../auth/api'
+import { ApiError, authenticatedCommand, authenticatedRequest, refreshSession } from '../auth/api'
 import type { ApiEnvelope, StoredSession } from '../auth/types'
-import type { ChatMessage, ChatStreamEvent, ChatStreamRequest, Conversation } from './types'
+import type {
+  AgentConfig,
+  ChatMessage,
+  ChatStreamEvent,
+  ChatStreamRequest,
+  Conversation,
+} from './types'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').replace(
   /\/+$/,
@@ -33,6 +39,23 @@ export function listMessages(conversationId: string): Promise<ListResponse<ChatM
   return authenticatedRequest<ListResponse<ChatMessage>>(
     `/api/conversation/${encodeURIComponent(conversationId)}/messages`,
   )
+}
+
+export function getAgentConfig(): Promise<AgentConfig> {
+  return authenticatedRequest<AgentConfig>('/api/agent-config')
+}
+
+export function renameConversation(conversationId: string, title: string): Promise<Conversation> {
+  return authenticatedRequest<Conversation>(
+    `/api/conversation/${encodeURIComponent(conversationId)}`,
+    { method: 'PATCH', body: JSON.stringify({ title }) },
+  )
+}
+
+export function deleteConversation(conversationId: string): Promise<void> {
+  return authenticatedCommand(`/api/conversation/${encodeURIComponent(conversationId)}`, {
+    method: 'DELETE',
+  })
 }
 
 function parseSseBlock(block: string): ChatStreamEvent | null {

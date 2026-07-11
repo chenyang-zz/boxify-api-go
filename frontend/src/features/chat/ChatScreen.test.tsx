@@ -7,14 +7,20 @@ import type { StoredSession } from '../auth/types'
 import type { ChatStreamEvent } from './types'
 
 const mocks = vi.hoisted(() => ({
+  deleteConversation: vi.fn(),
+  getAgentConfig: vi.fn(),
   listConversations: vi.fn(),
   listMessages: vi.fn(),
+  renameConversation: vi.fn(),
   streamChat: vi.fn(),
 }))
 
 vi.mock('./api', () => ({
+  deleteConversation: mocks.deleteConversation,
+  getAgentConfig: mocks.getAgentConfig,
   listConversations: mocks.listConversations,
   listMessages: mocks.listMessages,
+  renameConversation: mocks.renameConversation,
   streamChat: mocks.streamChat,
 }))
 
@@ -37,6 +43,9 @@ beforeEach(() => {
   sessionStorage.clear()
   mocks.listConversations.mockReset().mockResolvedValue({ list: [] })
   mocks.listMessages.mockReset().mockResolvedValue({ list: [] })
+  mocks.getAgentConfig.mockReset().mockResolvedValue({ enable_knowledge: false })
+  mocks.renameConversation.mockReset()
+  mocks.deleteConversation.mockReset()
   mocks.streamChat.mockReset()
   Element.prototype.scrollIntoView = vi.fn()
   Element.prototype.scrollTo = vi.fn()
@@ -99,6 +108,18 @@ describe('ChatScreen', () => {
     expect(drawer.classList.contains('chat-drawer--open')).toBe(true)
     await user.click(screen.getAllByRole('button', { name: '关闭会话列表' })[1])
     expect(drawer.classList.contains('chat-drawer--open')).toBe(false)
+  })
+
+  it('uses a neutral user name when nickname is empty', async () => {
+    render(
+      <ChatScreen
+        session={{ ...session, user: { ...session.user, nickname: null } }}
+        onLogout={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByRole('heading', { name: '你好，用户' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: '你好，linhai' })).toBeNull()
   })
 
   it('closes the account menu when the user clicks outside or presses Escape', async () => {
@@ -202,7 +223,7 @@ describe('ChatScreen', () => {
 
     expect(await screen.findByText('先确定目标')).toHaveProperty('tagName', 'STRONG')
     expect(mocks.streamChat).toHaveBeenCalledWith(
-      { message: '帮我制定学习计划' },
+      { message: '帮我制定学习计划', enable_knowledge: false },
       expect.any(AbortSignal),
       expect.any(Function),
     )
@@ -245,5 +266,121 @@ describe('ChatScreen', () => {
     await user.click(retry)
 
     await waitFor(() => expect(mocks.streamChat).toHaveBeenCalledTimes(2))
+  })
+
+  it('attaches text files, toggles knowledge, removes attachments, and retries the full submission', async () => {
+    const user = userEvent.setup()
+    mocks.getAgentConfig.mockResolvedValue({ enable_knowledge: true })
+    mocks.streamChat
+      .mockImplementationOnce(
+        async (_input: unknown, _signal: AbortSignal, onEvent: (event: ChatStreamEvent) => void) => {
+          onEvent({ type: 'error', content: '暂时失败' })
+        },
+      )
+      .mockImplementationOnce(
+        async (_input: unknown, _signal: AbortSignal, onEvent: (event: ChatStreamEvent) => void) => {
+          onEvent({ type: 'done', text: 'message-retry' })
+        },
+      )
+
+    const { container } = render(<ChatScreen session={session} onLogout={vi.fn()} />)
+    await screen.findByRole('heading', { name: '你好，林海' })
+    const knowledge = await screen.findByRole('button', { name: '使用知识库' })
+    await waitFor(() => expect(knowledge.getAttribute('aria-pressed')).toBe('true'))
+    await user.click(knowledge)
+
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')
+    const firstFile = new File(['first'], 'first.md', { type: 'text/markdown' })
+    Object.defineProperty(firstFile, 'text', { value: vi.fn().mockResolvedValue('first') })
+    fireEvent.change(input as HTMLInputElement, { target: { files: [firstFile] } })
+    expect(await screen.findByText('first.md')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '移除附件 first.md' }))
+    expect(screen.queryByText('first.md')).toBeNull()
+
+    const notesFile = new File(['notes'], 'notes.md', { type: 'text/markdown' })
+    Object.defineProperty(notesFile, 'text', { value: vi.fn().mockResolvedValue('# Notes') })
+    fireEvent.change(input as HTMLInputElement, { target: { files: [notesFile] } })
+    expect(await screen.findByText('notes.md')).toBeTruthy()
+
+    await user.type(screen.getByRole('textbox', { name: '发送给 Cove 的消息' }), '总结附件')
+    await user.click(screen.getByRole('button', { name: '发送消息' }))
+    await user.click(await screen.findByRole('button', { name: '重新发送' }))
+
+    const expectedInput = {
+      message: '总结附件',
+      attachments: [{ file_name: 'notes.md', text: '# Notes' }],
+      enable_knowledge: false,
+    }
+    expect(mocks.streamChat).toHaveBeenNthCalledWith(
+      1,
+      expectedInput,
+      expect.any(AbortSignal),
+      expect.any(Function),
+    )
+    expect(mocks.streamChat).toHaveBeenNthCalledWith(
+      2,
+      expectedInput,
+      expect.any(AbortSignal),
+      expect.any(Function),
+    )
+  })
+
+  it('enforces attachment type, size, and count limits', async () => {
+    const { container } = render(<ChatScreen session={session} onLogout={vi.fn()} />)
+    await screen.findByRole('heading', { name: '你好，林海' })
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')
+    const files = ['one.md', 'two.md', 'three.md', 'four.md'].map((name) => {
+      const file = new File(['text'], name, { type: 'text/markdown' })
+      Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue(name) })
+      return file
+    })
+
+    fireEvent.change(input as HTMLInputElement, { target: { files } })
+
+    expect((await screen.findByRole('alert')).textContent).toContain('最多添加 3 个附件。')
+    expect(screen.getByText('one.md')).toBeTruthy()
+    expect(screen.getByText('two.md')).toBeTruthy()
+    expect(screen.getByText('three.md')).toBeTruthy()
+    expect(screen.queryByText('four.md')).toBeNull()
+  })
+
+  it('renames and deletes conversations through the row menu and closes it outside', async () => {
+    const user = userEvent.setup()
+    const conversation = {
+      id: 'conversation-1',
+      title: '旧名称',
+      is_group: false,
+      member_persona_ids: [],
+      enable_tools: false,
+      created_at: '2026-07-10T08:00:00Z',
+      updated_at: '2026-07-11T08:00:00Z',
+    }
+    mocks.listConversations.mockResolvedValue({ list: [conversation] })
+    mocks.renameConversation.mockResolvedValue({ ...conversation, title: '新名称' })
+    mocks.deleteConversation.mockResolvedValue(undefined)
+
+    render(<ChatScreen session={session} onLogout={vi.fn()} />)
+    await screen.findAllByText('旧名称')
+    const manage = screen.getByRole('button', { name: '管理会话：旧名称' })
+    await user.click(manage)
+    expect(screen.getByRole('menu')).toBeTruthy()
+    await user.click(screen.getByRole('heading', { name: '你好，林海' }))
+    expect(screen.queryByRole('menu')).toBeNull()
+
+    await user.click(manage)
+    await user.click(screen.getByRole('menuitem', { name: '重命名' }))
+    const titleInput = screen.getByRole('textbox', { name: '会话名称' })
+    await user.clear(titleInput)
+    await user.type(titleInput, '新名称')
+    await user.click(screen.getByRole('button', { name: '保存' }))
+    await waitFor(() => expect(mocks.renameConversation).toHaveBeenCalledWith('conversation-1', '新名称'))
+
+    await user.click(await screen.findByRole('button', { name: '管理会话：新名称' }))
+    await user.click(screen.getByRole('menuitem', { name: '删除' }))
+    await user.click(screen.getByRole('button', { name: '删除' }))
+
+    await waitFor(() => expect(mocks.deleteConversation).toHaveBeenCalledWith('conversation-1'))
+    expect(await screen.findByRole('heading', { name: '你好，林海' })).toBeTruthy()
+    expect(screen.queryByText('新名称')).toBeNull()
   })
 })
