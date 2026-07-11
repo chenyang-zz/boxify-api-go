@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"log/slog"
 
@@ -35,7 +37,33 @@ type Input struct {
 	SystemPrompt         string
 }
 
-const coveAssistantIntro = "你是「Cove」的智能助手。你可以调用以下工具来帮助回答用户的问题。"
+const (
+	coveAssistantIntro = "你是「Cove」的智能助手。你可以调用以下工具来帮助回答用户的问题。"
+
+	// defaultMCPAssembleBudget 是单轮对话中 MCP 工具发现的墙钟上限。
+	defaultMCPAssembleBudget = 8 * time.Second
+	// defaultMCPAssembleConcurrency 限制同时 OpenTools 的 MCP server 数，对齐 toolconfig。
+	defaultMCPAssembleConcurrency = 4
+)
+
+// 测试可覆盖的组装参数；生产路径使用默认值。
+var (
+	mcpAssembleBudget      = defaultMCPAssembleBudget
+	mcpAssembleConcurrency = defaultMCPAssembleConcurrency
+)
+
+// mcpServerWork 表示一个已解密、待并行发现的 MCP server。
+type mcpServerWork struct {
+	server *models.MCPServer
+	cfg    coremcp.ServerConfig
+}
+
+// mcpOpenResult 保存并行 OpenTools 的单 server 结果。
+type mcpOpenResult struct {
+	server *models.MCPServer
+	opened *coremcp.OpenedTools
+	err    error
+}
 
 type Orchestrator struct {
 	svcCtx *svc.ServiceContext
@@ -210,16 +238,9 @@ func (o *Orchestrator) toolRegistry(ctx context.Context, userID uuid.UUID, kbIDs
 	if err != nil {
 		return nil, nil, err
 	}
-	leases := make([]*coremcp.OpenedTools, 0, len(servers))
-	closeAll := func() error {
-		var errs []error
-		for _, lease := range slices.Backward(leases) {
-			if closeErr := lease.Close(); closeErr != nil {
-				errs = append(errs, closeErr)
-			}
-		}
-		return errors.Join(errs...)
-	}
+
+	// 先收集可发现的 server；解密失败不进入并行阶段。
+	works := make([]mcpServerWork, 0, len(servers))
 	for _, server := range servers {
 		if server == nil || !server.Enabled {
 			continue
@@ -229,20 +250,81 @@ func (o *Orchestrator) toolRegistry(ctx context.Context, userID uuid.UUID, kbIDs
 			o.warnMCPServer(ctx, userID, server.ID, "解析MCP服务配置失败", configErr)
 			continue
 		}
-		opened, openErr := o.svcCtx.MCPToolService.OpenTools(ctx, serverConfig)
-		if openErr != nil {
-			o.warnMCPServer(ctx, userID, server.ID, "加载MCP工具失败", openErr)
+		works = append(works, mcpServerWork{server: server, cfg: serverConfig})
+	}
+	if len(works) == 0 {
+		return filtered, nil, nil
+	}
+
+	// Phase 1：有限并行发现，墙钟受 mcpAssembleBudget 约束。
+	budget := mcpAssembleBudget
+	if budget <= 0 {
+		budget = defaultMCPAssembleBudget
+	}
+	concurrency := mcpAssembleConcurrency
+	if concurrency <= 0 {
+		concurrency = defaultMCPAssembleConcurrency
+	}
+	mcpCtx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+
+	results := make([]mcpOpenResult, len(works))
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	for i, work := range works {
+		i, work := i, work
+		wg.Go(func() {
+			select {
+			case <-mcpCtx.Done():
+				results[i] = mcpOpenResult{server: work.server, err: mcpCtx.Err()}
+				return
+			case sem <- struct{}{}:
+			}
+			defer func() { <-sem }()
+			opened, openErr := o.svcCtx.MCPToolService.OpenTools(mcpCtx, work.cfg)
+			results[i] = mcpOpenResult{server: work.server, opened: opened, err: openErr}
+		})
+	}
+	wg.Wait()
+
+	// 统一收集成功 lease，确保后续 Register 失败时也能全部关闭。
+	leases := make([]*coremcp.OpenedTools, 0, len(results))
+	for _, result := range results {
+		if result.opened != nil {
+			leases = append(leases, result.opened)
+		}
+	}
+	closeAll := func() error {
+		var errs []error
+		for _, lease := range slices.Backward(leases) {
+			if closeErr := lease.Close(); closeErr != nil {
+				errs = append(errs, closeErr)
+			}
+		}
+		return errors.Join(errs...)
+	}
+
+	openedOK, failed := 0, 0
+	// Phase 2：按原顺序串行注册，避免并发写 registry。
+	for _, result := range results {
+		if result.err != nil {
+			failed++
+			o.warnMCPServer(ctx, userID, result.server.ID, "加载MCP工具失败", result.err)
 			continue
 		}
-		leases = append(leases, opened)
-		for _, definition := range domaintoolmcp.Definitions(server, opened.Tools()) {
+		if result.opened == nil || result.server == nil {
+			failed++
+			continue
+		}
+		openedOK++
+		for _, definition := range domaintoolmcp.Definitions(result.server, result.opened.Tools()) {
 			if definition == nil {
 				continue
 			}
 			if configuredEnabled, ok := enabledByToolConfig(rows, definition.Key); ok && !configuredEnabled {
 				continue
 			}
-			tool := domaintoolmcp.NewTool(definition, opened)
+			tool := domaintoolmcp.NewTool(definition, result.opened)
 			if tool == nil {
 				continue
 			}
@@ -251,6 +333,9 @@ func (o *Orchestrator) toolRegistry(ctx context.Context, userID uuid.UUID, kbIDs
 				return nil, nil, fmt.Errorf("register MCP tool %q: %w", definition.Key, err)
 			}
 		}
+	}
+	if mcpCtx.Err() != nil && failed > 0 {
+		o.warnMCPAssembleBudget(ctx, userID, budget, openedOK, failed)
 	}
 	if len(leases) == 0 {
 		return filtered, nil, nil
@@ -276,6 +361,19 @@ func (o *Orchestrator) warnMCPServer(ctx context.Context, userID uuid.UUID, serv
 		slog.String("user_id", userID.String()),
 		slog.String("server_id", serverID.String()),
 		slog.String("error", err.Error()),
+	)
+}
+
+// warnMCPAssembleBudget 在总预算耗尽或取消时输出一条汇总日志。
+func (o *Orchestrator) warnMCPAssembleBudget(ctx context.Context, userID uuid.UUID, budget time.Duration, openedOK, failed int) {
+	if o == nil || o.log == nil {
+		return
+	}
+	o.log.WarnContext(ctx, "MCP组装预算耗尽或取消",
+		slog.String("user_id", userID.String()),
+		slog.Duration("budget", budget),
+		slog.Int("opened_ok", openedOK),
+		slog.Int("failed_or_skipped", failed),
 	)
 }
 

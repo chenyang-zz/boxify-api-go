@@ -299,30 +299,30 @@ toolRegistry(ctx, userID)
     │
     ├─ 3. 过滤 registry：只保留 enabled 的工具
     │
-    └─ 4. 遍历 MCP servers
+    └─ 4. MCP servers（有限并行发现 + 串行注册）
             │
-            ├─ server.Enabled == false → skip
+            ├─ 收集 enabled servers + ServerConfig.decrypt
             │
-            ├─ ServerConfig.decrypt(auth_config)  ◀── Fernet 解密
+            ├─ Phase 1 并行发现
+            │     mcpCtx = WithTimeout(ctx, assembleBudget=8s)
+            │     concurrency semaphore = 4
+            │     go OpenTools(mcpCtx, serverConfig) per server
+            │           ├─ 缓存命中 → lazy session
+            │           └─ 缓存失效 → DiscoverTimeout 内建连+ListTools
             │
-            ├─ MCPToolService.OpenTools(serverConfig)
-            │       │
-            │       ├─ 缓存命中 → lazy session (不建连)
-            │       └─ 缓存失效 → 立即 ListTools + 建连
-            │
-            ├─ Definitions(server, opened.Tools())
-            │       └─ 构造 domain/mcp.Definition 列表
-            │
-            ├─ 过滤用户显式禁用的工具
-            │
-            ├─ NewTool(definition, opened) → coretool.Tool
-            │       └─ adapter: 将 CallResult 转换为 coretool.Output
-            │
-            └─ filtered.Register(tool)
+            └─ Phase 2 串行注册（稳定顺序，无并发写 registry）
+                  ├─ OpenTools 失败 → warn + skip
+                  ├─ Definitions + 工具级启停过滤
+                  ├─ NewTool → filtered.Register
+                  └─ Register 硬错误 → closeAll + return error
 ```
 
-**连接管理**：所有 `OpenedTools` lease 收集到 `leases` 切片，通过 `closeAll`
-闭包在 `generate()` 结束时统一关闭（defer），保证异常路径也能释放连接。
+**组装预算**：多 server 发现墙钟上限默认 8s，避免串行叠加；单 server 仍受
+`core/mcp` DiscoverTimeout（5s）与 FailCooldown 约束。并发度默认 4，与配置页
+`mcpRefreshConcurrencyMax` 对齐。
+
+**连接管理**：所有成功的 `OpenedTools` lease 在 Wait 后统一收集，通过 `closeAll`
+闭包在 `generate()` 结束时关闭（defer）；Register 失败路径也会释放本轮全部 lease。
 
 ### 5.2 MCP 工具调用的完整路径
 
@@ -403,11 +403,8 @@ HTTP 查询阶段 (GET /tool-configs):
 Chat 编排阶段 (Orchestrator.generate):
   toolRegistry()
       ├─ builtin tools ─▶ enabled map
-      ├─ 遍历 servers
-      │     ├─ ServerConfig.decrypt()
-      │     ├─ OpenTools() ─▶ 缓存命中? lazy : 立即建连
-      │     ├─ Definitions()
-      │     └─ Register(NewTool(definition, opened))
+      ├─ MCP Phase1 并行 OpenTools(mcpCtx, budget=8s, concurrency=4)
+      ├─ MCP Phase2 串行 Definitions + Register
       └─ defer closeAll()
 
 Chat 调用阶段 (Agent → MCP):
@@ -431,7 +428,7 @@ Chat 调用阶段 (Agent → MCP):
 |--------|---------|
 | **稳定性** | ToolKey 包含 server UUID 与 hash，重命名 / 同名工具不冲突 |
 | **可用性** | 三层降级：实时 → 快照(stale) → 空(empty)，远端抖动不影响前端展示 |
-| **性能** | 内存缓存 TTL 5 分钟，OpenTools 延迟建连，发现超时 5s + 失败冷却 30s，并发信号量限制 |
+| **性能** | 内存缓存 TTL 5 分钟；发现超时 5s + 失败冷却 30s；对话组装有限并行（concurrency=4）+ 墙钟预算 8s |
 | **安全** | auth_config Fernet 加密存储，仅在内存中解密使用 |
 | **一致性** | Fingerprint 包含全部连接配置，任何变更立即失效缓存 |
 | **资源释放** | OpenedTools.Close() 幂等，编排器 defer closeAll() 兜底 |
