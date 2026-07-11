@@ -545,6 +545,41 @@ func (r *testMessageRepository) ListByConversationID(ctx context.Context, userID
 	return out, nil
 }
 
+func (r *testMessageRepository) ListPage(ctx context.Context, userID uuid.UUID, query repository.MessageListQuery) ([]*models.Message, bool, error) {
+	rows, err := r.ListByConversationID(ctx, userID, query.ConversationID)
+	if err != nil {
+		return nil, false, err
+	}
+	limit := query.Limit
+	if limit < 1 {
+		limit = 30
+	}
+	if query.BeforeID != nil {
+		var cursor *models.Message
+		for _, row := range rows {
+			if row.ID == *query.BeforeID {
+				cursor = row
+				break
+			}
+		}
+		if cursor == nil {
+			return nil, false, xerr.BadRequest("before 消息不存在或不属于该会话")
+		}
+		filtered := make([]*models.Message, 0, len(rows))
+		for _, row := range rows {
+			if row.CreatedAt.Before(cursor.CreatedAt) || (row.CreatedAt.Equal(cursor.CreatedAt) && row.ID.String() < cursor.ID.String()) {
+				filtered = append(filtered, row)
+			}
+		}
+		rows = filtered
+	}
+	if len(rows) <= limit {
+		return rows, false, nil
+	}
+	// 最新 limit 条对应 ASC 尾部
+	return rows[len(rows)-limit:], true, nil
+}
+
 func (r *testMessageRepository) FindByID(ctx context.Context, userID uuid.UUID, messageID uuid.UUID) (*models.Message, error) {
 	for _, row := range r.rows {
 		if row.ID == messageID {

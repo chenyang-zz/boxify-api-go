@@ -93,7 +93,7 @@ func (h ConversationHandler) DeleteConversation(c *gin.Context) {
 }
 
 func (h ConversationHandler) ListMessages(c *gin.Context) {
-	var query request.UriConversationIDRequest
+	var query request.ListMessagesRequest
 	if err := c.ShouldBindUri(&query); err != nil {
 		response.FromError(c, xerr.Validation(err))
 		return
