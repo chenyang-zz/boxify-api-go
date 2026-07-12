@@ -138,8 +138,8 @@ func TestChatStreamPublishesToolEventsAndStoresToolMetadata(t *testing.T) {
 		t.Fatalf("ChatStream events = %#v, want tool_call/tool_result/done", eventNames(got))
 	}
 	toolResult, ok := firstToolEvent(got, types.EventTypeToolResult)
-	if !ok || toolResult.Tool != "current_time" || toolResult.Observation == "" || toolResult.Error != "" {
-		t.Fatalf("tool result event = %#v, want current_time observation without error", toolResult)
+	if !ok || toolResult.Tool != "获取当前时间" || toolResult.Observation == "" || toolResult.Error != "" {
+		t.Fatalf("tool result event = %#v, want 获取当前时间 observation without error", toolResult)
 	}
 
 	msgRepo := svcCtx.MessageRepo.(*fakeChatMessageRepo)

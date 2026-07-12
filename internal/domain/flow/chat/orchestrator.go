@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -128,7 +129,7 @@ func (o *Orchestrator) generate(ctx context.Context, input Input, events chan<- 
 		}
 	}()
 
-	hooks := &agentHooks{events: events}
+	hooks := &agentHooks{events: events, registry: registry}
 	options := []corereact.Option{
 		corereact.WithHooks(hooks),
 		corereact.WithSystemPrompt(composeSystemPrompt(coveAssistantIntro, input.SystemPrompt)),
@@ -434,6 +435,7 @@ func composeQuery(message string, attachments []*types.MessageAttachment) string
 type agentHooks struct {
 	corereact.NoopHooks
 	events   chan<- flow.Message
+	registry *coretool.Registry
 	streamed strings.Builder
 }
 
@@ -455,7 +457,7 @@ func (h *agentHooks) partial() string {
 
 func (h *agentHooks) BeforeTool(ctx context.Context, state corereact.State, call corereact.ToolCall) error {
 	return h.emit(ctx, &flow.ToolCallMessage{
-		Tool:       call.Name,
+		Tool:       h.displayName(ctx, call.Name),
 		Input:      cloneToolInput(call.Input),
 		Iteration:  state.Iteration,
 		ToolCallID: state.LastDecision.ToolCallID,
@@ -467,12 +469,33 @@ func (h *agentHooks) AfterTool(ctx context.Context, state corereact.State, call 
 		return toolErr
 	}
 	return h.emit(ctx, &flow.ToolResultMessage{
-		Tool:        call.Name,
+		Tool:        h.displayName(ctx, call.Name),
 		Input:       cloneToolInput(call.Input),
 		Observation: output.Text,
 		Iteration:   state.Iteration,
 		ToolCallID:  state.LastDecision.ToolCallID,
 	})
+}
+
+// displayName 返回供前端展示的工具名称，无法解析时保留内部名称作为兜底。
+func (h *agentHooks) displayName(ctx context.Context, name string) string {
+	name = strings.TrimSpace(name)
+	if h == nil || h.registry == nil || name == "" {
+		return name
+	}
+	tool, ok := h.registry.Lookup(name)
+	if !ok || tool == nil {
+		return name
+	}
+	descriptor, err := tool.Describe(ctx)
+	if err != nil || descriptor.Annotations == nil {
+		return name
+	}
+	displayName, _ := descriptor.Annotations["display_name"].(string)
+	if displayName = strings.TrimSpace(displayName); displayName == "" {
+		return name
+	}
+	return displayName
 }
 
 func (h *agentHooks) emit(ctx context.Context, message flow.Message) error {
@@ -492,8 +515,6 @@ func cloneToolInput(input coretool.Input) map[string]any {
 		return nil
 	}
 	out := make(map[string]any, len(input))
-	for key, value := range input {
-		out[key] = value
-	}
+	maps.Copy(out, input)
 	return out
 }

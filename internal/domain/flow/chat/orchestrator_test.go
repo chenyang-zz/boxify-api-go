@@ -568,12 +568,12 @@ func TestOrchestratorRunEmitsToolCallAndResultMessages(t *testing.T) {
 		t.Fatalf("message kinds = %#v, want tool_call/tool_result/partial/assistant/done", gotKinds)
 	}
 	call, ok := messages[0].(*flow.ToolCallMessage)
-	if !ok || call.Tool != "current_time" || call.Iteration != 1 {
-		t.Fatalf("tool call message = %#v, want current_time iteration 1", messages[0])
+	if !ok || call.Tool != "获取当前时间" || call.Iteration != 1 {
+		t.Fatalf("tool call message = %#v, want display name 获取当前时间 at iteration 1", messages[0])
 	}
 	result, ok := messages[1].(*flow.ToolResultMessage)
-	if !ok || result.Tool != "current_time" || result.Observation == "" || result.Error != "" || result.Iteration != 1 {
-		t.Fatalf("tool result message = %#v, want current_time observation without error", messages[1])
+	if !ok || result.Tool != "获取当前时间" || result.Observation == "" || result.Error != "" || result.Iteration != 1 {
+		t.Fatalf("tool result message = %#v, want display name 获取当前时间 observation without error", messages[1])
 	}
 }
 
@@ -615,7 +615,7 @@ func TestOrchestratorRunKeepsMCPIsErrorAsObservation(t *testing.T) {
 		{text: "Thought: recovered\nFinal Answer: 已处理"},
 	}}
 	session := &fakeFlowMCPSession{
-		tools: []coremcp.ToolInfo{{Name: "search", Description: "搜索"}},
+		tools: []coremcp.ToolInfo{{Name: "search", Title: "网页搜索", Description: "搜索"}},
 		result: &coremcp.CallResult{
 			Content:           []coremcp.Content{{Type: "text", Text: "远端拒绝请求"}},
 			StructuredContent: map[string]any{"code": "bad_request"},
@@ -636,7 +636,7 @@ func TestOrchestratorRunKeepsMCPIsErrorAsObservation(t *testing.T) {
 		t.Fatalf("message kinds = %#v, want tool_call/tool_result/partial/assistant/done", gotKinds)
 	}
 	result, ok := messages[1].(*flow.ToolResultMessage)
-	if !ok || result.Error != "" || !strings.HasPrefix(result.Observation, "tool invocation failed:\n") || !strings.Contains(result.Observation, "远端拒绝请求") || !strings.Contains(result.Observation, `"code":"bad_request"`) {
+	if !ok || result.Tool != "网页搜索" || result.Error != "" || !strings.HasPrefix(result.Observation, "tool invocation failed:\n") || !strings.Contains(result.Observation, "远端拒绝请求") || !strings.Contains(result.Observation, `"code":"bad_request"`) {
 		t.Fatalf("tool result message = %#v, want recovered MCP error observation", messages[1])
 	}
 	if session.closeCalls != 1 {
@@ -683,6 +683,29 @@ func TestAgentHooksAfterToolKeepsFullObservation(t *testing.T) {
 	}
 	if result.Observation != fullObservation {
 		t.Fatalf("observation len = %d, want full len %d", len([]rune(result.Observation)), len([]rune(fullObservation)))
+	}
+}
+
+// 验证工具事件优先使用 descriptor 的 display_name，缺失时回退内部工具名称。
+func TestAgentHooksUseDisplayNameWithInternalNameFallback(t *testing.T) {
+	ctx := context.Background()
+	registry := coretool.NewRegistry()
+	if err := registry.Register(ctx, coretool.NewFuncTool(coretool.Descriptor{
+		Name: "internal_tool",
+		Annotations: map[string]any{
+			"display_name": "纯展示名",
+		},
+	}, func(context.Context, coretool.Input) (coretool.Output, error) {
+		return coretool.Output{}, nil
+	})); err != nil {
+		t.Fatalf("Registry.Register(display tool) error = %v, want nil", err)
+	}
+	hooks := &agentHooks{registry: registry}
+	if got := hooks.displayName(ctx, "internal_tool"); got != "纯展示名" {
+		t.Fatalf("displayName(annotation) = %q, want 纯展示名", got)
+	}
+	if got := hooks.displayName(ctx, "missing_tool"); got != "missing_tool" {
+		t.Fatalf("displayName(fallback) = %q, want missing_tool", got)
 	}
 }
 
