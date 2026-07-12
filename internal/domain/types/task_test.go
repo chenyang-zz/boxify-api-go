@@ -60,3 +60,37 @@ func TestNewParseDocumentTaskRejectsNilIDs(t *testing.T) {
 		t.Fatal("NewParseDocumentTask document nil error = nil, want error")
 	}
 }
+
+// 验证图片解析任务由 domain 类型包统一构造，并带上 parse 队列和强类型 payload。
+func TestNewParseImageTaskBuildsTypedDomainTask(t *testing.T) {
+	userID := uuid.New()
+	imageID := uuid.New()
+
+	task, err := types.NewParseImageTask(userID, imageID)
+	if err != nil {
+		t.Fatalf("NewParseImageTask error = %v", err)
+	}
+	if task.Name != types.TaskParseImage {
+		t.Fatalf("task name = %q, want %q", task.Name, types.TaskParseImage)
+	}
+	if task.Queue != types.QueueParse {
+		t.Fatalf("task queue = %q, want %q", task.Queue, types.QueueParse)
+	}
+	payload, ok := task.Payload.(*types.ParseImagePayload)
+	if !ok {
+		t.Fatalf("payload type = %T, want *types.ParseImagePayload", task.Payload)
+	}
+	if payload.UserID != userID || payload.ImageID != imageID {
+		t.Fatalf("payload = %+v, want user/image ids", payload)
+	}
+}
+
+// 验证图片解析任务会拒绝空 UUID，避免无效任务进入队列。
+func TestNewParseImageTaskRejectsNilIDs(t *testing.T) {
+	if _, err := types.NewParseImageTask(uuid.Nil, uuid.New()); err == nil {
+		t.Fatal("NewParseImageTask user nil error = nil, want error")
+	}
+	if _, err := types.NewParseImageTask(uuid.New(), uuid.Nil); err == nil {
+		t.Fatal("NewParseImageTask image nil error = nil, want error")
+	}
+}

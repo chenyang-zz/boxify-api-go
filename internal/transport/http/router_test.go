@@ -972,6 +972,14 @@ func (r *testImageRepository) List(ctx context.Context, userID uuid.UUID) ([]*mo
 	return out, nil
 }
 
+func (r *testImageRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.ImageListQuery) ([]*models.Image, int64, error) {
+	out, err := r.List(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return out, int64(len(out)), nil
+}
+
 func (r *testImageRepository) CountByKnowledgeBase(ctx context.Context, userID uuid.UUID, kbIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	allowed := map[uuid.UUID]struct{}{}
 	for _, id := range kbIDs {

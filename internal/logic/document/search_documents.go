@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strings"
 
-	corellm "github.com/boxify/api-go/internal/core/llm"
 	ragsearch "github.com/boxify/api-go/internal/core/rag/search"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -39,7 +38,7 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 	if l.svcCtx == nil || l.svcCtx.RAGSearcher == nil {
 		return nil, xerr.Internal("文档检索依赖未初始化", nil)
 	}
-	llmClient, err := l.embeddingClient(userID)
+	llmClient, err := svc.EmbeddingClient(l.ctx, l.svcCtx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +68,6 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 		slog.Int("result_count", len(out)),
 	)
 	return &response.ListResponse[*response.SearchDocumentResponse]{List: out}, nil
-}
-
-func (l *SearchDocumentsLogic) embeddingClient(userID uuid.UUID) (corellm.Client, error) {
-	return svc.EmbeddingClient(l.ctx, l.svcCtx, userID)
 }
 
 func documentSearchFilters(userID uuid.UUID, tags []string) []any {

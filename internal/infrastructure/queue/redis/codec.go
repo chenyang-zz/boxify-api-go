@@ -24,7 +24,17 @@ func EncodeTask(task *types.Task) (*asynq.Task, error) {
 			return nil, err
 		}
 		return asynq.NewTask(string(task.Name), data), nil
-	case types.TaskParseImage, types.TaskMemoryExtract, types.TaskMemoryConsolidate, types.TaskResearchRun:
+	case types.TaskParseImage:
+		payload, err := parseImagePayload(task.Payload)
+		if err != nil {
+			return nil, err
+		}
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		return asynq.NewTask(string(task.Name), data), nil
+	case types.TaskMemoryExtract, types.TaskMemoryConsolidate, types.TaskResearchRun:
 		return asynq.NewTask(string(task.Name), nil), nil
 	default:
 		return nil, fmt.Errorf("unknown task name: %s", task.Name)
@@ -51,7 +61,18 @@ func DecodeTask(task *asynq.Task) (*types.Task, error) {
 			Payload: &payload,
 		}, nil
 	case types.TaskParseImage:
-		return &types.Task{Name: name, Queue: types.QueueParse}, nil
+		var payload types.ParseImagePayload
+		if err := json.Unmarshal(task.Payload(), &payload); err != nil {
+			return nil, err
+		}
+		if payload.UserID == uuid.Nil || payload.ImageID == uuid.Nil {
+			return nil, fmt.Errorf("parse image payload ids are required")
+		}
+		return &types.Task{
+			Name:    name,
+			Queue:   types.QueueParse,
+			Payload: &payload,
+		}, nil
 	case types.TaskMemoryExtract:
 		return &types.Task{Name: name, Queue: types.QueueMemory}, nil
 	case types.TaskMemoryConsolidate:
@@ -80,5 +101,25 @@ func parseDocumentPayload(payload any) (*types.ParseDocumentPayload, error) {
 		return &value, nil
 	default:
 		return nil, fmt.Errorf("parse document payload type = %T", payload)
+	}
+}
+
+func parseImagePayload(payload any) (*types.ParseImagePayload, error) {
+	switch value := payload.(type) {
+	case *types.ParseImagePayload:
+		if value == nil {
+			return nil, fmt.Errorf("parse image payload is nil")
+		}
+		if value.UserID == uuid.Nil || value.ImageID == uuid.Nil {
+			return nil, fmt.Errorf("parse image payload ids are required")
+		}
+		return value, nil
+	case types.ParseImagePayload:
+		if value.UserID == uuid.Nil || value.ImageID == uuid.Nil {
+			return nil, fmt.Errorf("parse image payload ids are required")
+		}
+		return &value, nil
+	default:
+		return nil, fmt.Errorf("parse image payload type = %T", payload)
 	}
 }

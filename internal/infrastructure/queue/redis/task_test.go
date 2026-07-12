@@ -41,6 +41,36 @@ func TestEncodeDecodeParseDocumentTaskRoundTrip(t *testing.T) {
 	}
 }
 
+// 验证图片解析任务能完成 Redis/Asynq 编码和解码往返。
+func TestEncodeDecodeParseImageTaskRoundTrip(t *testing.T) {
+	userID := uuid.New()
+	imageID := uuid.New()
+	task, err := types.NewParseImageTask(userID, imageID)
+	if err != nil {
+		t.Fatalf("NewParseImageTask error = %v", err)
+	}
+
+	asynqTask, err := queueredis.EncodeTask(task)
+	if err != nil {
+		t.Fatalf("EncodeTask error = %v", err)
+	}
+	if asynqTask.Type() != string(types.TaskParseImage) {
+		t.Fatalf("task type = %q, want %q", asynqTask.Type(), types.TaskParseImage)
+	}
+
+	got, err := queueredis.DecodeTask(asynqTask)
+	if err != nil {
+		t.Fatalf("DecodeTask error = %v", err)
+	}
+	payload, ok := got.Payload.(*types.ParseImagePayload)
+	if !ok {
+		t.Fatalf("payload type = %T, want *types.ParseImagePayload", got.Payload)
+	}
+	if payload.UserID != userID || payload.ImageID != imageID {
+		t.Fatalf("payload = %+v, want user/image ids", payload)
+	}
+}
+
 func TestDecodeTaskRejectsInvalidPayload(t *testing.T) {
 	// 验证 Redis/Asynq 解码会拒绝非法 JSON 和未知任务，避免错误任务进入 handler。
 	badJSON := asynq.NewTask(string(types.TaskParseDocument), []byte("{bad json"))

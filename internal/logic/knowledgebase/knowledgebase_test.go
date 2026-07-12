@@ -88,6 +88,10 @@ func (r *fakeKnowledgeBaseImageRepository) List(ctx context.Context, userID uuid
 	return nil, nil
 }
 
+func (r *fakeKnowledgeBaseImageRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.ImageListQuery) ([]*models.Image, int64, error) {
+	return nil, 0, nil
+}
+
 func (r *fakeKnowledgeBaseImageRepository) CountByKnowledgeBase(ctx context.Context, userID uuid.UUID, kbIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	allowed := map[uuid.UUID]struct{}{}
 	for _, id := range kbIDs {

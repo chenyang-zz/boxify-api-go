@@ -5,6 +5,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
+
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/repository"
 	"github.com/boxify/api-go/internal/xerr"
@@ -42,6 +44,45 @@ func (r *ImageRepository) List(ctx context.Context, userID uuid.UUID) ([]*models
 	return rows, nil
 }
 
+func (r *ImageRepository) PageList(ctx context.Context, userID uuid.UUID, query repository.ImageListQuery) ([]*models.Image, int64, error) {
+	var rows []*models.Image
+	db := r.db.WithContext(ctx).
+		Model(&models.Image{}).
+		Where("images.user_id = ?", userID)
+	if query.KBID != nil {
+		db = db.Where("images.kb_id = ?", *query.KBID)
+	}
+	if query.Tag != nil && strings.TrimSpace(*query.Tag) != "" {
+		tag := strings.TrimSpace(*query.Tag)
+		db = db.Where(`EXISTS (
+			SELECT 1
+			FROM image_tags it
+			JOIN tags t ON t.id = it.tag_id
+			WHERE it.image_id = images.id
+			  AND t.user_id = images.user_id
+			  AND t.name = ?
+		)`, tag)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, xerr.Wrapf(err, "统计图片元数据列表失败")
+	}
+
+	limit, offset := query.LimitOffset(20)
+	err := db.
+		Preload("Tags", "tags.user_id = ?", userID).
+		Order("updated_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&rows).Error
+	if err != nil {
+		return nil, 0, xerr.Wrapf(err, "查询图片元数据列表失败")
+	}
+
+	return rows, total, nil
+}
+
 func (r *ImageRepository) CountByKnowledgeBase(ctx context.Context, userID uuid.UUID, kbIDs []uuid.UUID) (map[uuid.UUID]int64, error) {
 	out := map[uuid.UUID]int64{}
 	if len(kbIDs) == 0 {
@@ -69,6 +110,7 @@ func (r *ImageRepository) CountByKnowledgeBase(ctx context.Context, userID uuid.
 func (r *ImageRepository) FindByID(ctx context.Context, userID uuid.UUID, imageID uuid.UUID) (*models.Image, error) {
 	image := &models.Image{}
 	err := r.db.WithContext(ctx).
+		Preload("Tags", "tags.user_id = ?", userID).
 		Where("id = ? AND user_id = ?", imageID, userID).
 		First(image).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

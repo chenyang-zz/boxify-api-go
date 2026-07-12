@@ -37,6 +37,11 @@ type ParseDocumentPayload struct {
 	DocumentID uuid.UUID `json:"document_id"`
 }
 
+type ParseImagePayload struct {
+	UserID  uuid.UUID `json:"user_id"`
+	ImageID uuid.UUID `json:"image_id"`
+}
+
 func TaskNames() []TaskName {
 	return []TaskName{
 		TaskParseDocument,
@@ -60,6 +65,23 @@ func NewParseDocumentTask(userID uuid.UUID, documentID uuid.UUID) (*Task, error)
 		Payload: &ParseDocumentPayload{
 			UserID:     userID,
 			DocumentID: documentID,
+		},
+	}, nil
+}
+
+func NewParseImageTask(userID uuid.UUID, imageID uuid.UUID) (*Task, error) {
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("user_id is required")
+	}
+	if imageID == uuid.Nil {
+		return nil, fmt.Errorf("image_id is required")
+	}
+	return &Task{
+		Name:  TaskParseImage,
+		Queue: QueueParse,
+		Payload: &ParseImagePayload{
+			UserID:  userID,
+			ImageID: imageID,
 		},
 	}, nil
 }
