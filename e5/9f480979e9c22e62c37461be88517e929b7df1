@@ -1,0 +1,21 @@
+internal/models/image.go
+  s_6da0862f92164a::t_38e018baa7ac93 20-26
+internal/worker/tasks/parse_image_test.go
+  s_6da0862f92164a::t_f967f378f5d230 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e59f480979e9c22e62c37461be88517e929b7df1",
+  "prompts": {},
+  "sessions": {
+    "s_6da0862f92164a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_6da0862f92164a",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
