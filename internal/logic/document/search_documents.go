@@ -56,8 +56,8 @@ func (l *SearchDocumentsLogic) SearchDocuments(userID uuid.UUID, input *request.
 		out = append(out, &response.SearchDocumentResponse{
 			ChunkID:    item.Source.ChunkID,
 			Content:    item.Content,
-			DocName:    item.Source.DocName,
-			SourceID:   item.Source.DocumentID,
+			DocName:    item.Source.Name,
+			SourceID:   item.Source.SourceID,
 			SourceType: item.Source.SourceType,
 			KBID:       item.Source.KBID,
 			Score:      item.Score,

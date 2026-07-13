@@ -1235,18 +1235,18 @@ func (r *testRAGChunkRepository) IndexImageChunk(ctx context.Context, image *mod
 	return nil
 }
 
-func (r *testRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+func (r *testRAGChunkRepository) DeleteBySource(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID) error {
 	return nil
 }
 
-func (r *testRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+func (r *testRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, kbID uuid.UUID) error {
 	return nil
 }
 
-func (r *testRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+func (r *testRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, tags []string) error {
 	r.tagUpdates = append(r.tagUpdates, testRAGTagUpdate{
 		userID:     userID,
-		documentID: documentID,
+		documentID: sourceID,
 		tags:       append([]string(nil), tags...),
 	})
 	return r.updateTagsErr

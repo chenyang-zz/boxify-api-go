@@ -42,9 +42,19 @@ func TestRAGChunkRepositoryEnsureIndexCreatesMissingIndex(t *testing.T) {
 	if err := repo.EnsureIndex(context.Background(), 3); err != nil {
 		t.Fatalf("EnsureIndex error = %v", err)
 	}
-	vector := createdBody["mappings"].(map[string]any)["properties"].(map[string]any)["vector"].(map[string]any)
+	properties := createdBody["mappings"].(map[string]any)["properties"].(map[string]any)
+	vector := properties["vector"].(map[string]any)
 	if vector["type"] != "dense_vector" || vector["dims"] != float64(3) || vector["similarity"] != "cosine" {
 		t.Fatalf("vector mapping = %#v, want dense_vector dims=3 cosine", vector)
+	}
+	if _, ok := properties["source_id"]; !ok {
+		t.Fatalf("mapping properties = %#v, want source_id field", properties)
+	}
+	if _, ok := properties["name"]; !ok {
+		t.Fatalf("mapping properties = %#v, want name field", properties)
+	}
+	if _, ok := properties["document_id"]; ok {
+		t.Fatalf("mapping properties = %#v, must not keep document_id", properties)
 	}
 }
 
@@ -69,17 +79,17 @@ func TestRAGChunkRepositoryEnsureIndexSkipsExistingIndex(t *testing.T) {
 }
 
 func TestRAGChunkRepositoryIndexDocumentChunksWritesParentAndChild(t *testing.T) {
-	// 验证文档 chunk 写入会生成 parent/child 文档并带上归属字段、标签和向量。
+	// 验证文档 chunk 写入会生成 parent/child 记录并带上 source_id、名称、标签和向量。
 	userID := uuid.New()
 	documentID := uuid.New()
 	kbID := uuid.New()
-	indexed := map[string]models.RAGChunkDocument{}
+	indexed := map[string]models.RAGChunkRecord{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
 		if r.Method != http.MethodPut || !strings.HasPrefix(r.URL.Path, "/boxify_chunks/_doc/") {
 			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
-		var body models.RAGChunkDocument
+		var body models.RAGChunkRecord
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatalf("decode index body: %v", err)
 		}
@@ -111,8 +121,11 @@ func TestRAGChunkRepositoryIndexDocumentChunksWritesParentAndChild(t *testing.T)
 	}
 	var gotChild bool
 	for _, body := range indexed {
-		if body.DocumentID != documentID.String() || body.UserID != userID.String() || body.KBID != kbID.String() || body.DocName != "guide.md" || body.Vector == nil {
+		if body.SourceID != documentID.String() || body.UserID != userID.String() || body.KBID != kbID.String() || body.Name != "guide.md" || body.Vector == nil {
 			t.Fatalf("indexed body = %#v, want ownership and vector fields", body)
+		}
+		if body.SourceType != "file" {
+			t.Fatalf("indexed source_type = %q, want file", body.SourceType)
 		}
 		if body.Level == "child" {
 			gotChild = true
@@ -126,10 +139,10 @@ func TestRAGChunkRepositoryIndexDocumentChunksWritesParentAndChild(t *testing.T)
 	}
 }
 
-func TestRAGChunkRepositoryDeleteByDocument(t *testing.T) {
-	// 验证删除 query 使用 user_id + document_id。
+func TestRAGChunkRepositoryDeleteBySource(t *testing.T) {
+	// 验证删除 query 使用 user_id + source_id。
 	userID := uuid.New()
-	documentID := uuid.New()
+	sourceID := uuid.New()
 	var deleteBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
@@ -148,21 +161,20 @@ func TestRAGChunkRepositoryDeleteByDocument(t *testing.T) {
 	}
 
 	repo := repositoryes.NewRAGChunkRepository(client, "")
-	if err := repo.DeleteByDocument(context.Background(), userID, documentID); err != nil {
-		t.Fatalf("DeleteByDocument error = %v", err)
+	if err := repo.DeleteBySource(context.Background(), userID, sourceID); err != nil {
+		t.Fatalf("DeleteBySource error = %v", err)
 	}
 	encodedDelete, _ := json.Marshal(deleteBody)
 	deleteText := string(encodedDelete)
-	if !strings.Contains(deleteText, `"document_id":"`+documentID.String()+`"`) || !strings.Contains(deleteText, `"user_id":"`+userID.String()+`"`) {
-		t.Fatalf("delete query = %s, want user_id and document_id", deleteText)
+	if !strings.Contains(deleteText, `"source_id":"`+sourceID.String()+`"`) || !strings.Contains(deleteText, `"user_id":"`+userID.String()+`"`) {
+		t.Fatalf("delete query = %s, want user_id and source_id", deleteText)
 	}
-
 }
 
 func TestRAGChunkRepositoryUpdateKnowledgeBase(t *testing.T) {
-	// 验证移动文档时通过 update-by-query 只更新当前用户当前文档的 kb_id。
+	// 验证移动来源时通过 update-by-query 只更新当前用户当前 source_id 的 kb_id。
 	userID := uuid.New()
-	documentID := uuid.New()
+	sourceID := uuid.New()
 	kbID := uuid.New()
 	var updateBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -182,13 +194,13 @@ func TestRAGChunkRepositoryUpdateKnowledgeBase(t *testing.T) {
 	}
 
 	repo := repositoryes.NewRAGChunkRepository(client, "")
-	if err := repo.UpdateKnowledgeBase(context.Background(), userID, documentID, kbID); err != nil {
+	if err := repo.UpdateKnowledgeBase(context.Background(), userID, sourceID, kbID); err != nil {
 		t.Fatalf("UpdateKnowledgeBase error = %v", err)
 	}
 	encoded, _ := json.Marshal(updateBody)
 	text := string(encoded)
-	if !strings.Contains(text, `"document_id":"`+documentID.String()+`"`) || !strings.Contains(text, `"user_id":"`+userID.String()+`"`) || !strings.Contains(text, `"kb_id":"`+kbID.String()+`"`) {
-		t.Fatalf("update query = %s, want user_id document_id and kb_id", text)
+	if !strings.Contains(text, `"source_id":"`+sourceID.String()+`"`) || !strings.Contains(text, `"user_id":"`+userID.String()+`"`) || !strings.Contains(text, `"kb_id":"`+kbID.String()+`"`) {
+		t.Fatalf("update query = %s, want user_id source_id and kb_id", text)
 	}
 	if !strings.Contains(text, "ctx._source.kb_id = params.kb_id") {
 		t.Fatalf("update script = %s, want kb_id assignment", text)
@@ -196,9 +208,9 @@ func TestRAGChunkRepositoryUpdateKnowledgeBase(t *testing.T) {
 }
 
 func TestRAGChunkRepositoryUpdateTags(t *testing.T) {
-	// 验证分类完成后通过 update-by-query 只更新当前用户当前文档的 tags。
+	// 验证分类完成后通过 update-by-query 只更新当前用户当前 source_id 的 tags。
 	userID := uuid.New()
-	documentID := uuid.New()
+	sourceID := uuid.New()
 	var updateBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
@@ -217,13 +229,13 @@ func TestRAGChunkRepositoryUpdateTags(t *testing.T) {
 	}
 
 	repo := repositoryes.NewRAGChunkRepository(client, "")
-	if err := repo.UpdateTags(context.Background(), userID, documentID, []string{"手动", "分类"}); err != nil {
+	if err := repo.UpdateTags(context.Background(), userID, sourceID, []string{"手动", "分类"}); err != nil {
 		t.Fatalf("UpdateTags error = %v", err)
 	}
 	encoded, _ := json.Marshal(updateBody)
 	text := string(encoded)
-	if !strings.Contains(text, `"document_id":"`+documentID.String()+`"`) || !strings.Contains(text, `"user_id":"`+userID.String()+`"`) {
-		t.Fatalf("update tags query = %s, want user_id and document_id", text)
+	if !strings.Contains(text, `"source_id":"`+sourceID.String()+`"`) || !strings.Contains(text, `"user_id":"`+userID.String()+`"`) {
+		t.Fatalf("update tags query = %s, want user_id and source_id", text)
 	}
 	if !strings.Contains(text, "ctx._source.tags = params.tags") || !strings.Contains(text, `"手动"`) || !strings.Contains(text, `"分类"`) {
 		t.Fatalf("update tags script = %s, want tags assignment", text)
@@ -233,7 +245,7 @@ func TestRAGChunkRepositoryUpdateTags(t *testing.T) {
 func TestRAGChunkRepositoryDecodeSourceReturnsModelSource(t *testing.T) {
 	// 验证 ES source 解码结果使用 models.RAGChunkSource，避免 repository 暴露业务数据结构。
 	userChunkID := uuid.New()
-	documentID := uuid.New()
+	sourceID := uuid.New()
 	kbID := uuid.New()
 	client, err := infraes.NewClient(infraes.Config{URL: "http://127.0.0.1:9200"})
 	if err != nil {
@@ -241,33 +253,33 @@ func TestRAGChunkRepositoryDecodeSourceReturnsModelSource(t *testing.T) {
 	}
 	got, err := repositoryes.NewRAGChunkRepository(client, "").DecodeSource(map[string]any{
 		"chunk_id":    userChunkID.String(),
-		"document_id": documentID.String(),
+		"source_id":   sourceID.String(),
 		"kb_id":       kbID.String(),
-		"doc_name":    "guide.md",
+		"name":        "guide.md",
 		"source_type": "file",
 	})
 	if err != nil {
 		t.Fatalf("DecodeSource error = %v", err)
 	}
 	var source models.RAGChunkSource = got
-	if source.ChunkID != userChunkID || source.DocumentID != documentID || source.KBID == nil || *source.KBID != kbID || source.DocName != "guide.md" {
+	if source.ChunkID != userChunkID || source.SourceID != sourceID || source.KBID == nil || *source.KBID != kbID || source.Name != "guide.md" {
 		t.Fatalf("DecodeSource source = %#v, want decoded model source", source)
 	}
 }
 
-// 验证图片 chunk 写入使用 image source_type，并复用 document_id 存图片 ID。
+// 验证图片 chunk 写入使用 image source_type，并以 source_id 存图片 ID。
 func TestRAGChunkRepositoryIndexImageChunk(t *testing.T) {
 	userID := uuid.New()
 	imageID := uuid.New()
 	kbID := uuid.New()
-	var indexed models.RAGChunkDocument
-	var docID string
+	var indexed models.RAGChunkRecord
+	var recordID string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Elastic-Product", "Elasticsearch")
 		if r.Method != http.MethodPut || !strings.HasPrefix(r.URL.Path, "/boxify_chunks/_doc/") {
 			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
-		docID = strings.TrimPrefix(r.URL.Path, "/boxify_chunks/_doc/")
+		recordID = strings.TrimPrefix(r.URL.Path, "/boxify_chunks/_doc/")
 		if err := json.NewDecoder(r.Body).Decode(&indexed); err != nil {
 			t.Fatalf("decode index body: %v", err)
 		}
@@ -285,14 +297,13 @@ func TestRAGChunkRepositoryIndexImageChunk(t *testing.T) {
 	if err := repositoryes.NewRAGChunkRepository(client, "").IndexImageChunk(context.Background(), image, "一只猫", []float64{0.1, 0.2, 0.3}); err != nil {
 		t.Fatalf("IndexImageChunk error = %v", err)
 	}
-	if indexed.DocumentID != imageID.String() || indexed.UserID != userID.String() || indexed.KBID != kbID.String() {
+	if indexed.SourceID != imageID.String() || indexed.UserID != userID.String() || indexed.KBID != kbID.String() {
 		t.Fatalf("indexed ownership = %#v", indexed)
 	}
-	if indexed.SourceType != "image" || indexed.DocName != "cat.png" || indexed.Content != "一只猫" || indexed.Level != "parent" {
+	if indexed.SourceType != "image" || indexed.Name != "cat.png" || indexed.Content != "一只猫" || indexed.Level != "parent" {
 		t.Fatalf("indexed body = %#v", indexed)
 	}
-	if docID == "" || indexed.ChunkID == "" || indexed.ChunkID != docID {
-		t.Fatalf("chunk id path=%q body=%q", docID, indexed.ChunkID)
+	if recordID == "" || indexed.ChunkID == "" || indexed.ChunkID != recordID {
+		t.Fatalf("chunk id path=%q body=%q", recordID, indexed.ChunkID)
 	}
 }
-

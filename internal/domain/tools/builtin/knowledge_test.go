@@ -501,10 +501,10 @@ func (e *fakeKnowledgeToolES) Search(ctx context.Context, index string, query an
 					"_score": float64(2),
 					"_source": map[string]any{
 						"chunk_id":    e.chunkID.String(),
-						"document_id": e.documentID.String(),
+						"source_id":   e.documentID.String(),
 						"user_id":     e.userID.String(),
 						"kb_id":       e.kbID.String(),
-						"doc_name":    "guide.md",
+						"name":        "guide.md",
 						"source_type": "file",
 						"content":     "hello chunk",
 					},
@@ -519,7 +519,7 @@ func decodeKnowledgeToolSource(src map[string]any) (models.RAGChunkSource, error
 	if err != nil {
 		return models.RAGChunkSource{}, err
 	}
-	documentID, err := uuid.Parse(fmt.Sprint(src["document_id"]))
+	sourceID, err := uuid.Parse(fmt.Sprint(src["source_id"]))
 	if err != nil {
 		return models.RAGChunkSource{}, err
 	}
@@ -529,9 +529,9 @@ func decodeKnowledgeToolSource(src map[string]any) (models.RAGChunkSource, error
 	}
 	return models.RAGChunkSource{
 		ChunkID:    chunkID,
-		DocumentID: documentID,
+		SourceID:   sourceID,
 		KBID:       &kbID,
-		DocName:    fmt.Sprint(src["doc_name"]),
+		Name:       fmt.Sprint(src["name"]),
 		SourceType: fmt.Sprint(src["source_type"]),
 	}, nil
 }

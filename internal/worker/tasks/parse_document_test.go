@@ -438,8 +438,8 @@ func TestHandleParseDocumentProcessesTextDocument(t *testing.T) {
 		t.Fatalf("update tags body = %s, want merged unique manual and classified tags", updateText)
 	}
 	for _, body := range indexedDocs {
-		if body["document_id"] != documentID.String() || body["user_id"] != userID.String() || body["content"] == "" || body["vector"] == nil {
-			t.Fatalf("indexed chunk body = %#v, want document/user/content/vector", body)
+		if body["source_id"] != documentID.String() || body["user_id"] != userID.String() || body["content"] == "" || body["vector"] == nil {
+			t.Fatalf("indexed chunk body = %#v, want source/user/content/vector", body)
 		}
 	}
 }

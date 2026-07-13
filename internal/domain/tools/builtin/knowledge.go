@@ -145,8 +145,8 @@ func searchKnowledge(ctx context.Context, svcCtx *svc.ServiceContext, req *knowl
 		out = append(out, knowledgeSearchResult{
 			ChunkID:     item.Source.ChunkID,
 			Content:     item.Content,
-			DocName:     item.Source.DocName,
-			SourceID:    item.Source.DocumentID,
+			DocName:     item.Source.Name,
+			SourceID:    item.Source.SourceID,
 			SourceType:  item.Source.SourceType,
 			KBID:        item.Source.KBID,
 			Score:       item.Score,

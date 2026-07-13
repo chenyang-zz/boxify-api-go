@@ -146,7 +146,7 @@ func (h *ParseDocumentTask) Handle(ctx context.Context, task *types.Task) error 
 		slog.String("user_id", doc.UserID.String()),
 		slog.String("document_id", doc.ID.String()),
 	)
-	if err := h.svcCtx.RAGChunkRepo.DeleteByDocument(ctx, doc.UserID, doc.ID); err != nil {
+	if err := h.svcCtx.RAGChunkRepo.DeleteBySource(ctx, doc.UserID, doc.ID); err != nil {
 		_ = h.markParseFailed(ctx, doc, err)
 		return nil
 	}

@@ -190,18 +190,18 @@ func (r *fakeTagRAGChunkRepository) IndexImageChunk(ctx context.Context, image *
 	return nil
 }
 
-func (r *fakeTagRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+func (r *fakeTagRAGChunkRepository) DeleteBySource(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID) error {
 	return nil
 }
 
-func (r *fakeTagRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+func (r *fakeTagRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, kbID uuid.UUID) error {
 	return nil
 }
 
-func (r *fakeTagRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+func (r *fakeTagRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, tags []string) error {
 	r.updates = append(r.updates, fakeTagChunkUpdate{
 		userID:     userID,
-		documentID: documentID,
+		documentID: sourceID,
 		tags:       append([]string(nil), tags...),
 	})
 	return r.err

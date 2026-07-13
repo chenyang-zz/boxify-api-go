@@ -391,18 +391,18 @@ func (r *fakeRAGChunkRepository) IndexImageChunk(ctx context.Context, image *mod
 	return nil
 }
 
-func (r *fakeRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+func (r *fakeRAGChunkRepository) DeleteBySource(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID) error {
 	return nil
 }
 
-func (r *fakeRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+func (r *fakeRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, kbID uuid.UUID) error {
 	r.updatedUserID = userID
-	r.updatedDocumentID = documentID
+	r.updatedDocumentID = sourceID
 	r.updatedKBID = kbID
 	return nil
 }
 
-func (r *fakeRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+func (r *fakeRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, tags []string) error {
 	return nil
 }
 
@@ -873,7 +873,7 @@ func TestSearchDocumentsUsesRAGSearchByUserAndTags(t *testing.T) {
 			t.Fatalf("decode search body: %v", err)
 		}
 		searchBodies = append(searchBodies, body)
-		_, _ = w.Write([]byte(`{"hits":{"hits":[{"_id":"11111111-1111-1111-1111-111111111111","_score":2,"_source":{"chunk_id":"11111111-1111-1111-1111-111111111111","document_id":"` + documentID.String() + `","user_id":"` + userID.String() + `","kb_id":"` + kbID.String() + `","doc_name":"guide.md","source_type":"file","content":"hello chunk"}}]}}`))
+		_, _ = w.Write([]byte(`{"hits":{"hits":[{"_id":"11111111-1111-1111-1111-111111111111","_score":2,"_source":{"chunk_id":"11111111-1111-1111-1111-111111111111","source_id":"` + documentID.String() + `","user_id":"` + userID.String() + `","kb_id":"` + kbID.String() + `","name":"guide.md","source_type":"file","content":"hello chunk"}}]}}`))
 	}))
 	defer esServer.Close()
 	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})
@@ -914,8 +914,8 @@ func TestSearchDocumentsUsesRAGSearchByUserAndTags(t *testing.T) {
 	if !strings.Contains(bodyText, `"user_id":"`+userID.String()+`"`) || !strings.Contains(bodyText, `"tags":["重要"]`) {
 		t.Fatalf("search filters = %s, want user_id and tags", bodyText)
 	}
-	if strings.Contains(bodyText, "document_id") {
-		t.Fatalf("search filters = %s, want no document_id filter", bodyText)
+	if strings.Contains(bodyText, `"source_id"`) {
+		t.Fatalf("search filters = %s, want no source_id filter (user-wide search)", bodyText)
 	}
 }
 

@@ -62,8 +62,8 @@ func (l *SearchImagesLogic) SearchImages(userID uuid.UUID, input *request.Search
 		out = append(out, &response.SearchImageResponse{
 			ChunkID:    item.Source.ChunkID,
 			Content:    item.Content,
-			ImageName:  item.Source.DocName,
-			SourceID:   item.Source.DocumentID,
+			ImageName:  item.Source.Name,
+			SourceID:   item.Source.SourceID,
 			SourceType: item.Source.SourceType,
 			KBID:       item.Source.KBID,
 			Score:      item.Score,

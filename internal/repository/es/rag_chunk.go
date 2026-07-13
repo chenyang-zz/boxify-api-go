@@ -16,6 +16,9 @@ import (
 
 const DefaultChunkIndex = "boxify_chunks"
 
+// SourceTypeImage 表示 ES chunk 来源为图片。
+const SourceTypeImage = "image"
+
 type RAGChunkRepository struct {
 	client *infraes.Client
 	index  string
@@ -50,12 +53,12 @@ func (r *RAGChunkRepository) EnsureIndex(ctx context.Context, embeddingDim int) 
 
 // IndexDocumentChunks 索引文档 chunk
 func (r *RAGChunkRepository) IndexDocumentChunks(ctx context.Context, doc *models.Document, chunks []*ragchunker.Chunk, vectors [][]float64) error {
-	chunkDocs, err := r.buildChunkDocuments(doc, chunks, vectors)
+	records, err := r.buildDocumentChunkRecords(doc, chunks, vectors)
 	if err != nil {
 		return err
 	}
-	for _, chunk := range chunkDocs {
-		if _, err := r.client.Index(ctx, r.index, chunk.ChunkID, chunk); err != nil {
+	for _, record := range records {
+		if _, err := r.client.Index(ctx, r.index, record.ChunkID, record); err != nil {
 			return err
 		}
 	}
@@ -63,8 +66,6 @@ func (r *RAGChunkRepository) IndexDocumentChunks(ctx context.Context, doc *model
 }
 
 // IndexImageChunk 索引图片描述 chunk。
-//
-// document_id 字段复用为图片 ID，便于 DeleteByDocument / UpdateTags 统一按来源清理。
 func (r *RAGChunkRepository) IndexImageChunk(ctx context.Context, image *models.Image, content string, vector []float64) error {
 	if image == nil {
 		return xerr.Internal("图片为空", nil)
@@ -81,32 +82,32 @@ func (r *RAGChunkRepository) IndexImageChunk(ctx context.Context, image *models.
 		kbID = image.KBID.String()
 	}
 	chunkID := deterministicImageChunkID(image.ID).String()
-	doc := models.RAGChunkDocument{
+	record := models.RAGChunkRecord{
 		ChunkID:    chunkID,
-		DocumentID: image.ID.String(),
+		SourceID:   image.ID.String(),
 		UserID:     image.UserID.String(),
 		KBID:       kbID,
-		DocName:    image.FileName,
-		SourceType: "image",
+		Name:       image.FileName,
+		SourceType: SourceTypeImage,
 		Content:    content,
 		Level:      "parent",
-		Tags:       documentTagNames(image.Tags),
+		Tags:       tagNames(image.Tags),
 		Vector:     vector,
 	}
-	if _, err := r.client.Index(ctx, r.index, chunkID, doc); err != nil {
+	if _, err := r.client.Index(ctx, r.index, chunkID, record); err != nil {
 		return err
 	}
 	return nil
 }
 
-// DeleteByDocument 根据文档删除
-func (r *RAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+// DeleteBySource 按来源实体 ID 删除 chunk。
+func (r *RAGChunkRepository) DeleteBySource(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID) error {
 	_, err := r.client.DeleteByQuery(ctx, r.index, map[string]any{
 		"query": map[string]any{
 			"bool": map[string]any{
 				"filter": []any{
 					map[string]any{"term": map[string]any{"user_id": userID.String()}},
-					map[string]any{"term": map[string]any{"document_id": documentID.String()}},
+					map[string]any{"term": map[string]any{"source_id": sourceID.String()}},
 				},
 			},
 		},
@@ -114,8 +115,8 @@ func (r *RAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.U
 	return err
 }
 
-// UpdateKnowledgeBase 更新文档 chunk 的知识库归属
-func (r *RAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+// UpdateKnowledgeBase 更新来源 chunk 的知识库归属。
+func (r *RAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, kbID uuid.UUID) error {
 	_, err := r.client.UpdateByQuery(ctx, r.index, map[string]any{
 		"script": map[string]any{
 			"source": "ctx._source.kb_id = params.kb_id",
@@ -127,7 +128,7 @@ func (r *RAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uui
 			"bool": map[string]any{
 				"filter": []any{
 					map[string]any{"term": map[string]any{"user_id": userID.String()}},
-					map[string]any{"term": map[string]any{"document_id": documentID.String()}},
+					map[string]any{"term": map[string]any{"source_id": sourceID.String()}},
 				},
 			},
 		},
@@ -135,8 +136,8 @@ func (r *RAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uui
 	return err
 }
 
-// UpdateTags 更新文档 chunk 的标签。
-func (r *RAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+// UpdateTags 更新来源 chunk 的标签。
+func (r *RAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, tags []string) error {
 	_, err := r.client.UpdateByQuery(ctx, r.index, map[string]any{
 		"script": map[string]any{
 			"source": "ctx._source.tags = params.tags",
@@ -148,7 +149,7 @@ func (r *RAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, d
 			"bool": map[string]any{
 				"filter": []any{
 					map[string]any{"term": map[string]any{"user_id": userID.String()}},
-					map[string]any{"term": map[string]any{"document_id": documentID.String()}},
+					map[string]any{"term": map[string]any{"source_id": sourceID.String()}},
 				},
 			},
 		},
@@ -162,9 +163,9 @@ func (r *RAGChunkRepository) DecodeSource(src map[string]any) (models.RAGChunkSo
 	if err != nil {
 		return models.RAGChunkSource{}, fmt.Errorf("invalid chunk_id: %w", err)
 	}
-	documentID, err := uuid.Parse(valuex.String(src["document_id"]))
+	sourceID, err := uuid.Parse(valuex.String(src["source_id"]))
 	if err != nil {
-		return models.RAGChunkSource{}, fmt.Errorf("invalid document_id: %w", err)
+		return models.RAGChunkSource{}, fmt.Errorf("invalid source_id: %w", err)
 	}
 	var kbID *uuid.UUID
 	if rawKBID := valuex.String(src["kb_id"]); rawKBID != "" {
@@ -176,15 +177,15 @@ func (r *RAGChunkRepository) DecodeSource(src map[string]any) (models.RAGChunkSo
 	}
 	return models.RAGChunkSource{
 		ChunkID:    chunkID,
-		DocumentID: documentID,
+		SourceID:   sourceID,
 		KBID:       kbID,
-		DocName:    valuex.String(src["doc_name"]),
+		Name:       valuex.String(src["name"]),
 		SourceType: valuex.String(src["source_type"]),
 	}, nil
 }
 
-// buildChunkDocuments 构建文档 chunk 数据
-func (r *RAGChunkRepository) buildChunkDocuments(doc *models.Document, chunks []*ragchunker.Chunk, vectors [][]float64) ([]models.RAGChunkDocument, error) {
+// buildDocumentChunkRecords 构建文档 chunk 写入记录。
+func (r *RAGChunkRepository) buildDocumentChunkRecords(doc *models.Document, chunks []*ragchunker.Chunk, vectors [][]float64) ([]models.RAGChunkRecord, error) {
 	if doc == nil {
 		return nil, xerr.Internal("文档为空", nil)
 	}
@@ -192,12 +193,12 @@ func (r *RAGChunkRepository) buildChunkDocuments(doc *models.Document, chunks []
 	if len(texts) != len(vectors) {
 		return nil, xerr.Internal("文档 chunk 向量数量不匹配", nil)
 	}
-	tags := documentTagNames(doc.Tags)
+	tags := tagNames(doc.Tags)
 	kbID := ""
 	if doc.KBID != nil {
 		kbID = doc.KBID.String()
 	}
-	out := make([]models.RAGChunkDocument, 0, len(texts))
+	out := make([]models.RAGChunkRecord, 0, len(texts))
 	vectorIndex := 0
 	for parentIndex, parent := range chunks {
 		if parent == nil {
@@ -206,12 +207,12 @@ func (r *RAGChunkRepository) buildChunkDocuments(doc *models.Document, chunks []
 		parentContent := strings.TrimSpace(parent.Content)
 		parentID := deterministicChunkID(doc.ID, parentIndex, -1).String()
 		if parentContent != "" {
-			out = append(out, models.RAGChunkDocument{
+			out = append(out, models.RAGChunkRecord{
 				ChunkID:    parentID,
-				DocumentID: doc.ID.String(),
+				SourceID:   doc.ID.String(),
 				UserID:     doc.UserID.String(),
 				KBID:       kbID,
-				DocName:    doc.FileName,
+				Name:       doc.FileName,
 				SourceType: doc.SourceType,
 				Content:    parentContent,
 				Level:      "parent",
@@ -226,13 +227,13 @@ func (r *RAGChunkRepository) buildChunkDocuments(doc *models.Document, chunks []
 				continue
 			}
 			childID := deterministicChunkID(doc.ID, parentIndex, childIndex).String()
-			out = append(out, models.RAGChunkDocument{
+			out = append(out, models.RAGChunkRecord{
 				ChunkID:    childID,
 				ParentID:   parentID,
-				DocumentID: doc.ID.String(),
+				SourceID:   doc.ID.String(),
 				UserID:     doc.UserID.String(),
 				KBID:       kbID,
-				DocName:    doc.FileName,
+				Name:       doc.FileName,
 				SourceType: doc.SourceType,
 				Content:    childContent,
 				Level:      "child",
@@ -269,10 +270,10 @@ func chunkIndexMapping(embeddingDim int) map[string]any {
 			"properties": map[string]any{
 				"chunk_id":    map[string]any{"type": "keyword"},
 				"parent_id":   map[string]any{"type": "keyword"},
-				"document_id": map[string]any{"type": "keyword"},
+				"source_id":   map[string]any{"type": "keyword"},
 				"user_id":     map[string]any{"type": "keyword"},
 				"kb_id":       map[string]any{"type": "keyword"},
-				"doc_name":    map[string]any{"type": "keyword"},
+				"name":        map[string]any{"type": "keyword"},
 				"source_type": map[string]any{"type": "keyword"},
 				"level":       map[string]any{"type": "keyword"},
 				"tags":        map[string]any{"type": "keyword"},
@@ -288,7 +289,7 @@ func chunkIndexMapping(embeddingDim int) map[string]any {
 	}
 }
 
-func documentTagNames(rows []models.Tag) []string {
+func tagNames(rows []models.Tag) []string {
 	out := make([]string, 0, len(rows))
 	for _, row := range rows {
 		if name := strings.TrimSpace(row.Name); name != "" {

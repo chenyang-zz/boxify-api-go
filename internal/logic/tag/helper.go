@@ -68,7 +68,8 @@ func loadTagCounts(ctx context.Context, repo repository.TagRepository, userID uu
 	return docCounts, imageCounts, nil
 }
 
-// syncDocumentChunkTagsBestEffort 尽力而为的同步文档标签到 ES
+// syncDocumentChunkTagsBestEffort 尽力而为的同步文档标签到 ES。
+// 按 source_id 更新 chunk tags；image tag 的 ES 同步待后续接入。
 func syncDocumentChunkTagsBestEffort(ctx context.Context, svcCtx *svc.ServiceContext, log *slog.Logger, userID uuid.UUID, tagID uuid.UUID, documentIDs []uuid.UUID, operation string) {
 	// TODO: image tag 的 ES 同步等待图片检索索引或图片 chunk 仓储确定后接入。
 	if len(documentIDs) == 0 {
@@ -99,18 +100,18 @@ func syncDocumentChunkTagsBestEffort(ctx context.Context, svcCtx *svc.ServiceCon
 		return
 	}
 	failed := 0
-	for _, documentID := range documentIDs {
-		names := tagNames[documentID]
+	for _, sourceID := range documentIDs {
+		names := tagNames[sourceID]
 		if names == nil {
 			names = []string{}
 		}
-		if err := svcCtx.RAGChunkRepo.UpdateTags(ctx, userID, documentID, names); err != nil {
+		if err := svcCtx.RAGChunkRepo.UpdateTags(ctx, userID, sourceID, names); err != nil {
 			failed++
 			if log != nil {
 				log.WarnContext(ctx, "同步文档标签到 ES 失败",
 					slog.String("user_id", userID.String()),
 					slog.String("tag_id", tagID.String()),
-					slog.String("document_id", documentID.String()),
+					slog.String("source_id", sourceID.String()),
 					slog.String("operation", operation),
 					slog.Any("error", err),
 				)

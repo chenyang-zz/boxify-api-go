@@ -274,20 +274,20 @@ func (r *fakeImageRAGChunkRepository) IndexImageChunk(ctx context.Context, image
 	return nil
 }
 
-func (r *fakeImageRAGChunkRepository) DeleteByDocument(ctx context.Context, userID uuid.UUID, documentID uuid.UUID) error {
+func (r *fakeImageRAGChunkRepository) DeleteBySource(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID) error {
 	r.deletedUserID = userID
-	r.deletedDocumentID = documentID
+	r.deletedDocumentID = sourceID
 	return nil
 }
 
-func (r *fakeImageRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, kbID uuid.UUID) error {
+func (r *fakeImageRAGChunkRepository) UpdateKnowledgeBase(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, kbID uuid.UUID) error {
 	r.updatedUserID = userID
-	r.updatedDocumentID = documentID
+	r.updatedDocumentID = sourceID
 	r.updatedKBID = kbID
 	return nil
 }
 
-func (r *fakeImageRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, documentID uuid.UUID, tags []string) error {
+func (r *fakeImageRAGChunkRepository) UpdateTags(ctx context.Context, userID uuid.UUID, sourceID uuid.UUID, tags []string) error {
 	return nil
 }
 
@@ -704,7 +704,7 @@ func TestSearchImagesUsesRAGSearchByUserAndSourceType(t *testing.T) {
 			t.Fatalf("decode search body: %v", err)
 		}
 		searchBodies = append(searchBodies, body)
-		_, _ = w.Write([]byte(`{"hits":{"hits":[{"_id":"11111111-1111-1111-1111-111111111111","_score":2,"_source":{"chunk_id":"11111111-1111-1111-1111-111111111111","document_id":"` + imageID.String() + `","user_id":"` + userID.String() + `","kb_id":"` + kbID.String() + `","doc_name":"cat.png","source_type":"image","content":"a cat"}}]}}`))
+		_, _ = w.Write([]byte(`{"hits":{"hits":[{"_id":"11111111-1111-1111-1111-111111111111","_score":2,"_source":{"chunk_id":"11111111-1111-1111-1111-111111111111","source_id":"` + imageID.String() + `","user_id":"` + userID.String() + `","kb_id":"` + kbID.String() + `","name":"cat.png","source_type":"image","content":"a cat"}}]}}`))
 	}))
 	defer esServer.Close()
 	esClient, err := infraes.NewClient(infraes.Config{URL: esServer.URL})

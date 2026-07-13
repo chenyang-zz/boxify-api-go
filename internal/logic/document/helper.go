@@ -154,7 +154,7 @@ func deleteDocumentChunksBestEffort(ctx context.Context, svcCtx *svc.ServiceCont
 	if svcCtx == nil || svcCtx.RAGChunkRepo == nil {
 		return
 	}
-	if err := svcCtx.RAGChunkRepo.DeleteByDocument(ctx, userID, documentID); err != nil && log != nil {
+	if err := svcCtx.RAGChunkRepo.DeleteBySource(ctx, userID, documentID); err != nil && log != nil {
 		log.WarnContext(ctx, "清理文档检索 chunk 失败（忽略）",
 			slog.String("user_id", userID.String()),
 			slog.String("document_id", documentID.String()),

@@ -243,7 +243,7 @@ func TestHandleParseImageProcessesImage(t *testing.T) {
 		t.Fatalf("indexed chunks = %d, want 1", len(indexedDocs))
 	}
 	for _, body := range indexedDocs {
-		if body["document_id"] != imageID.String() || body["source_type"] != "image" || body["doc_name"] != "cat.png" {
+		if body["source_id"] != imageID.String() || body["source_type"] != "image" || body["name"] != "cat.png" {
 			t.Fatalf("indexed body = %#v, want image source metadata", body)
 		}
 		if !strings.Contains(body["content"].(string), "一只猫") || !strings.Contains(body["content"].(string), "Cat") {

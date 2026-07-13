@@ -229,7 +229,7 @@ func (h *ParseImageTask) indexImageDescription(ctx context.Context, img *models.
 	if err := h.svcCtx.RAGChunkRepo.EnsureIndex(ctx, h.svcCtx.Config.Rag.EmbeddingDim); err != nil {
 		return err
 	}
-	if err := h.svcCtx.RAGChunkRepo.DeleteByDocument(ctx, img.UserID, img.ID); err != nil {
+	if err := h.svcCtx.RAGChunkRepo.DeleteBySource(ctx, img.UserID, img.ID); err != nil {
 		return err
 	}
 	if err := h.svcCtx.RAGChunkRepo.IndexImageChunk(ctx, img, searchable, vector); err != nil {
