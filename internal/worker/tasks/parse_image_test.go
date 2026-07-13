@@ -198,7 +198,7 @@ func TestHandleParseImageProcessesImage(t *testing.T) {
 	imageRepo.events = &events
 	tagRepo := &fakeTagRepository{events: &events}
 	handler := NewParseImageTask(&svc.ServiceContext{
-		Config: config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
+		Config:    config.Config{Rag: config.RagConfig{EmbeddingDim: 3, ChunkIndex: "boxify_chunks"}},
 		ImageRepo: imageRepo,
 		TagRepo:   tagRepo,
 		ModelConfigRepo: &fakeModelConfigRepository{rows: []*models.ModelConfig{

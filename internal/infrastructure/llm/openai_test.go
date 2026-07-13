@@ -596,4 +596,3 @@ func TestOpenAIClientVisionUsesDefaultChatAndVisionOptions(t *testing.T) {
 		t.Fatalf("max_tokens = %#v, want default %d", requestBody["max_tokens"], corellm.DefaultVisionMaxTokens)
 	}
 }
-
