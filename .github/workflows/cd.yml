@@ -213,7 +213,6 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          fingerprint: ${{ secrets.DEPLOY_SSH_FINGERPRINT }}
           command_timeout: 20m
           envs: ALIYUN_REGISTRY,ALIYUN_NAMESPACE,IMAGE_TAG,DEPLOY_COMPOSE_DIR,DEPLOY_ALIYUN_USERNAME,DEPLOY_ALIYUN_PASSWORD
           script: |
