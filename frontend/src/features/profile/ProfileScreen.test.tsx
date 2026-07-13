@@ -71,7 +71,7 @@ describe('ProfileScreen', () => {
     })
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
     render(
-      <ProfileScreen session={session} onBack={vi.fn()} onLogout={vi.fn()} onSessionChange={vi.fn()} />,
+      <ProfileScreen active={false} session={session} onBack={vi.fn()} onLogout={vi.fn()} onSessionChange={vi.fn()} />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: '编辑' }))
@@ -82,6 +82,27 @@ describe('ProfileScreen', () => {
     expect(layer.getAttribute('data-state')).toBe('preparing')
     act(() => frames.shift()?.(16))
     expect(layer.getAttribute('data-state')).toBe('open')
+  })
+
+  it('locks parent navigation while an edit sheet is open', async () => {
+    const user = userEvent.setup()
+    const onNavigationLockChange = vi.fn()
+    render(
+      <ProfileScreen
+        active
+        session={session}
+        onBack={vi.fn()}
+        onLogout={vi.fn()}
+        onSessionChange={vi.fn()}
+        onNavigationLockChange={onNavigationLockChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '编辑' }))
+    expect(onNavigationLockChange).toHaveBeenLastCalledWith(true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onNavigationLockChange).toHaveBeenLastCalledWith(false)
   })
 
   it('edits nickname and email in the bottom sheet', async () => {

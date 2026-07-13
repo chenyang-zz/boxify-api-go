@@ -66,6 +66,7 @@ type ChatScreenProps = {
   session: StoredSession
   onLogout: () => void
   onOpenProfile?: () => void
+  focusRequest?: number
 }
 
 type ConversationMenuPosition = {
@@ -342,7 +343,7 @@ function isTextAttachment(file: File) {
   return file.type.startsWith('text/') || file.type === 'application/json' || textFilePattern.test(file.name)
 }
 
-export function ChatScreen({ session, onLogout, onOpenProfile }: ChatScreenProps) {
+export function ChatScreen({ session, onLogout, onOpenProfile, focusRequest = 0 }: ChatScreenProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [conversationState, setConversationState] = useState<ResourceState>('loading')
   const [conversationError, setConversationError] = useState('')
@@ -741,6 +742,19 @@ export function ChatScreen({ session, onLogout, onOpenProfile }: ChatScreenProps
     textarea.focus({ preventScroll: true })
   }
 
+  useEffect(() => {
+    if (focusRequest === 0) {
+      return
+    }
+    const focusFrame = window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (textarea) {
+        focusComposerWithoutScroll(textarea)
+      }
+    })
+    return () => window.cancelAnimationFrame(focusFrame)
+  }, [focusRequest])
+
   function handleComposerSurfacePress(event: {
     target: EventTarget | null
     preventDefault: () => void
@@ -1116,7 +1130,6 @@ export function ChatScreen({ session, onLogout, onOpenProfile }: ChatScreenProps
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
-    setDrawerOpen(false)
     setConversationMenuId(null)
     setConversationMenuPosition(null)
     onOpenProfile?.()
@@ -1268,7 +1281,7 @@ export function ChatScreen({ session, onLogout, onOpenProfile }: ChatScreenProps
       {renameTarget && (
         <div
           className="conversation-dialog-backdrop"
-          onPointerDown={(event) => {
+          onClick={(event) => {
             if (event.target === event.currentTarget && !conversationActionPending) {
               setRenameTarget(null)
               setConversationActionError('')
@@ -1297,7 +1310,7 @@ export function ChatScreen({ session, onLogout, onOpenProfile }: ChatScreenProps
       {deleteTarget && (
         <div
           className="conversation-dialog-backdrop"
-          onPointerDown={(event) => {
+          onClick={(event) => {
             if (event.target === event.currentTarget && !conversationActionPending) {
               setDeleteTarget(null)
               setConversationActionError('')

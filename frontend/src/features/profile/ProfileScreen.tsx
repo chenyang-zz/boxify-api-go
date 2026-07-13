@@ -20,10 +20,12 @@ import type { ProfileFieldErrors, ProfileSheetState } from './types'
 import './ProfileScreen.css'
 
 type ProfileScreenProps = {
+  active?: boolean
   session: StoredSession
   onBack: () => void
   onLogout: () => void
   onSessionChange: (session: StoredSession) => void
+  onNavigationLockChange?: (locked: boolean) => void
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -43,8 +45,9 @@ function apiFieldErrors(error: unknown): ProfileFieldErrors {
   }, {})
 }
 
-export function ProfileScreen({ session, onBack, onLogout, onSessionChange }: ProfileScreenProps) {
+export function ProfileScreen({ active = true, session, onBack, onLogout, onSessionChange, onNavigationLockChange }: ProfileScreenProps) {
   const rootRef = useRef<HTMLElement | null>(null)
+  const backButtonRef = useRef<HTMLButtonElement | null>(null)
   const nicknameRef = useRef<HTMLInputElement | null>(null)
   const emailRef = useRef<HTMLInputElement | null>(null)
   const oldPasswordRef = useRef<HTMLInputElement | null>(null)
@@ -82,8 +85,23 @@ export function ProfileScreen({ session, onBack, onLogout, onSessionChange }: Pr
   }, [onLogout, onSessionChange])
 
   useEffect(() => {
-    void loadProfile()
-  }, [loadProfile])
+    if (active) {
+      void loadProfile()
+    }
+  }, [active, loadProfile])
+
+  useEffect(() => {
+    onNavigationLockChange?.(Boolean(sheet) || submitting)
+    return () => onNavigationLockChange?.(false)
+  }, [onNavigationLockChange, sheet, submitting])
+
+  useEffect(() => {
+    if (!active || sheet) {
+      return
+    }
+    const focusFrame = window.requestAnimationFrame(() => backButtonRef.current?.focus({ preventScroll: true }))
+    return () => window.cancelAnimationFrame(focusFrame)
+  }, [active, sheet])
 
   useEffect(() => {
     if (sheet?.kind !== 'profile') {
@@ -340,7 +358,7 @@ export function ProfileScreen({ session, onBack, onLogout, onSessionChange }: Pr
     >
       <div className="profile-page" inert={sheet ? true : undefined}>
         <header className="profile-header">
-          <button className="profile-header__back" type="button" aria-label="返回聊天" onClick={onBack}>
+          <button ref={backButtonRef} className="profile-header__back" type="button" aria-label="返回聊天" onClick={onBack}>
             <CaretLeft size={28} weight="bold" />
           </button>
           <h1>个人信息</h1>

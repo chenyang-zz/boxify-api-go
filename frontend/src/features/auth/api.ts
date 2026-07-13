@@ -58,6 +58,10 @@ function loadSession(): StoredSession | null {
   }
 }
 
+export function getStoredSession(): StoredSession | null {
+  return loadSession()
+}
+
 function saveSession(session: StoredSession): StoredSession {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))

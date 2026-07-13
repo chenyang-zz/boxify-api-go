@@ -12,7 +12,10 @@ func TestPatchWebViewLayoutAddsKeyboardScrollLock(t *testing.T) {
 	upstream := bytes.Join([][]byte{
 		viewControllerImplementation,
 		viewDidLoadStart,
+		messageHandlerRegistration,
 		scrollConfiguration,
+		webViewSubviewRegistration,
+		didFinishNavigationStart,
 		upstreamLayout,
 	}, []byte("\n"))
 	if err := os.WriteFile(path, upstream, 0o644); err != nil {
@@ -29,6 +32,9 @@ func TestPatchWebViewLayoutAddsKeyboardScrollLock(t *testing.T) {
 		[]byte("coveSetKeyboardScrollLocked"),
 		[]byte("UIKeyboardWillChangeFrameNotification"),
 		[]byte("CoveContentOffsetObservationContext"),
+		[]byte("coveConfigureNativeNavigation"),
+		[]byte("coveInstallNativeNavigation"),
+		[]byte("covePrepareNativeProfileForURL"),
 		fullBleedLayout,
 	} {
 		if !bytes.Contains(patched, expected) {

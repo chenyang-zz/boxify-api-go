@@ -203,17 +203,6 @@ tasks:
   generate:ios:overlay:
     internal: true
     summary: Generate Go build overlay and iOS shim
-    sources:
-      - build/config.yml
-      - build/ios/scripts/full_bleed_overlay.go
-      - go.mod
-      - go.sum
-    generates:
-      - build/ios/xcode/overlay.json
-      - build/ios/xcode/gen/main_ios.gen.go
-      - build/ios/xcode/wails-full-bleed/pkg/application/webview_window_ios.m
-      - build/ios/xcode/fullbleed.mod
-      - build/ios/xcode/fullbleed.sum
     cmds:
       - wails3 ios overlay:gen -out build/ios/xcode/overlay.json -config build/config.yml
       - go run build/ios/scripts/full_bleed_overlay.go -overlay build/ios/xcode/overlay.json -modfile build/ios/xcode/fullbleed.mod -sumfile build/ios/xcode/fullbleed.sum

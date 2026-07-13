@@ -11,6 +11,9 @@ type FieldErrors = Partial<Record<FieldName, string>>
 
 type AuthScreenProps = {
   onAuthenticated: (session: StoredSession) => void
+  initialMode?: AuthMode
+  nativePage?: boolean
+  onModeChange?: (mode: AuthMode) => boolean
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -27,8 +30,13 @@ function normalizeServerField(field: string): FieldName | null {
   return fields[normalized] ?? null
 }
 
-export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
-  const [mode, setMode] = useState<AuthMode>('login')
+export function AuthScreen({
+  onAuthenticated,
+  initialMode = 'login',
+  nativePage = false,
+  onModeChange,
+}: AuthScreenProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode)
   const [loginValue, setLoginValue] = useState('')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -87,6 +95,9 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     if (submitting || nextMode === mode) {
       return
     }
+    if (onModeChange?.(nextMode)) {
+      return
+    }
     setMode(nextMode)
     setPassword('')
     setConfirmPassword('')
@@ -141,7 +152,7 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   }
 
   return (
-    <main className="auth-shell">
+    <main className={nativePage ? `auth-shell auth-shell--native-page auth-shell--native-${mode}` : 'auth-shell'}>
       <section className="auth-panel" aria-labelledby="auth-title">
         <div className="brand-lockup">
           <img className="brand-lockup__icon" src={coveIcon} alt="" />
@@ -153,31 +164,33 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
           <p>{isLogin ? '登录后继续使用你的 Cove。' : '只需一分钟，马上开始使用 Cove。'}</p>
         </header>
 
-        <div
-          className={isLogin ? 'auth-tabs' : 'auth-tabs auth-tabs--register'}
-          role="tablist"
-          aria-label="选择认证方式"
-        >
-          <span className="auth-tabs__indicator" aria-hidden="true" />
-          <button
-            type="button"
-            role="tab"
-            aria-selected={isLogin}
-            className={isLogin ? 'auth-tabs__item auth-tabs__item--active' : 'auth-tabs__item'}
-            onClick={() => switchMode('login')}
+        {!nativePage && (
+          <div
+            className={isLogin ? 'auth-tabs' : 'auth-tabs auth-tabs--register'}
+            role="tablist"
+            aria-label="选择认证方式"
           >
-            登录
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={!isLogin}
-            className={!isLogin ? 'auth-tabs__item auth-tabs__item--active' : 'auth-tabs__item'}
-            onClick={() => switchMode('register')}
-          >
-            注册
-          </button>
-        </div>
+            <span className="auth-tabs__indicator" aria-hidden="true" />
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isLogin}
+              className={isLogin ? 'auth-tabs__item auth-tabs__item--active' : 'auth-tabs__item'}
+              onClick={() => switchMode('login')}
+            >
+              登录
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isLogin}
+              className={!isLogin ? 'auth-tabs__item auth-tabs__item--active' : 'auth-tabs__item'}
+              onClick={() => switchMode('register')}
+            >
+              注册
+            </button>
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           {formError && (
@@ -341,6 +354,17 @@ export function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             {submitting ? (isLogin ? '正在登录...' : '正在创建...') : isLogin ? '登录' : '创建账号'}
           </button>
         </form>
+
+        {nativePage && (
+          <button
+            className="auth-mode-link"
+            type="button"
+            disabled={submitting}
+            onClick={() => switchMode(isLogin ? 'register' : 'login')}
+          >
+            {isLogin ? '还没有账号？创建账号' : '已有账号？返回登录'}
+          </button>
+        )}
       </section>
     </main>
   )

@@ -43,6 +43,45 @@ describe('AuthScreen', () => {
     expect(screen.getByRole('tab', { name: '注册' }).getAttribute('aria-selected')).toBe('true')
   })
 
+  it('delegates native registration navigation without replacing the login page', async () => {
+    const onModeChange = vi.fn().mockReturnValue(true)
+    const user = userEvent.setup()
+    render(
+      <AuthScreen
+        nativePage
+        onAuthenticated={vi.fn()}
+        onModeChange={onModeChange}
+      />,
+    )
+
+    expect(screen.queryByRole('tablist')).toBeNull()
+    await user.type(screen.getByLabelText('用户名或邮箱'), 'linhai')
+    await user.click(screen.getByRole('button', { name: '还没有账号？创建账号' }))
+
+    expect(onModeChange).toHaveBeenCalledWith('register')
+    expect((screen.getByLabelText('用户名或邮箱') as HTMLInputElement).value).toBe('linhai')
+    expect(screen.queryByLabelText('用户名')).toBeNull()
+  })
+
+  it('renders registration as an immersive native page with the footer back action', async () => {
+    const onModeChange = vi.fn().mockReturnValue(true)
+    const user = userEvent.setup()
+    render(
+      <AuthScreen
+        initialMode="register"
+        nativePage
+        onAuthenticated={vi.fn()}
+        onModeChange={onModeChange}
+      />,
+    )
+
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(document.querySelector('.auth-page-header')).toBeNull()
+    expect(screen.getByRole('heading', { name: '创建你的账号' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: '已有账号？返回登录' }))
+    expect(onModeChange).toHaveBeenCalledWith('login')
+  })
+
   it('shows inline validation and focuses the first invalid registration field', async () => {
     const user = userEvent.setup()
     render(<AuthScreen onAuthenticated={vi.fn()} />)

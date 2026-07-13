@@ -185,8 +185,10 @@ describe('ChatScreen', () => {
     const placeholder = screen.getByRole('button', { name: '更多功能，暂不可用' })
     expect((placeholder as HTMLButtonElement).disabled).toBe(true)
     expect(screen.queryByRole('menu')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '打开会话列表' }))
     await user.click(screen.getByRole('button', { name: '查看个人信息' }))
     expect(onOpenProfile).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.chat-drawer')?.classList.contains('chat-drawer--open')).toBe(true)
     await user.click(screen.getByRole('button', { name: '退出登录' }))
     expect(onLogout).toHaveBeenCalledTimes(1)
   })
@@ -699,6 +701,8 @@ describe('ChatScreen', () => {
     const manage = screen.getByRole('button', { name: '管理会话：旧名称' })
     const conversationList = document.querySelector('.conversation-list') as HTMLDivElement
     const drawer = document.querySelector('.chat-drawer') as HTMLElement
+    await user.click(screen.getByRole('button', { name: '打开会话列表' }))
+    expect(drawer.classList.contains('chat-drawer--open')).toBe(true)
     vi.spyOn(manage, 'getBoundingClientRect').mockReturnValue({
       top: 700,
       bottom: 736,
@@ -743,6 +747,16 @@ describe('ChatScreen', () => {
     await user.click(manage)
     await user.click(screen.getByRole('heading', { name: '你好，林海' }))
     expect(screen.queryByRole('menu')).toBeNull()
+
+    await user.click(manage)
+    await user.click(screen.getByRole('menuitem', { name: '重命名' }))
+    const renameBackdrop = document.querySelector('.conversation-dialog-backdrop') as HTMLElement
+    fireEvent.pointerDown(renameBackdrop)
+    expect(screen.getByRole('dialog', { name: '重命名会话' })).toBeTruthy()
+    expect(drawer.classList.contains('chat-drawer--open')).toBe(true)
+    fireEvent.click(renameBackdrop)
+    expect(screen.queryByRole('dialog', { name: '重命名会话' })).toBeNull()
+    expect(drawer.classList.contains('chat-drawer--open')).toBe(true)
 
     await user.click(manage)
     await user.click(screen.getByRole('menuitem', { name: '重命名' }))
