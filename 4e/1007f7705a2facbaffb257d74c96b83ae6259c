@@ -1,0 +1,156 @@
+internal/core/context/manager.go
+  s_a5f282227fb606::t_1cd51e22f77bb8 37-43,45
+  s_a5f282227fb606::t_497f6881abf5c5 229,231-233
+  s_a5f282227fb606::t_14a594fbd7958a 159-170
+  s_a5f282227fb606::t_bc07f1836efe7f 20,32,46,49
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-19,21-24,26,31,33-36,44,50-54,64-97,103-158,171-228,230,234-285
+  s_a5f282227fb606::t_6427640ae146a4 27-29,47-48
+  s_a5f282227fb606::t_8a9ba34af79a27 25,30,55-63
+  s_a5f282227fb606::t_a28308466eeb3a 98-102
+internal/svc/context.go
+  s_a5f282227fb606::t_2e9b6b87f8a42b 53-77,203,233-272
+internal/repository/conversation_context_state.go
+  s_a5f282227fb606::t_8f75288a866ed3 1-9,11-14
+  s_a5f282227fb606::t_2e9b6b87f8a42b 10
+internal/models/agent_config.go
+  s_a5f282227fb606::t_2d1c5a3d325596 16-37
+internal/core/agent/react/react_test.go
+  s_a5f282227fb606::t_2be2e8f037720c 169-196,758-767
+  s_a5f282227fb606::t_88125871b236f5 768
+internal/repository/postgres/message.go
+  s_a5f282227fb606::t_3ff6b4227244c5 62
+internal/models/migration.go
+  s_a5f282227fb606::t_8f75288a866ed3 13
+internal/core/context/compact.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-87
+internal/repository/agent_config.go
+  s_a5f282227fb606::t_ff7dc2aeff6a5e 68-99
+internal/repository/postgres/conversation_test.go
+  s_a5f282227fb606::t_2e9b6b87f8a42b 142
+  s_a5f282227fb606::t_5cdb33af216562 135-141,143-195
+internal/core/context/options.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-2,5-6,8,10,12-16,18,20-40,69-91
+  s_a5f282227fb606::t_8a9ba34af79a27 41-54,65-68
+  s_a5f282227fb606::t_bc07f1836efe7f 59-60,64
+  s_a5f282227fb606::t_062ebf5d712a3c 3-4,55-58,61-63
+  s_a5f282227fb606::t_c3150e5e246fda 7
+  s_a5f282227fb606::t_33601aeabbfc2c 9
+  s_a5f282227fb606::t_3a72150c69d190 11
+  s_a5f282227fb606::t_c70147cae58683 17
+  s_a5f282227fb606::t_efa3c07645bf11 19
+internal/core/context/prompt/summary.tmpl
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-13
+internal/core/context/counter.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-51
+internal/logic/agentconfig/update_agent_config_test.go
+  s_a5f282227fb606::t_7b8718cd535b90 1-95
+internal/domain/flow/chat/context_store_test.go
+  s_a5f282227fb606::t_14a594fbd7958a 1-56
+internal/models/conversation_context_state.go
+  s_a5f282227fb606::t_8f75288a866ed3 1-13,24-29
+  s_a5f282227fb606::t_f5ee484828cd70 14-23
+internal/transport/http/response/agent.go
+  s_a5f282227fb606::t_2d1c5a3d325596 17-25
+  s_a5f282227fb606::t_8f75288a866ed3 26-33
+internal/core/agent/react/types.go
+  s_a5f282227fb606::t_69ef7fb6af5600 123-129
+docs/openapi.json
+  s_a5f282227fb606::t_3d43179919c3c8 6-29,687-710
+internal/core/context/doc.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-6
+internal/core/agent/react/agent.go
+  s_a5f282227fb606::t_69ef7fb6af5600 18,45-47
+internal/core/context/summarizer.go
+  s_a5f282227fb606::t_81a37d77c53331 14-15
+  s_a5f282227fb606::t_bc07f1836efe7f 16-17
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-8,10-13,20-55
+  s_a5f282227fb606::t_aba226e11ce267 9
+  s_a5f282227fb606::t_8a9ba34af79a27 18-19
+internal/domain/flow/chat/context_store.go
+  s_a5f282227fb606::t_3ff6b4227244c5 1-80
+internal/domain/flow/chat/orchestrator.go
+  s_a5f282227fb606::t_3ff6b4227244c5 17,41,111,133-138,141,147-171,178-181,184,201,206,213,215-225,228
+  s_a5f282227fb606::t_062ebf5d712a3c 143
+  s_a5f282227fb606::t_2e9b6b87f8a42b 139-140
+  s_a5f282227fb606::t_8a9ba34af79a27 142,144-146
+  s_ca16f6460431b1::t_c6ace0febbe355 459
+internal/core/agent/react/planner.go
+  s_a5f282227fb606::t_69ef7fb6af5600 39,113,164-168,173-174,203-206,237-240,291-295,324-333
+  s_a5f282227fb606::t_947e1a349b29bb 334-335
+internal/logic/agentconfig/update_agent_config.go
+  s_a5f282227fb606::t_8f75288a866ed3 49,87-121
+internal/core/context/types.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-16,24-91,96-116
+  s_a5f282227fb606::t_aba226e11ce267 92,94-95
+  s_a5f282227fb606::t_5578ea3cfeb3f6 17-19,21-23
+  s_a5f282227fb606::t_498147ce069075 93
+  s_ca16f6460431b1::t_eba7ea99db07da 20
+internal/logic/chat/chat_stream_test.go
+  s_a5f282227fb606::t_809dc2adb7c795 211-221
+  s_a5f282227fb606::t_64ea418a92d73b 222-223
+internal/core/agent/react/options.go
+  s_a5f282227fb606::t_69ef7fb6af5600 43-53
+internal/logic/chat/chat_stream.go
+  s_a5f282227fb606::t_633b344f05976e 10
+  s_a5f282227fb606::t_36e965ea6aae4f 16
+  s_a5f282227fb606::t_3ff6b4227244c5 172,280,312
+internal/mapper/agent_test.go
+  s_a5f282227fb606::t_5cdb33af216562 1-29
+internal/core/context/prompt/types.go
+  s_a5f282227fb606::t_a81e2c2d74ffdb 1-22
+internal/core/context/manager_test.go
+  s_a5f282227fb606::t_497f6881abf5c5 1-24,85-110,114-135,139-147,186-266,289-333,338-340,342-352
+  s_a5f282227fb606::t_6427640ae146a4 25,34-35
+  s_a5f282227fb606::t_bc07f1836efe7f 74-82
+  s_a5f282227fb606::t_062ebf5d712a3c 60-73,83-84,267-288
+  s_a5f282227fb606::t_43fb8672adaee8 111-113,136-138
+  s_a5f282227fb606::t_14a594fbd7958a 148-185
+  s_a5f282227fb606::t_eac836720d3147 26-33,36-59,334-337,341
+internal/repository/postgres/conversation_context_state.go
+  s_a5f282227fb606::t_b406a7acdf77b6 72
+  s_a5f282227fb606::t_8f75288a866ed3 1-14,25,27-44,46-71,73-79
+  s_a5f282227fb606::t_2e9b6b87f8a42b 15-24,26,45,80
+internal/transport/http/request/agent.go
+  s_a5f282227fb606::t_8f75288a866ed3 19-26
+  s_a5f282227fb606::t_2d1c5a3d325596 10-18
+internal/mapper/agent.go
+  s_a5f282227fb606::t_2d1c5a3d325596 17-25
+  s_a5f282227fb606::t_b406a7acdf77b6 42-45
+  s_a5f282227fb606::t_8f75288a866ed3 10,26-41,46-54
+AGENTS.md
+  s_5305d61f05b159::t_555fd08fb7728d 4
+CLAUDE.md
+  s_5305d61f05b159::t_913f19d75028d5 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4e1007f7705a2facbaffb257d74c96b83ae6259c",
+  "prompts": {},
+  "sessions": {
+    "s_5305d61f05b159": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5473-4021-7211-a919-13a4625376a1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_a5f282227fb606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f13c4-cb77-7061-8d78-bfdb2b2034a3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_ca16f6460431b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ca16f6460431b1",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
