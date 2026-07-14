@@ -439,6 +439,22 @@ type agentHooks struct {
 	streamed strings.Builder
 }
 
+// BeforeModel 在发起大模型请求前发出 thinking 状态。
+func (h *agentHooks) BeforeModel(ctx context.Context, state corereact.State, messages []*llm.Message) error {
+	return h.emit(ctx, &flow.ThinkMessage{
+		Status:    flow.ThinkStatusThinking,
+		Iteration: state.Iteration,
+	})
+}
+
+// AfterModel 在大模型请求结束后发出 done 状态（无论成功失败）。
+func (h *agentHooks) AfterModel(ctx context.Context, state corereact.State, output string, modelErr error) error {
+	return h.emit(ctx, &flow.ThinkMessage{
+		Status:    flow.ThinkStatusDone,
+		Iteration: state.Iteration,
+	})
+}
+
 // OnToken 将 Agent 已确认可展示的模型文本增量交给 flow。
 func (h *agentHooks) OnToken(ctx context.Context, state corereact.State, text string) error {
 	if text == "" {

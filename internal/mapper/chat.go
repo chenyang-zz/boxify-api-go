@@ -51,6 +51,12 @@ func EventToResponse(event types.Event) response.SSEEvent {
 			Iteration:   e.Iteration,
 			ToolCallID:  e.ToolCallID,
 		}
+	case *types.ThinkEvent:
+		return &response.ThinkEvent{
+			BaseEvent: response.BaseEvent{Type: e.Type},
+			Status:    e.Status,
+			Iteration: e.Iteration,
+		}
 	default:
 		return &response.BaseEvent{Type: event.EventName()}
 	}

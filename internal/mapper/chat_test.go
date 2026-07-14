@@ -103,6 +103,21 @@ func TestEventToResponseMapsToolResultEvent(t *testing.T) {
 	}
 }
 
+// 验证 think 事件映射到 response.ThinkEvent。
+func TestEventToResponseMapsThinkEvent(t *testing.T) {
+	got := mapper.EventToResponse(types.NewThinkEvent(types.ThinkStatusThinking, 1))
+	event, ok := got.(*response.ThinkEvent)
+	if !ok {
+		t.Fatalf("EventToResponse type = %T, want *response.ThinkEvent", got)
+	}
+	if event.Type != types.EventTypeThink || event.Status != types.ThinkStatusThinking || event.Iteration != 1 {
+		t.Fatalf("event = %+v, want think thinking iteration=1", event)
+	}
+	if event.EventName() != types.EventTypeThink {
+		t.Fatalf("EventName = %q, want think", event.EventName())
+	}
+}
+
 func TestEventStreamToResponseMapsPingToComment(t *testing.T) {
 	events := make(chan types.Event, 1)
 	events <- types.NewPingEvent()

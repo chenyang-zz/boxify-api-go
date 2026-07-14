@@ -7,8 +7,15 @@ const (
 	MessagePartial    MessageKind = "partial"
 	MessageToolCall   MessageKind = "tool_call"
 	MessageToolResult MessageKind = "tool_result"
+	MessageThink      MessageKind = "think"
 	MessageError      MessageKind = "error"
 	MessageDone       MessageKind = "done"
+)
+
+// Think 状态：模型请求中 / 本轮模型调用结束。
+const (
+	ThinkStatusThinking = "thinking"
+	ThinkStatusDone     = "done"
 )
 
 type Message interface {
@@ -54,6 +61,16 @@ type ToolResultMessage struct {
 
 func (*ToolResultMessage) Kind() MessageKind {
 	return MessageToolResult
+}
+
+// ThinkMessage 表示大模型请求状态（瞬时 UI，不落库）。
+type ThinkMessage struct {
+	Status    string // thinking | done
+	Iteration int
+}
+
+func (*ThinkMessage) Kind() MessageKind {
+	return MessageThink
 }
 
 type ErrorMessage struct {

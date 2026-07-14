@@ -81,6 +81,17 @@ func TestEventConstructors(t *testing.T) {
 			event:     NewPingEvent(),
 			eventType: EventTypePing,
 		},
+		{
+			name:      "think",
+			event:     NewThinkEvent(ThinkStatusThinking, 2),
+			eventType: EventTypeThink,
+			check: func(t *testing.T, event Event) {
+				thinkEvent := event.(*ThinkEvent)
+				if thinkEvent.Status != ThinkStatusThinking || thinkEvent.Iteration != 2 {
+					t.Fatalf("think event = %+v, want status=thinking iteration=2", thinkEvent)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

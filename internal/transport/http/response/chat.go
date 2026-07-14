@@ -34,6 +34,13 @@ type ToolEvent struct {
 	ToolCallID  string         `json:"tool_call_id"`
 }
 
+// ThinkEvent 表示大模型请求中的思考状态。
+type ThinkEvent struct {
+	BaseEvent
+	Status    string `json:"status"`
+	Iteration int    `json:"iteration,omitempty"`
+}
+
 func (e *BaseEvent) EventName() string {
 	return e.Type
 }

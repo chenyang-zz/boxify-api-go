@@ -38,8 +38,11 @@ func TestChatStreamCreatesMessagesAndPublishesDone(t *testing.T) {
 		t.Fatalf("ChatStream error = %v, want nil", err)
 	}
 	got := collectChatEvents(t, events)
-	if !hasChatEvent(got, types.EventTypeMeta) || !hasChatEvent(got, types.EventTypeToken) || !hasChatEvent(got, types.EventTypeDone) {
-		t.Fatalf("ChatStream events = %#v, want meta/token/done", eventNames(got))
+	if !hasChatEvent(got, types.EventTypeMeta) || !hasChatEvent(got, types.EventTypeThink) || !hasChatEvent(got, types.EventTypeToken) || !hasChatEvent(got, types.EventTypeDone) {
+		t.Fatalf("ChatStream events = %#v, want meta/think/token/done", eventNames(got))
+	}
+	if thinking, done := countThinkEventStatuses(got); thinking < 1 || done < 1 {
+		t.Fatalf("think statuses thinking=%d done=%d, want at least 1 each in %v", thinking, done, eventNames(got))
 	}
 
 	msgRepo := svcCtx.MessageRepo.(*fakeChatMessageRepo)
@@ -154,17 +157,21 @@ func TestChatStreamPublishesToolEventsAndStoresToolMetadata(t *testing.T) {
 	for _, part := range assistant.MetaData.Parts {
 		switch part.Type {
 		case models.MessagePartTypeToolCall:
-			if part.Tool == "current_time" {
+			// parts 使用展示名（获取当前时间）
+			if part.Tool == "获取当前时间" || part.Tool == "current_time" {
 				sawCall = true
 			}
 		case models.MessagePartTypeToolResult:
-			if part.Tool == "current_time" && part.Observation != "" {
+			if (part.Tool == "获取当前时间" || part.Tool == "current_time") && part.Observation != "" {
 				sawResult = true
 			}
 		}
 	}
 	if !sawCall || !sawResult {
-		t.Fatalf("assistant parts = %#v, want tool_call and tool_result for current_time", assistant.MetaData.Parts)
+		t.Fatalf("assistant parts = %#v, want tool_call and tool_result for time tool", assistant.MetaData.Parts)
+	}
+	if thinking, done := countThinkEventStatuses(got); thinking < 2 || done < 2 {
+		t.Fatalf("think statuses thinking=%d done=%d, want >=2 each for two model rounds in %v", thinking, done, eventNames(got))
 	}
 }
 
@@ -295,6 +302,22 @@ func eventNames(events []types.Event) []string {
 		out = append(out, event.EventName())
 	}
 	return out
+}
+
+func countThinkEventStatuses(events []types.Event) (thinking int, done int) {
+	for _, event := range events {
+		think, ok := event.(*types.ThinkEvent)
+		if !ok {
+			continue
+		}
+		switch think.Status {
+		case types.ThinkStatusThinking:
+			thinking++
+		case types.ThinkStatusDone:
+			done++
+		}
+	}
+	return thinking, done
 }
 
 func firstToolEvent(events []types.Event, eventType string) (*types.ToolEvent, bool) {

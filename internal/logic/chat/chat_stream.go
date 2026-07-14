@@ -236,6 +236,11 @@ func (l *ChatStreamLogic) runChatTurnBG(
 				sentToken = true
 				_ = l.svcCtx.Realtime.Publish(ctx, topic, types.NewTokenEvent(msg.Text))
 			}
+		case *flow.ThinkMessage:
+			if msg != nil {
+				// think 为瞬时 UI 状态，不写入 message parts
+				_ = l.svcCtx.Realtime.Publish(ctx, topic, types.NewThinkEvent(msg.Status, msg.Iteration))
+			}
 		case *flow.DoneMessage:
 			_ = l.svcCtx.Realtime.Publish(ctx, topic, types.NewDoneEvent(assistantMessageID))
 		default:

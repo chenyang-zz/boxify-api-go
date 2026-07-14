@@ -15,7 +15,14 @@ const (
 	EventTypeError      = "error"
 	EventTypeToolCall   = "tool_call"
 	EventTypeToolResult = "tool_result"
+	EventTypeThink      = "think"
 	EventTypePing       = "_ping"
+)
+
+// Think 状态与 flow 层对齐。
+const (
+	ThinkStatusThinking = "thinking"
+	ThinkStatusDone     = "done"
 )
 
 type Event interface {
@@ -50,6 +57,13 @@ type ToolEvent struct {
 	Error       string
 	Iteration   int
 	ToolCallID  string
+}
+
+// ThinkEvent 表示大模型请求中的思考状态（瞬时 UI）。
+type ThinkEvent struct {
+	BaseEvent
+	Status    string
+	Iteration int
 }
 
 func NewBaseEvent(eventType string) *BaseEvent {
@@ -105,6 +119,15 @@ func NewToolResultEvent(tool string, input map[string]any, observation string, e
 		Error:       errMessage,
 		Iteration:   iteration,
 		ToolCallID:  toolCallID,
+	}
+}
+
+// NewThinkEvent 构造 think 事件；status 通常为 thinking 或 done。
+func NewThinkEvent(status string, iteration int) *ThinkEvent {
+	return &ThinkEvent{
+		BaseEvent: BaseEvent{Type: EventTypeThink},
+		Status:    status,
+		Iteration: iteration,
 	}
 }
 

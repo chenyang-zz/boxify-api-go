@@ -47,19 +47,27 @@ func TestOrchestratorRunEmitsAssistantAndDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Orchestrator.Run error = %v, want nil", err)
 	}
-	if len(messages) != 3 {
-		t.Fatalf("messages len = %d, want 3", len(messages))
+	gotKinds := flowMessageKinds(messages)
+	// think(thinking) → partial token(s) → think(done) → assistant → done
+	if !hasFlowMessageKindsInOrder(gotKinds, []flow.MessageKind{
+		flow.MessageThink, flow.MessagePartial, flow.MessageThink, flow.MessageAssistant, flow.MessageDone,
+	}) {
+		t.Fatalf("message kinds = %#v, want think/partial/think/assistant/done", gotKinds)
 	}
-	partial, ok := messages[0].(*flow.PartialMessage)
+	thinkStart, ok := messages[0].(*flow.ThinkMessage)
+	if !ok || thinkStart.Status != flow.ThinkStatusThinking {
+		t.Fatalf("first message = %#v, want think thinking", messages[0])
+	}
+	partial, ok := firstFlowMessageOfType[*flow.PartialMessage](messages)
 	if !ok || strings.TrimSpace(partial.Text) != "业务回复" {
-		t.Fatalf("first message = %#v, want assistant token", messages[0])
+		t.Fatalf("partial message = %#v, want assistant token", partial)
 	}
-	assistant, ok := messages[1].(*flow.AssistantMessage)
+	assistant, ok := firstFlowMessageOfType[*flow.AssistantMessage](messages)
 	if !ok || assistant.Answer != "业务回复" {
-		t.Fatalf("second message = %#v, want assistant answer", messages[1])
+		t.Fatalf("assistant message = %#v, want assistant answer", assistant)
 	}
-	if messages[2].Kind() != flow.MessageDone {
-		t.Fatalf("third message kind = %q, want %q", messages[2].Kind(), flow.MessageDone)
+	if thinking, done := countThinkStatuses(messages); thinking != 1 || done != 1 {
+		t.Fatalf("think counts thinking=%d done=%d, want 1/1", thinking, done)
 	}
 }
 
@@ -528,16 +536,26 @@ func TestOrchestratorRunEmitsErrorWithPartial(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Orchestrator.Run error = %v, want nil", err)
 	}
-	if len(messages) != 2 {
-		t.Fatalf("messages len = %d, want 2", len(messages))
+	if gotKinds := flowMessageKinds(messages); !slices.Equal(gotKinds, []flow.MessageKind{
+		flow.MessageThink, flow.MessagePartial, flow.MessageThink, flow.MessageError,
+	}) {
+		t.Fatalf("message kinds = %#v, want think/partial/think/error", gotKinds)
 	}
-	partial, ok := messages[0].(*flow.PartialMessage)
+	thinkStart, ok := messages[0].(*flow.ThinkMessage)
+	if !ok || thinkStart.Status != flow.ThinkStatusThinking {
+		t.Fatalf("first message = %#v, want think thinking", messages[0])
+	}
+	partial, ok := messages[1].(*flow.PartialMessage)
 	if !ok || strings.TrimSpace(partial.Text) != "部分回复" {
-		t.Fatalf("first message = %#v, want partial token", messages[0])
+		t.Fatalf("second message = %#v, want partial token", messages[1])
 	}
-	errMsg, ok := messages[1].(*flow.ErrorMessage)
+	thinkEnd, ok := messages[2].(*flow.ThinkMessage)
+	if !ok || thinkEnd.Status != flow.ThinkStatusDone {
+		t.Fatalf("third message = %#v, want think done", messages[2])
+	}
+	errMsg, ok := messages[3].(*flow.ErrorMessage)
 	if !ok {
-		t.Fatalf("message = %#v, want ErrorMessage", messages[0])
+		t.Fatalf("message = %#v, want ErrorMessage", messages[3])
 	}
 	if errMsg.Partial != "部分回复" || !strings.Contains(errMsg.Message, "model unavailable") {
 		t.Fatalf("error message = %#v, want partial and model error", errMsg)
@@ -564,16 +582,24 @@ func TestOrchestratorRunEmitsToolCallAndResultMessages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Orchestrator.Run(tool success) error = %v, want nil", err)
 	}
-	if gotKinds := flowMessageKinds(messages); !slices.Equal(gotKinds, []flow.MessageKind{flow.MessageToolCall, flow.MessageToolResult, flow.MessagePartial, flow.MessageAssistant, flow.MessageDone}) {
-		t.Fatalf("message kinds = %#v, want tool_call/tool_result/partial/assistant/done", gotKinds)
+	gotKinds := flowMessageKinds(messages)
+	if !hasFlowMessageKindsInOrder(gotKinds, []flow.MessageKind{
+		flow.MessageThink, flow.MessageThink, flow.MessageToolCall, flow.MessageToolResult,
+		flow.MessageThink, flow.MessagePartial, flow.MessageAssistant, flow.MessageDone,
+	}) {
+		t.Fatalf("message kinds = %#v, want think×2 → tool → think → partial → assistant/done", gotKinds)
 	}
-	call, ok := messages[0].(*flow.ToolCallMessage)
+	call, ok := firstFlowMessageOfType[*flow.ToolCallMessage](messages)
 	if !ok || call.Tool != "获取当前时间" || call.Iteration != 1 {
-		t.Fatalf("tool call message = %#v, want display name 获取当前时间 at iteration 1", messages[0])
+		t.Fatalf("tool call message = %#v, want display name 获取当前时间 at iteration 1", call)
 	}
-	result, ok := messages[1].(*flow.ToolResultMessage)
+	result, ok := firstFlowMessageOfType[*flow.ToolResultMessage](messages)
 	if !ok || result.Tool != "获取当前时间" || result.Observation == "" || result.Error != "" || result.Iteration != 1 {
-		t.Fatalf("tool result message = %#v, want display name 获取当前时间 observation without error", messages[1])
+		t.Fatalf("tool result message = %#v, want display name 获取当前时间 observation without error", result)
+	}
+	// 两轮模型调用各有 thinking → done
+	if thinking, done := countThinkStatuses(messages); thinking != 2 || done != 2 {
+		t.Fatalf("think counts thinking=%d done=%d, want 2/2", thinking, done)
 	}
 }
 
@@ -596,12 +622,14 @@ func TestOrchestratorRunKeepsToolRunnerErrorAsObservation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Orchestrator.Run(tool failure) error = %v, want nil", err)
 	}
-	if gotKinds := flowMessageKinds(messages); !slices.Equal(gotKinds, []flow.MessageKind{flow.MessageToolCall, flow.MessageToolResult, flow.MessagePartial, flow.MessageAssistant, flow.MessageDone}) {
-		t.Fatalf("message kinds = %#v, want tool_call/tool_result/partial/assistant/done", gotKinds)
+	if gotKinds := flowMessageKinds(messages); !hasFlowMessageKindsInOrder(gotKinds, []flow.MessageKind{
+		flow.MessageThink, flow.MessageThink, flow.MessageToolCall, flow.MessageToolResult,
+	}) {
+		t.Fatalf("message kinds = %#v, want think/tool_call/tool_result prefix", gotKinds)
 	}
-	result, ok := messages[1].(*flow.ToolResultMessage)
+	result, ok := firstFlowMessageOfType[*flow.ToolResultMessage](messages)
 	if !ok || result.Tool != "missing_tool" || result.Error != "" || !strings.Contains(result.Observation, "missing_tool") {
-		t.Fatalf("tool result message = %#v, want missing_tool observation without flow error conversion", messages[1])
+		t.Fatalf("tool result message = %#v, want missing_tool observation without flow error conversion", result)
 	}
 }
 
@@ -632,12 +660,14 @@ func TestOrchestratorRunKeepsMCPIsErrorAsObservation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Orchestrator.Run error = %v, want nil", err)
 	}
-	if gotKinds := flowMessageKinds(messages); !slices.Equal(gotKinds, []flow.MessageKind{flow.MessageToolCall, flow.MessageToolResult, flow.MessagePartial, flow.MessageAssistant, flow.MessageDone}) {
-		t.Fatalf("message kinds = %#v, want tool_call/tool_result/partial/assistant/done", gotKinds)
+	if gotKinds := flowMessageKinds(messages); !hasFlowMessageKindsInOrder(gotKinds, []flow.MessageKind{
+		flow.MessageThink, flow.MessageThink, flow.MessageToolCall, flow.MessageToolResult,
+	}) {
+		t.Fatalf("message kinds = %#v, want think/tool_call/tool_result prefix", gotKinds)
 	}
-	result, ok := messages[1].(*flow.ToolResultMessage)
+	result, ok := firstFlowMessageOfType[*flow.ToolResultMessage](messages)
 	if !ok || result.Tool != "网页搜索" || result.Error != "" || !strings.HasPrefix(result.Observation, "tool invocation failed:\n") || !strings.Contains(result.Observation, "远端拒绝请求") || !strings.Contains(result.Observation, `"code":"bad_request"`) {
-		t.Fatalf("tool result message = %#v, want recovered MCP error observation", messages[1])
+		t.Fatalf("tool result message = %#v, want recovered MCP error observation", result)
 	}
 	if session.closeCalls != 1 {
 		t.Fatalf("MCP session close calls = %d, want 1 after flow completion", session.closeCalls)
@@ -718,6 +748,49 @@ func collectFlowMessages(ch <-chan flow.Message, err error) ([]flow.Message, err
 		out = append(out, msg)
 	}
 	return out, nil
+}
+
+func firstFlowMessageOfType[T flow.Message](messages []flow.Message) (T, bool) {
+	var zero T
+	for _, message := range messages {
+		if typed, ok := message.(T); ok {
+			return typed, true
+		}
+	}
+	return zero, false
+}
+
+func countThinkStatuses(messages []flow.Message) (thinking int, done int) {
+	for _, message := range messages {
+		think, ok := message.(*flow.ThinkMessage)
+		if !ok {
+			continue
+		}
+		switch think.Status {
+		case flow.ThinkStatusThinking:
+			thinking++
+		case flow.ThinkStatusDone:
+			done++
+		}
+	}
+	return thinking, done
+}
+
+// hasFlowMessageKindsInOrder reports whether want kinds appear as a subsequence of got.
+func hasFlowMessageKindsInOrder(got []flow.MessageKind, want []flow.MessageKind) bool {
+	if len(want) == 0 {
+		return true
+	}
+	i := 0
+	for _, kind := range got {
+		if kind == want[i] {
+			i++
+			if i == len(want) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func flowMessageKinds(messages []flow.Message) []flow.MessageKind {
