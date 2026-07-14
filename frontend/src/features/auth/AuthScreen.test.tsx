@@ -83,8 +83,9 @@ describe('AuthScreen', () => {
   })
 
   it('shows inline validation and focuses the first invalid registration field', async () => {
+    const onSubmissionStart = vi.fn()
     const user = userEvent.setup()
-    render(<AuthScreen onAuthenticated={vi.fn()} />)
+    render(<AuthScreen onAuthenticated={vi.fn()} onSubmissionStart={onSubmissionStart} />)
 
     await user.click(screen.getByRole('tab', { name: '注册' }))
     await user.click(screen.getByRole('button', { name: '创建账号' }))
@@ -92,6 +93,7 @@ describe('AuthScreen', () => {
     expect(screen.getByText('请输入用户名。')).toBeTruthy()
     expect(screen.getByText('密码至少需要 6 个字符。')).toBeTruthy()
     expect(document.activeElement).toBe(screen.getByLabelText('用户名'))
+    expect(onSubmissionStart).not.toHaveBeenCalled()
   })
 
   it('creates a session from a mocked registration response', async () => {
@@ -107,8 +109,16 @@ describe('AuthScreen', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
     const onAuthenticated = vi.fn()
+    const onSubmissionStart = vi.fn()
+    const onSubmissionFailure = vi.fn()
     const user = userEvent.setup()
-    render(<AuthScreen onAuthenticated={onAuthenticated} />)
+    render(
+      <AuthScreen
+        onAuthenticated={onAuthenticated}
+        onSubmissionStart={onSubmissionStart}
+        onSubmissionFailure={onSubmissionFailure}
+      />,
+    )
 
     await user.click(screen.getByRole('tab', { name: '注册' }))
     await user.type(screen.getByLabelText('用户名'), 'muyu')
@@ -118,6 +128,8 @@ describe('AuthScreen', () => {
     await user.click(screen.getByRole('button', { name: '创建账号' }))
 
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1))
+    expect(onSubmissionStart).toHaveBeenCalledWith('register')
+    expect(onSubmissionFailure).not.toHaveBeenCalled()
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit
     expect(JSON.parse(String(request.body))).toEqual({
       username: 'muyu',
@@ -131,8 +143,16 @@ describe('AuthScreen', () => {
       'fetch',
       vi.fn().mockResolvedValue(jsonResponse({ code: 40102, message: '邮箱或密码错误' }, 401)),
     )
+    const onSubmissionStart = vi.fn()
+    const onSubmissionFailure = vi.fn()
     const user = userEvent.setup()
-    render(<AuthScreen onAuthenticated={vi.fn()} />)
+    render(
+      <AuthScreen
+        onAuthenticated={vi.fn()}
+        onSubmissionStart={onSubmissionStart}
+        onSubmissionFailure={onSubmissionFailure}
+      />,
+    )
 
     await user.type(screen.getByLabelText('用户名或邮箱'), 'unknown-user')
     await user.type(screen.getByLabelText('密码'), 'secret123')
@@ -140,5 +160,7 @@ describe('AuthScreen', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain('邮箱或密码错误')
     expect((screen.getByLabelText('用户名或邮箱') as HTMLInputElement).value).toBe('unknown-user')
+    expect(onSubmissionStart).toHaveBeenCalledWith('login')
+    expect(onSubmissionFailure).toHaveBeenCalledWith('login')
   })
 })

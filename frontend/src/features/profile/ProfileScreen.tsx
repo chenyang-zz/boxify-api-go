@@ -47,13 +47,14 @@ function apiFieldErrors(error: unknown): ProfileFieldErrors {
 
 export function ProfileScreen({ active = true, session, onBack, onLogout, onSessionChange, onNavigationLockChange }: ProfileScreenProps) {
   const rootRef = useRef<HTMLElement | null>(null)
-  const backButtonRef = useRef<HTMLButtonElement | null>(null)
   const nicknameRef = useRef<HTMLInputElement | null>(null)
   const emailRef = useRef<HTMLInputElement | null>(null)
   const oldPasswordRef = useRef<HTMLInputElement | null>(null)
   const sheetTriggerRef = useRef<HTMLElement | null>(null)
   const sheetCloseTimerRef = useRef<number | null>(null)
   const sheetFocusTimerRef = useRef<number | null>(null)
+  const keyboardHeightRef = useRef(0)
+  const keyboardPreparationTimerRef = useRef<number | null>(null)
   const [sheet, setSheet] = useState<ProfileSheetState>(null)
   const [sheetEntered, setSheetEntered] = useState(false)
   const [sheetClosing, setSheetClosing] = useState(false)
@@ -99,7 +100,7 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
     if (!active || sheet) {
       return
     }
-    const focusFrame = window.requestAnimationFrame(() => backButtonRef.current?.focus({ preventScroll: true }))
+    const focusFrame = window.requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }))
     return () => window.cancelAnimationFrame(focusFrame)
   }, [active, sheet])
 
@@ -118,10 +119,33 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
     }
     const activeRoot = root
     const activeViewport = viewport
+    let layoutHeight = Math.max(window.innerHeight, activeViewport.height)
+    let layoutWidth = activeViewport.width
 
     function syncVisualViewport() {
-      activeRoot.style.setProperty('--profile-viewport-height', `${activeViewport.height}px`)
-      activeRoot.dataset.keyboardOpen = String(window.innerHeight - activeViewport.height > 20)
+      const widthChanged = Math.abs(activeViewport.width - layoutWidth) > 1
+      if (widthChanged) {
+        layoutHeight = activeViewport.height
+        layoutWidth = activeViewport.width
+      }
+
+      layoutHeight = Math.max(layoutHeight, window.innerHeight, activeViewport.height)
+      const keyboardHeight = Math.max(0, layoutHeight - activeViewport.height)
+      const keyboardOpen = keyboardHeight > 20
+      if (!keyboardOpen && activeViewport.height > layoutHeight) {
+        layoutHeight = activeViewport.height
+      }
+
+      activeRoot.style.setProperty('--profile-viewport-height', `${layoutHeight}px`)
+      activeRoot.style.setProperty('--profile-keyboard-height', `${keyboardHeight}px`)
+      activeRoot.dataset.keyboardOpen = String(keyboardOpen)
+      if (keyboardOpen) {
+        keyboardHeightRef.current = keyboardHeight
+        if (keyboardPreparationTimerRef.current !== null) {
+          window.clearTimeout(keyboardPreparationTimerRef.current)
+          keyboardPreparationTimerRef.current = null
+        }
+      }
     }
 
     syncVisualViewport()
@@ -157,13 +181,33 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
     }
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     sheetFocusTimerRef.current = window.setTimeout(() => {
-      if (sheet.kind === 'password') {
-        oldPasswordRef.current?.focus({ preventScroll: true })
-      } else if (sheet.focus === 'email') {
-        emailRef.current?.focus({ preventScroll: true })
-      } else {
-        nicknameRef.current?.focus({ preventScroll: true })
+      const input = sheet.kind === 'password'
+        ? oldPasswordRef.current
+        : sheet.focus === 'email'
+          ? emailRef.current
+          : nicknameRef.current
+      const root = rootRef.current
+      const viewport = window.visualViewport
+      if (input && root && viewport && viewport.width < 900) {
+        const anticipatedHeight =
+          keyboardHeightRef.current || Math.min(360, Math.max(260, window.innerHeight * 0.38))
+        const heightBeforeFocus = viewport.height
+        root.style.setProperty('--profile-keyboard-height', `${anticipatedHeight}px`)
+        root.dataset.keyboardOpen = 'true'
+        void root.offsetHeight
+
+        if (keyboardPreparationTimerRef.current !== null) {
+          window.clearTimeout(keyboardPreparationTimerRef.current)
+        }
+        keyboardPreparationTimerRef.current = window.setTimeout(() => {
+          if (viewport.height >= heightBeforeFocus - 20) {
+            root.style.setProperty('--profile-keyboard-height', '0px')
+            root.dataset.keyboardOpen = 'false'
+          }
+          keyboardPreparationTimerRef.current = null
+        }, 650)
       }
+      input?.focus({ preventScroll: true })
       sheetFocusTimerRef.current = null
     }, reduceMotion ? 0 : sheetEnterDuration)
     return () => {
@@ -216,6 +260,9 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
     }
     if (sheetFocusTimerRef.current !== null) {
       window.clearTimeout(sheetFocusTimerRef.current)
+    }
+    if (keyboardPreparationTimerRef.current !== null) {
+      window.clearTimeout(keyboardPreparationTimerRef.current)
     }
   }, [])
 
@@ -355,10 +402,11 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
       ref={rootRef}
       data-sheet-open={String(Boolean(sheet))}
       aria-label="个人信息"
+      tabIndex={-1}
     >
       <div className="profile-page" inert={sheet ? true : undefined}>
         <header className="profile-header">
-          <button ref={backButtonRef} className="profile-header__back" type="button" aria-label="返回聊天" onClick={onBack}>
+          <button className="profile-header__back" type="button" aria-label="返回聊天" onClick={onBack}>
             <CaretLeft size={28} weight="bold" />
           </button>
           <h1>个人信息</h1>
@@ -439,7 +487,8 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
           data-state={sheetClosing ? 'closing' : sheetEntered ? 'open' : 'preparing'}
           onMouseDown={closeFromScrim}
         >
-          <section className="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-sheet-title">
+          <div className="profile-sheet-keyboard-frame">
+            <section className="profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-sheet-title">
             <span className="profile-sheet__grabber" aria-hidden="true" />
             <header>
               <button type="button" onClick={closeSheet} disabled={submitting}>取消</button>
@@ -527,7 +576,8 @@ export function ProfileScreen({ active = true, session, onBack, onLogout, onSess
                 {formError && <p className="profile-sheet__error" role="alert">{formError}</p>}
               </form>
             )}
-          </section>
+            </section>
+          </div>
         </div>
       )}
     </main>

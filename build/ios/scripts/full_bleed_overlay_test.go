@@ -15,7 +15,6 @@ func TestPatchWebViewLayoutAddsKeyboardScrollLock(t *testing.T) {
 		messageHandlerRegistration,
 		scrollConfiguration,
 		webViewSubviewRegistration,
-		didFinishNavigationStart,
 		upstreamLayout,
 	}, []byte("\n"))
 	if err := os.WriteFile(path, upstream, 0o644); err != nil {
@@ -34,11 +33,31 @@ func TestPatchWebViewLayoutAddsKeyboardScrollLock(t *testing.T) {
 		[]byte("CoveContentOffsetObservationContext"),
 		[]byte("coveConfigureNativeNavigation"),
 		[]byte("coveInstallNativeNavigation"),
-		[]byte("covePrepareNativeProfileForURL"),
 		fullBleedLayout,
 	} {
 		if !bytes.Contains(patched, expected) {
 			t.Fatalf("patched source does not contain %q", expected)
+		}
+	}
+	if bytes.Contains(patched, []byte("covePrepareNativeProfileForURL")) {
+		t.Fatal("profile preloading must be owned by the authenticated navigation route")
+	}
+}
+
+func TestRouteWebViewsLockOuterScrollWhileKeyboardIsVisible(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("..", "cove_navigation_ios.m"))
+	if err != nil {
+		t.Fatalf("read native navigation source: %v", err)
+	}
+
+	for _, expected := range [][]byte{
+		[]byte("CoveRouteContentOffsetObservationContext"),
+		[]byte("UIKeyboardWillChangeFrameNotification"),
+		[]byte("coveSetKeyboardScrollLocked"),
+		[]byte("[scrollView setContentOffset:CGPointZero animated:NO]"),
+	} {
+		if !bytes.Contains(source, expected) {
+			t.Fatalf("route WebView source does not contain %q", expected)
 		}
 	}
 }

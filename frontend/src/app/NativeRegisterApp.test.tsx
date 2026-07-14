@@ -17,14 +17,20 @@ vi.mock('../features/auth/AuthScreen', () => ({
     nativePage,
     onAuthenticated,
     onModeChange,
+    onSubmissionStart,
+    onSubmissionFailure,
   }: {
     initialMode: string
     nativePage: boolean
     onAuthenticated: (session: StoredSession) => void
     onModeChange: (mode: 'login' | 'register') => boolean
+    onSubmissionStart: (mode: 'login' | 'register') => void
+    onSubmissionFailure: (mode: 'login' | 'register') => void
   }) => (
     <section aria-label="原生注册" data-mode={initialMode} data-native={String(nativePage)}>
       <button type="button" onClick={() => onModeChange('login')}>返回登录</button>
+      <button type="button" onClick={() => onSubmissionStart('register')}>开始注册</button>
+      <button type="button" onClick={() => onSubmissionFailure('register')}>注册失败</button>
       <button type="button" onClick={() => onAuthenticated(session)}>注册成功</button>
     </section>
   ),
@@ -50,9 +56,13 @@ describe('NativeRegisterApp', () => {
     expect(postMessage).toHaveBeenCalledWith({ action: 'registerReady' })
 
     await user.click(screen.getByRole('button', { name: '返回登录' }))
+    await user.click(screen.getByRole('button', { name: '开始注册' }))
+    await user.click(screen.getByRole('button', { name: '注册失败' }))
     await user.click(screen.getByRole('button', { name: '注册成功' }))
 
     expect(postMessage).toHaveBeenCalledWith({ action: 'popRegister' })
+    expect(postMessage).toHaveBeenCalledWith({ action: 'prepareChat' })
+    expect(postMessage).toHaveBeenCalledWith({ action: 'prepareRegister' })
     expect(postMessage).toHaveBeenCalledWith({ action: 'authCompleted' })
   })
 })

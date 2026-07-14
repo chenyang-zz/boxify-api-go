@@ -63,6 +63,24 @@ describe('ProfileScreen', () => {
     await waitFor(() => expect(mocks.refreshProfileSession).toHaveBeenCalledTimes(1))
   })
 
+  it('focuses the page root instead of leaving focus on the back button when reactivated', () => {
+    const props = {
+      session,
+      onBack: vi.fn(),
+      onLogout: vi.fn(),
+      onSessionChange: vi.fn(),
+    }
+    const { rerender } = render(<ProfileScreen {...props} active={false} />)
+    const backButton = screen.getByRole('button', { name: '返回聊天' })
+    backButton.focus()
+    expect(document.activeElement).toBe(backButton)
+
+    rerender(<ProfileScreen {...props} active />)
+
+    expect(document.activeElement).toBe(screen.getByLabelText('个人信息'))
+    expect(document.activeElement).not.toBe(backButton)
+  })
+
   it('paints the first sheet below the viewport before sliding it open', () => {
     const frames: FrameRequestCallback[] = []
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -198,7 +216,7 @@ describe('ProfileScreen', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('tracks visual viewport height without reading or compensating offsetTop', () => {
+  it('keeps a stable viewport and exposes keyboard height for an animated sheet transition', () => {
     const listeners = new Map<string, EventListener>()
     const viewport = {
       height: 844,
@@ -216,8 +234,14 @@ describe('ProfileScreen', () => {
 
     viewport.height = 516
     act(() => listeners.get('resize')?.(new Event('resize')))
-    expect(root?.style.getPropertyValue('--profile-viewport-height')).toBe('516px')
+    expect(root?.style.getPropertyValue('--profile-viewport-height')).toBe('844px')
+    expect(root?.style.getPropertyValue('--profile-keyboard-height')).toBe('328px')
     expect(root?.dataset.keyboardOpen).toBe('true')
+
+    viewport.height = 844
+    act(() => listeners.get('resize')?.(new Event('resize')))
+    expect(root?.style.getPropertyValue('--profile-keyboard-height')).toBe('0px')
+    expect(root?.dataset.keyboardOpen).toBe('false')
 
     unmount()
     expect(viewport.removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function))

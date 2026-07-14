@@ -1,5 +1,6 @@
 .profile-screen {
   --profile-viewport-height: 100%;
+  --profile-keyboard-height: 0px;
   position: relative;
   width: 100%;
   height: var(--profile-viewport-height);
@@ -7,6 +8,10 @@
   overflow: hidden;
   background: var(--page);
   color: var(--text);
+}
+
+.profile-screen:focus {
+  outline: none;
 }
 
 .profile-page {
@@ -277,8 +282,29 @@
   pointer-events: none;
 }
 
-.profile-sheet {
+.profile-sheet-keyboard-frame {
+  position: relative;
+  display: flex;
   width: min(100%, 560px);
+  max-height: 100%;
+  align-items: flex-end;
+  transform: translate3d(0, calc(-1 * var(--profile-keyboard-height)), 0);
+  will-change: transform;
+}
+
+.profile-screen[data-keyboard-open="true"] .profile-sheet-keyboard-frame::after {
+  position: absolute;
+  top: calc(100% - 1px);
+  right: 0;
+  left: 0;
+  height: calc(var(--profile-keyboard-height) + 1px);
+  background: var(--surface);
+  content: "";
+  pointer-events: none;
+}
+
+.profile-sheet {
+  width: 100%;
   max-height: 100%;
   padding: 6px max(20px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   overflow: hidden;
@@ -447,7 +473,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .profile-sheet-keyboard-frame { transition: none; }
   .profile-sheet { transition: none; }
   .profile-logout { transition: none; }
   .profile-logout:active { transform: none; }
+}
+
+@media (max-width: 899px) and (prefers-reduced-motion: no-preference) {
+  .profile-sheet-keyboard-frame {
+    transition: transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }

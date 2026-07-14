@@ -14,6 +14,8 @@ type AuthScreenProps = {
   initialMode?: AuthMode
   nativePage?: boolean
   onModeChange?: (mode: AuthMode) => boolean
+  onSubmissionStart?: (mode: AuthMode) => void
+  onSubmissionFailure?: (mode: AuthMode) => void
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -35,6 +37,8 @@ export function AuthScreen({
   initialMode = 'login',
   nativePage = false,
   onModeChange,
+  onSubmissionStart,
+  onSubmissionFailure,
 }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode)
   const [loginValue, setLoginValue] = useState('')
@@ -123,6 +127,7 @@ export function AuthScreen({
 
     setSubmitting(true)
     try {
+      onSubmissionStart?.(mode)
       const session = isLogin
         ? await login({ login: loginValue.trim(), password })
         : await register({
@@ -132,6 +137,7 @@ export function AuthScreen({
           })
       onAuthenticated(session)
     } catch (error: unknown) {
+      onSubmissionFailure?.(mode)
       if (error instanceof ApiError) {
         const serverErrors: FieldErrors = {}
         for (const fieldError of error.fieldErrors) {

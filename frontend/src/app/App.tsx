@@ -31,7 +31,6 @@ export function AnonymousAuthScreen({ onAuthenticated }: AnonymousAuthScreenProp
   useEffect(() => {
     if (nativeNavigation) {
       postNativeNavigation('prepareRegister')
-      postNativeNavigation('prepareChat')
     }
   }, [nativeNavigation])
 
@@ -45,6 +44,8 @@ export function AnonymousAuthScreen({ onAuthenticated }: AnonymousAuthScreenProp
     <AuthScreen
       nativePage={nativeNavigation}
       onModeChange={(mode) => mode === 'register' && postNativeNavigation('pushRegister')}
+      onSubmissionStart={() => postNativeNavigation('prepareChat')}
+      onSubmissionFailure={() => postNativeNavigation('prepareRegister')}
       onAuthenticated={handleAuthenticated}
     />
   )

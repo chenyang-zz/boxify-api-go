@@ -147,6 +147,12 @@ static NSMutableArray<NSString *> *pendingConsoleJS;
 @property (nonatomic, assign) BOOL coveObservesContentOffset;
 @end
 
+@interface WailsViewController (CoveNativeNavigation)
+- (void)coveConfigureNativeNavigation:(WKWebViewConfiguration *)configuration;
+- (void)coveInstallNativeNavigation;
+- (void)coveTearDownNativeNavigation;
+@end
+
 @implementation WailsViewController
 
 static void *CoveContentOffsetObservationContext = &CoveContentOffsetObservationContext;
@@ -217,6 +223,7 @@ static void *CoveContentOffsetObservationContext = &CoveContentOffsetObservation
 }
 
 - (void)dealloc {
+    [self coveTearDownNativeNavigation];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     if (self.coveObservesContentOffset) {
         [self.webView.scrollView removeObserver:self
@@ -288,6 +295,7 @@ static void *CoveContentOffsetObservationContext = &CoveContentOffsetObservation
     // Register both handler names used by runtimes: "external" (current runtime) and "wails" (legacy)
     [config.userContentController addScriptMessageHandler:self.messageHandler name:@"external"];
     [config.userContentController addScriptMessageHandler:self.messageHandler name:@"wails"];
+    [self coveConfigureNativeNavigation:config];
     self.webView = [[WailsWebView alloc] initWithFrame:self.view.bounds configuration:config];
     // Custom user agent if provided
     const char* userAgent = ios_get_user_agent();
@@ -329,6 +337,7 @@ static void *CoveContentOffsetObservationContext = &CoveContentOffsetObservation
         @try { [self.webView setValue:@(inspectorOn) forKey:@"inspectable"]; } @catch (__unused NSException *e) {}
     }
     [self.view addSubview:self.webView];
+    [self coveInstallNativeNavigation];
     // NOTE: no initial loadRequest here. The Go side performs the single
     // initial navigation (iosWebviewWindow.run -> setURL); a hardcoded load
     // here caused the page to load twice and lose the runtime-ready

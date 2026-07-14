@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cove iOS Native Navigation"
+  short_description: "Build and verify Cove native iOS page navigation"
+  default_prompt: "Use $cove-ios-native-navigation to implement or debug Cove page transitions with UIKit navigation."

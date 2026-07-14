@@ -45,12 +45,18 @@ vi.mock('../features/auth/AuthScreen', () => ({
   AuthScreen: ({
     onAuthenticated,
     onModeChange,
+    onSubmissionStart,
+    onSubmissionFailure,
   }: {
     onAuthenticated: (session: StoredSession) => void
     onModeChange?: (mode: 'login' | 'register') => boolean
+    onSubmissionStart?: (mode: 'login' | 'register') => void
+    onSubmissionFailure?: (mode: 'login' | 'register') => void
   }) => (
     <>
       <button type="button" onClick={() => onModeChange?.('register')}>还没有账号？创建账号</button>
+      <button type="button" onClick={() => onSubmissionStart?.('login')}>开始认证</button>
+      <button type="button" onClick={() => onSubmissionFailure?.('login')}>认证失败</button>
       <button
         type="button"
         onClick={() => onAuthenticated({
@@ -201,7 +207,7 @@ describe('AuthenticatedApp', () => {
 })
 
 describe('AnonymousAuthScreen', () => {
-  it('prepares the native register page before pushing it', async () => {
+  it('keeps one route-aware native preload while authentication state changes', async () => {
     const postMessage = vi.fn()
     window.webkit = { messageHandlers: { coveNavigation: { postMessage } } }
     const user = userEvent.setup()
@@ -210,11 +216,17 @@ describe('AnonymousAuthScreen', () => {
 
     await waitFor(() => {
       expect(postMessage).toHaveBeenCalledWith({ action: 'prepareRegister' })
-      expect(postMessage).toHaveBeenCalledWith({ action: 'prepareChat' })
     })
+    expect(postMessage).not.toHaveBeenCalledWith({ action: 'prepareChat' })
     await user.click(screen.getByRole('button', { name: '还没有账号？创建账号' }))
 
     expect(postMessage).toHaveBeenCalledWith({ action: 'pushRegister' })
+
+    await user.click(screen.getByRole('button', { name: '开始认证' }))
+    expect(postMessage).toHaveBeenCalledWith({ action: 'prepareChat' })
+
+    await user.click(screen.getByRole('button', { name: '认证失败' }))
+    expect(postMessage).toHaveBeenLastCalledWith({ action: 'prepareRegister' })
   })
 
   it('hands successful authentication to the native chat transition', async () => {

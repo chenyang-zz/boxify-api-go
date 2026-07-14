@@ -18,6 +18,8 @@ export function NativeRegisterApp() {
       nativePage
       onAuthenticated={handleAuthenticated}
       onModeChange={(mode) => mode === 'login' && postNativeNavigation('popRegister')}
+      onSubmissionStart={() => postNativeNavigation('prepareChat')}
+      onSubmissionFailure={() => postNativeNavigation('prepareRegister')}
     />
   )
 }

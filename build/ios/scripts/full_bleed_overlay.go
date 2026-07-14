@@ -24,7 +24,6 @@ var (
 	nativeNavigationDeclarations = []byte(`@interface WailsViewController (CoveNativeNavigation)
 - (void)coveConfigureNativeNavigation:(WKWebViewConfiguration *)configuration;
 - (void)coveInstallNativeNavigation;
-- (void)covePrepareNativeProfileForURL:(NSURL *)sourceURL;
 - (void)coveTearDownNativeNavigation;
 @end
 
@@ -145,9 +144,6 @@ static void *CoveContentOffsetObservationContext = &CoveContentOffsetObservation
 	webViewSubviewRegistration  = []byte(`    [self.view addSubview:self.webView];`)
 	webViewWithNativeNavigation = []byte(`    [self.view addSubview:self.webView];
     [self coveInstallNativeNavigation];`)
-	didFinishNavigationStart       = []byte(`- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {`)
-	didFinishNavigationWithProfile = []byte(`- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
-    [self covePrepareNativeProfileForURL:webView.URL];`)
 )
 
 func main() {
@@ -255,8 +251,7 @@ func patchWebViewLayout(path string) {
 		!bytes.Contains(upstream, scrollConfiguration) ||
 		!bytes.Contains(upstream, viewDidLoadStart) ||
 		!bytes.Contains(upstream, messageHandlerRegistration) ||
-		!bytes.Contains(upstream, webViewSubviewRegistration) ||
-		!bytes.Contains(upstream, didFinishNavigationStart) {
+		!bytes.Contains(upstream, webViewSubviewRegistration) {
 		fatalf("Wails iOS WebView lifecycle changed; update the keyboard scroll-lock patch before building")
 	}
 
@@ -266,7 +261,6 @@ func patchWebViewLayout(path string) {
 	override = bytes.Replace(override, scrollConfiguration, scrollObservation, 1)
 	override = bytes.Replace(override, messageHandlerRegistration, messageHandlerWithNavigation, 1)
 	override = bytes.Replace(override, webViewSubviewRegistration, webViewWithNativeNavigation, 1)
-	override = bytes.Replace(override, didFinishNavigationStart, didFinishNavigationWithProfile, 1)
 	override = bytes.Replace(override, upstreamLayout, fullBleedLayout, 1)
 	if err := os.WriteFile(path, override, 0o644); err != nil {
 		fatalf("write Wails iOS override: %v", err)
