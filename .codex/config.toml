@@ -1,0 +1,3 @@
+# Project-specific Codex configuration belongs here.
+# Keep behavioral guidance in AGENTS.md and .codex/rules/*.md.
+# Keep command execution policy in rules/*.rules.

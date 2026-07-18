@@ -1,4 +1,4 @@
-name: CD
+name: Cove CD
 
 # 仅在推送语义化版本 tag 时进入 CD；生产发版由人工/流程打 tag 驱动，而非 main 每次 push。
 on:
@@ -141,7 +141,7 @@ jobs:
       - name: Build and push image to Alibaba Cloud and GHCR
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./packages/server
           push: true
           build-args: CMD_TARGET=${{ matrix.target }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -238,8 +238,8 @@ jobs:
             test -d "$DEPLOY_COMPOSE_DIR" || fail "deployment directory does not exist: $DEPLOY_COMPOSE_DIR"
             cd "$DEPLOY_COMPOSE_DIR"
 
-            compose_file="deployments/docker-compose.production.yml"
-            config_file="configs/config.production.yml"
+            compose_file="packages/server/deployments/docker-compose.production.yml"
+            config_file="packages/server/configs/config.production.yml"
             test -f "$compose_file" || fail "production compose file is missing: $compose_file"
             test -f "$config_file" || fail "production config is missing: $config_file"
 

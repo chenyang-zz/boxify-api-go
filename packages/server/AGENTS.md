@@ -1,9 +1,9 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **cove-api** (9736 symbols, 45165 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+The Cove monorepo is indexed by GitNexus as **cove**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
+> If the index is stale, run `npx gitnexus analyze` from the monorepo root.
 
 ## Always Do
 
@@ -25,10 +25,10 @@ This project is indexed by GitNexus as **cove-api** (9736 symbols, 45165 relatio
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/cove-api/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/cove-api/clusters` | All functional areas |
-| `gitnexus://repo/cove-api/processes` | All execution flows |
-| `gitnexus://repo/cove-api/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/cove/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/cove/clusters` | All functional areas |
+| `gitnexus://repo/cove/processes` | All execution flows |
+| `gitnexus://repo/cove/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
@@ -45,8 +45,11 @@ This project is indexed by GitNexus as **cove-api** (9736 symbols, 45165 relatio
 
 ## Testing
 
-- Shared Make targets live in the Cove workspace root `Makefile`. Run targets such as `make api`, `make migration`, and `make docs` from `/Users/sheepzhao/WorkSpace/agent/boxify/cove`; run direct Git and Go commands from this repository root.
+- Shared Make targets and Git commands run from the Cove monorepo root. Run direct Go commands from `packages/server/`.
 - When adding or modifying test functions, you must place a Chinese comment immediately above each test function explaining what the test verifies.
+- When a completed backend requirement adds a new HTTP endpoint, regenerate the OpenAPI contract and then add a preset request to the appropriate existing module collection in the Postman `boxify-go` workspace. Configure the method, `{{base_url}}` URL, path/query variables, representative body and content type, and authentication mode so the request is ready for manual invocation. Reuse existing collections and variables, and do not add Postman tests or Runner workflows unless explicitly requested. Verify the request is visible in Postman before marking the requirement complete; if Postman cannot be updated, report it as an incomplete validation item.
+- A backend requirement is complete only after its changed behavior passes a real scenario against a local real database using the real migration path. Mocked unit/router tests and successful builds do not replace this validation; report the scenario, persisted result, and scoped cleanup.
+- Frontend/backend E2E acceptance is a separate stage and must use the Cove workspace's isolated local database environment managed through OrbStack.
 
 ## Generated Code
 

@@ -1,0 +1,18 @@
+# Require confirmation for commands that publish or can discard substantial work.
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Pushing publishes repository changes to a remote.",
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "prompt",
+    justification = "A hard reset can discard local work.",
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "prompt",
+    justification = "Recursive forced deletion can permanently remove files.",
+)

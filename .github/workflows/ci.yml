@@ -1,0 +1,132 @@
+name: Cove CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [dev]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/server/go.mod
+          cache-dependency-path: packages/server/go.sum
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then
+            echo "以下文件需要 gofmt 格式化："
+            echo "$files"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -count=1 -race ./...
+
+      - name: Vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Check generated routes
+        run: go run ./cmd/codegen route --check --format json
+
+      - name: Check repositories
+        run: go run ./cmd/codegen repository --list-models --format json
+
+      - name: Check OpenAPI docs
+        run: go run ./cmd/codegen docs --check --format json
+
+      - name: Check prompts
+        run: go run ./cmd/codegen prompt --check --format json
+
+      - name: Run codegen doctor
+        run: go run ./cmd/codegen doctor --format json
+
+  app-desktop-web:
+    name: App / Desktop and Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: packages/app/frontend/pnpm-lock.yaml
+
+      - name: Install Web dependencies
+        working-directory: packages/app/frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Test Web
+        working-directory: packages/app/frontend
+        run: pnpm test
+
+      - name: Build Web
+        working-directory: packages/app/frontend
+        run: pnpm build
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/app/go.mod
+          cache-dependency-path: packages/app/go.sum
+
+      - name: Test desktop Go packages
+        working-directory: packages/app
+        run: go test ./...
+
+  app-mobile:
+    name: App / Mobile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: packages/app/mobile/pnpm-lock.yaml
+
+      - name: Install Mobile dependencies
+        working-directory: packages/app/mobile
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Mobile
+        working-directory: packages/app/mobile
+        run: pnpm lint
+
+      - name: Typecheck Mobile
+        working-directory: packages/app/mobile
+        run: pnpm typecheck
+
+      - name: Test Mobile
+        working-directory: packages/app/mobile
+        run: pnpm test

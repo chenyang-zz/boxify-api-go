@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cove_e2e
+      POSTGRES_PASSWORD: cove_e2e
+      POSTGRES_DB: cove_e2e
+    ports:
+      - "127.0.0.1:${E2E_POSTGRES_PORT:-55432}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cove_e2e -d cove_e2e"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${E2E_REDIS_PORT:-56379}:6379"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "127.0.0.1:${E2E_ELASTICSEARCH_PORT:-59200}:9200"
+    tmpfs:
+      - /usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60

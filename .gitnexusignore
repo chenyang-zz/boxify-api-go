@@ -1,0 +1,10 @@
+.git/
+.gitnexus/
+**/.expo/
+**/node_modules/
+**/Pods/
+**/dist/
+**/build/
+/mobile/
+/output/
+packages/server/api

@@ -11,8 +11,8 @@
 
 <p align="center">
   <!-- Badges -->
-  <img src="https://img.shields.io/github/go-mod/go-version/chenyang-zz/cove-api?logo=go&logoColor=white&style=flat" alt="Go version" />
-  <img src="https://img.shields.io/github/v/release/chenyang-zz/cove-api?style=flat&color=blue" alt="Release" />
+  <img src="https://img.shields.io/github/go-mod/go-version/chenyang-zz/cove?logo=go&logoColor=white&style=flat" alt="Go version" />
+  <img src="https://img.shields.io/github/v/release/chenyang-zz/cove?style=flat&color=blue" alt="Release" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat" alt="License" />
 </p>
 
@@ -25,7 +25,7 @@
   <a href="#%E9%85%8D%E7%BD%AE">配置</a> ·
   <a href="#%E5%BC%80%E5%8F%91">开发</a> ·
   <a href="#%E6%B5%8B%E8%AF%95">测试</a> ·
-  <a href="https://github.com/chenyang-zz/cove-api/blob/main/docs/architecture.md">文档</a>
+  <a href="https://github.com/chenyang-zz/cove/blob/main/packages/server/docs/architecture.md">文档</a>
 </p>
 
 ---
@@ -65,7 +65,7 @@
 - Go 1.25+
 - Docker & Docker Compose
 
-以下 `make` 命令统一从包含 `packages/` 的 Cove 工作区根目录运行。直接使用 `go run`、`go test` 等 Go 命令时，仍在 `packages/server/` 中运行。
+以下 `make` 命令统一从 Cove monorepo 根目录运行。直接使用 `go run`、`go test` 等 Go 命令时，仍在 `packages/server/` 中运行。
 
 ### 1. 启动依赖服务
 

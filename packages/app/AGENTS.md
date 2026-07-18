@@ -1,9 +1,9 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **cove** (474551 symbols, 686596 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+The Cove monorepo is indexed by GitNexus as **cove**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` from the monorepo root first.
 
 ## Always Do
 
@@ -44,13 +44,13 @@ This project is indexed by GitNexus as **cove** (474551 symbols, 686596 relation
 
 ## API Documentation and Environment Configuration
 
-- Shared Make targets live in the Cove workspace root `Makefile`. Run App wrappers such as `make app-build` and `make app-mobile-test` from `/Users/sheepzhao/WorkSpace/agent/boxify/cove`; keep `Taskfile.yml` and the package scripts as the implementation sources of truth.
+- Shared Make targets live in the Cove workspace root `Makefile`. Run App wrappers such as `make app-build` and `make app-mobile-test` from the monorepo root; keep `Taskfile.yml` and the package scripts as the implementation sources of truth.
 - The Figma design source for this project is `[Cove](https://www.figma.com/design/wks3wwXIDCjdsVS6jPQqS6/Cove?node-id=0-1&m=dev&t=5gPGykVr97PD5dac-1)`. Use this file as the design reference for Cove UI work.
-- The OpenAPI contract is located at `/Users/sheepzhao/WorkSpace/agent/boxify/cove/packages/server/docs/openapi.json`. Before adding or changing an API call, use it to verify the path, request body, response shape, and authentication requirements.
+- The OpenAPI contract is located at `packages/server/docs/openapi.json` from the monorepo root. Before adding or changing an API call, use it to verify the path, request body, response shape, and authentication requirements.
 - The frontend API base URL is supplied exclusively through `VITE_API_BASE_URL`; it defaults to `http://localhost:8000` when unset.
 - Configure environment-specific values in uncommitted files such as `frontend/.env.development.local` and `frontend/.env.production.local`. Do not hard-code environment URLs in application code.
 - If the `openapi.json` path changes, update this instruction at the same time.
-- When an API behavior is not documented in the OpenAPI contract, such as streaming response event types, inspect the service implementation at `/Users/sheepzhao/WorkSpace/agent/boxify/cove/packages/server` and treat it as the source of truth.
+- When an API behavior is not documented in the OpenAPI contract, such as streaming response event types, inspect the service implementation under `packages/server/` and treat it as the source of truth.
 
 ## iOS UI Debugging
 

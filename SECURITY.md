@@ -10,7 +10,7 @@
 
 我们非常重视安全。如果你发现了本项目的安全漏洞，请**不要**公开 Issue，而是通过以下方式私下联系维护者：
 
-- 开启一个[私密安全问题](https://github.com/chenyang-zz/cove-api/security/advisories/new)
+- 开启一个[私密安全问题](https://github.com/chenyang-zz/cove/security/advisories/new)
 
 请在报告中尽可能包含以下信息：
 

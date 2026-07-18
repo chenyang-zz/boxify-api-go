@@ -1,0 +1,4 @@
+interface:
+  display_name: "iOS Simulator"
+  short_description: "Validate iOS apps with simctl and Computer Use"
+  default_prompt: "Use $ios-simulator with simctl and Computer Use to launch my app and validate the requested iOS flow."

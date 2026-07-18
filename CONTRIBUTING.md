@@ -4,7 +4,7 @@
 
 ## 行为准则
 
-参与本项目即表示你已阅读并同意我们的 [行为准则](CODE_OF_CON_CONDUCT.md)。请保持友善、尊重、专业。
+参与本项目即表示你已阅读并同意我们的 [行为准则](CODE_OF_CONDUCT.md)。请保持友善、尊重、专业。
 
 ## 如何开始
 
@@ -16,14 +16,14 @@
 
 ## 开发环境搭建
 
-以下 `make` 命令从 Cove 工作区根目录运行；Docker、Git 与直接 Go 命令仍从 `packages/server/` 运行。
+Git 与 `make` 命令从 Cove monorepo 根目录运行；直接 Go、pnpm 和 Task 命令从对应 package 目录运行。
 
 ```bash
 # 1. 启动依赖服务
-docker compose -f deployments/docker-compose.yml up -d
+docker compose -f packages/server/deployments/docker-compose.yml up -d
 
 # 2. 复制并编辑配置
-cp configs/config.yml.example configs/config.yml
+cp packages/server/configs/config.yml.example packages/server/configs/config.yml
 
 # 3. 运行迁移
 make migration
@@ -84,7 +84,8 @@ make worker
 
 - [ ] 代码通过 `go vet ./...` 与 `gofmt` 检查
 - [ ] 新增功能附带单元测试（测试函数上方附中文注释说明验证点）
-- [ ] 所有测试通过：`go test ./...`
+- [ ] 后端测试通过：在 `packages/server/` 运行 `go test ./...`
+- [ ] 受影响的 Web、桌面端和移动端检查通过
 - [ ] 代码生成产物已提交（如 `make gen-route`、`make gen-repository`、`make gen-docs` 的输出）
 - [ ] PR 描述清楚说明变更动机、方案与影响范围
 - [ ] 关联相关 Issue（如 `Closes #123`）

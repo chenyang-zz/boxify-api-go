@@ -1,0 +1,36 @@
+app:
+  env: test
+
+docs:
+  enabled: false
+
+neo4j:
+  uri: ""
+  username: ""
+  password: ""
+  database: ""
+
+jwt:
+  secret: cove-e2e-jwt-secret
+  access_token_ttl: 5m
+
+secret_key: 0123456789abcdef0123456789abcdef
+
+storage:
+  backend: local
+  dir: ./output/playwright/storage
+
+llm:
+  provider: openai
+  model: e2e-disabled
+  embedding_model: e2e-disabled
+  base_url: http://127.0.0.1:1
+  api_key: ""
+
+rag:
+  embedding_dim: 3
+  embedding_batch_size: 2
+  chunk_index: cove_e2e_chunks
+
+gateway:
+  enabled: false

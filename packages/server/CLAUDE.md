@@ -1,9 +1,9 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **cove-api** (9736 symbols, 45165 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+The Cove monorepo is indexed by GitNexus as **cove**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
+> If the index is stale, run `npx gitnexus analyze` from the monorepo root.
 
 ## Always Do
 
@@ -25,10 +25,10 @@ This project is indexed by GitNexus as **cove-api** (9736 symbols, 45165 relatio
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/cove-api/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/cove-api/clusters` | All functional areas |
-| `gitnexus://repo/cove-api/processes` | All execution flows |
-| `gitnexus://repo/cove-api/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/cove/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/cove/clusters` | All functional areas |
+| `gitnexus://repo/cove/processes` | All execution flows |
+| `gitnexus://repo/cove/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
