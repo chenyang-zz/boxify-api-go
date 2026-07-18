@@ -1,0 +1,87 @@
+internal/logic/gateway/delete_account.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-40
+internal/logic/gateway/approve_pairing.go
+  s_848ccf73a23603::t_a4ca14f218a398 1-36
+docs/gateway.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 1130-1131,1321
+  s_caa2097fd07076::t_9e1871743cc3d5 1322
+internal/logic/gateway/get_account.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-40
+cmd/migration/README.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 7-8
+internal/logic/gateway/helper.go
+  s_848ccf73a23603::t_1874ab1f0eb182 1-287
+cmd/codegen/README.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 355-357
+internal/logic/gateway/test_account.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-66
+internal/logic/gateway/service_test.go
+  s_848ccf73a23603::t_fc9f4e071472f2 48-49
+internal/logic/gateway/get_binding.go
+  s_848ccf73a23603::t_bb7afd3cc5ab31 1-40
+cmd/api/README.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 7-8
+.github/PULL_REQUEST_TEMPLATE.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 22
+internal/logic/gateway/update_account.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-98
+internal/logic/gateway/providers.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-37,39-41
+  s_848ccf73a23603::t_7827757ad0a156 38
+internal/logic/gateway/list_accounts.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-43
+internal/logic/gateway/create_account.go
+  s_848ccf73a23603::t_9170b8e614c66b 1-76
+cmd/worker/README.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 7-8
+internal/logic/gateway/create_binding.go
+  s_848ccf73a23603::t_bb7afd3cc5ab31 1-71
+CONTRIBUTING.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 19-20
+cmd/codegen/scan_existing_test.go
+  s_848ccf73a23603::t_0795b194293936 9-10,24-25
+internal/logic/gateway/service.go
+  s_848ccf73a23603::t_1874ab1f0eb182 1,13,19,26
+README.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 68-69
+internal/logic/gateway/list_pairings.go
+  s_848ccf73a23603::t_a4ca14f218a398 1-47
+internal/logic/gateway/deny_pairing.go
+  s_848ccf73a23603::t_a4ca14f218a398 1-36
+internal/logic/gateway/list_bindings.go
+  s_848ccf73a23603::t_bb7afd3cc5ab31 1-54
+internal/logic/gateway/update_binding.go
+  s_848ccf73a23603::t_bb7afd3cc5ab31 1-66
+docs/architecture.md
+  s_caa2097fd07076::t_c4f54aa5d5affc 206-207,261
+internal/logic/gateway/delete_binding.go
+  s_848ccf73a23603::t_bb7afd3cc5ab31 1-39
+internal/transport/http/handler/gateway.go
+  s_848ccf73a23603::t_493b9231f892a3 13-15,18,21-33,36-38,41,50-51,55-57,60,69-80,83,92-94,97,101-106,115-117,120-126,130,134-136,139-140,144-149,153-159,162-167,176-183,186,195-197,200-205,214-216,219-222,224,233-234,238-240,243,252-254,257-266,275-277,280,284-289,298-300,306,308,310-311,313
+AGENTS.md
+  s_caa2097fd07076::t_4a7e7e94421262 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d5ee7950c8331539128e4c14fb82b05dddbce31e",
+  "prompts": {},
+  "sessions": {
+    "s_848ccf73a23603": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7418-3f03-7f90-8966-d3812c751c3a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    },
+    "s_caa2097fd07076": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7408-4aed-7012-b7fb-1f20995e2d3d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
