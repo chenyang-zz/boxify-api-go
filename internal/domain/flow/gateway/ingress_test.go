@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// 测试外部文本和回复引用会被明确包装为不可信内容。
+// TestUntrustedMessageWrapsExternalContent 验证外部文本和回复引用会被明确包装为不可信内容。
 func TestUntrustedMessageWrapsExternalContent(t *testing.T) {
 	got := untrustedMessage(corechannel.InboundEvent{Text: "hello", Reply: &corechannel.ReplyReference{Text: "old"}})
 	if !strings.Contains(got, "<external_untrusted>") || !strings.Contains(got, "Reply reference") {
@@ -20,7 +20,7 @@ func TestUntrustedMessageWrapsExternalContent(t *testing.T) {
 	}
 }
 
-// 测试配对码固定六位、一小时过期并只保存哈希。
+// TestPairingCodeUsesHashAndExpiry 验证配对码固定六位、一小时过期并只保存哈希。
 func TestPairingCodeUsesHashAndExpiry(t *testing.T) {
 	code, hash, expiresAt, err := pairingCode(uuid.New())
 	if err != nil {

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	corechannel "github.com/boxify/api-go/internal/core/channel"
+	flowgateway "github.com/boxify/api-go/internal/domain/flow/gateway"
 	"github.com/boxify/api-go/internal/infrastructure/channel/webhook"
-	gatewaylogic "github.com/boxify/api-go/internal/logic/gateway"
 	"github.com/boxify/api-go/internal/svc"
 	"github.com/gin-gonic/gin"
 )
@@ -40,13 +40,13 @@ func NewRouter(svcCtx *svc.ServiceContext) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
-	service := gatewaylogic.NewService(svcCtx)
+	flow := flowgateway.NewOrchestrator(svcCtx)
 	router.GET("/healthz", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-	router.POST("/gateway/v1/hooks/:public_id", webhookHandler(svcCtx, service))
+	router.POST("/gateway/v1/hooks/:public_id", webhookHandler(svcCtx, flow))
 	return router
 }
 
-func webhookHandler(svcCtx *svc.ServiceContext, service *gatewaylogic.Service) gin.HandlerFunc {
+func webhookHandler(svcCtx *svc.ServiceContext, flow *flowgateway.Orchestrator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		maxBytes := svcCtx.Config.Gateway.MaxRequestBytes
 		if maxBytes <= 0 {
@@ -63,7 +63,7 @@ func webhookHandler(svcCtx *svc.ServiceContext, service *gatewaylogic.Service) g
 			publicError(c, http.StatusNotFound, "webhook not found")
 			return
 		}
-		accountConfig, err := service.AccountConfig(account)
+		accountConfig, err := flow.AccountConfig(account)
 		if err != nil {
 			publicError(c, http.StatusInternalServerError, "webhook is unavailable")
 			return
@@ -101,7 +101,7 @@ func webhookHandler(svcCtx *svc.ServiceContext, service *gatewaylogic.Service) g
 			PlatformMessageID: input.MessageID, Text: input.Text, Reply: input.Reply, Mentioned: input.Mentioned,
 			Media: input.Media, OccurredAt: occurredAt, ReceivedAt: time.Now(),
 		}
-		inbox, created, err := service.HandleInbound(c.Request.Context(), account, event)
+		inbox, created, err := flow.HandleInbound(c.Request.Context(), account, event)
 		if err != nil {
 			if c.Request.Context().Err() != nil {
 				publicError(c, http.StatusServiceUnavailable, "gateway unavailable")

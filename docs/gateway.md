@@ -45,7 +45,7 @@ flowchart LR
         RM["Runtime Manager"]
         RC["Telegram 长轮询<br/>飞书 WebSocket"]
         HI["POST /gateway/v1/hooks/:public_id"]
-        IN["入站规范化、鉴权、绑定、媒体处理"]
+        IN["domain/flow/gateway<br/>入站鉴权、绑定、媒体与恢复流程"]
     end
 
     subgraph Worker["Worker 进程"]
@@ -118,9 +118,10 @@ flowchart LR
 | `internal/transport/gatewayhttp/router.go` | `/healthz` 和公共 Webhook 入站路由 |
 | `internal/transport/http/routes/gateway.go` | JWT 管理路由注册及 OpenAPI 注解 |
 | `internal/transport/http/handler/gateway.go` | 管理 API 参数绑定、用户身份读取、响应封装 |
-| `internal/logic/gateway/service.go` | Provider 描述、账号、配对、绑定、凭据和热重载用例 |
-| `internal/logic/gateway/ingress.go` | Inbox 去重、私聊鉴权、路由绑定、消息落库和 Turn 入队 |
-| `internal/logic/gateway/media.go` | 媒体下载、MIME/大小校验、存储和内容提取 |
+| `internal/logic/gateway/` | Provider 描述、账号、配对、绑定和热重载等逐路由控制面用例 |
+| `internal/domain/flow/gateway/orchestrator.go` | 数据面流程编排器和 Provider 账号运行配置 |
+| `internal/domain/flow/gateway/ingress.go` | Inbox 去重、私聊鉴权、路由绑定、消息落库、Turn 入队和恢复 |
+| `internal/domain/flow/gateway/media.go` | 媒体下载、MIME/大小校验、存储和内容提取 |
 | `internal/worker/tasks/gateway_turn.go` | 会话串行化、共享 Chat Turn、确定性 Assistant、Outbox 创建 |
 | `internal/worker/tasks/gateway_deliver.go` | Outbox 加锁、Provider 发送、回执分类和重试状态 |
 | `internal/models/channel_gateway.go` | 五个持久化模型及全部状态常量 |
@@ -133,7 +134,7 @@ flowchart LR
 ```text
 transport / runtime / worker
         ↓
-logic/gateway + logic/chat
+logic/gateway + domain/flow/gateway + logic/chat
         ↓
 core/channel + domain/flow/chat
         ↓
@@ -1307,6 +1308,7 @@ LIMIT 50;
 go test -count=1 \
   ./internal/core/channel \
   ./internal/infrastructure/channel/... \
+  ./internal/domain/flow/gateway \
   ./internal/logic/gateway \
   ./internal/gateway/runtime \
   ./internal/transport/gatewayhttp \
@@ -1340,7 +1342,7 @@ go run ./cmd/codegen doctor --format json
 7. 更新账号请求 DTO 的 `provider` 枚举、OpenAPI、管理端消费者和本文能力矩阵。
 8. 增加凭据测试、入站规范化、出站分段、错误分类、媒体下载和安全测试。
 
-不得把 Provider 特有鉴权、配对或租户逻辑放入适配器；这些策略应继续由 `logic/gateway` 统一执行。
+不得把 Provider 特有鉴权、配对或租户逻辑放入适配器；控制面策略由 `logic/gateway` 处理，入站数据面策略由 `domain/flow/gateway` 统一编排。
 
 ## 21. 当前限制与演进注意事项
 

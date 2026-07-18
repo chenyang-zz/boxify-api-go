@@ -10,7 +10,7 @@ import (
 	"github.com/boxify/api-go/internal/svc"
 )
 
-// TestValidateFieldsRejectsMissingAndUnknownCredentials 验证 Provider 凭据声明是账号配置的唯一白名单。
+// TestValidateFieldsRejectsMissingAndUnknownCredentials 验证 Provider 凭据声明构成账号配置的唯一白名单。
 func TestValidateFieldsRejectsMissingAndUnknownCredentials(t *testing.T) {
 	fields := []corechannel.FieldDescriptor{{Key: "token", Required: true}}
 	if err := validateFields(fields, nil, true); err == nil {

@@ -23,7 +23,7 @@ import (
 const maxExtractedTextRunes = 200_000
 
 // ProcessMedia 下载、校验并解析渠道附件。单个附件解析失败不会丢弃已保存原文件。
-func (s *Service) ProcessMedia(ctx context.Context, account *models.ChannelAccount, media []corechannel.MediaReference) ([]models.MessageAttachmentMeta, []*types.MessageAttachment, error) {
+func (s *Orchestrator) ProcessMedia(ctx context.Context, account *models.ChannelAccount, media []corechannel.MediaReference) ([]models.MessageAttachmentMeta, []*types.MessageAttachment, error) {
 	if len(media) == 0 {
 		return nil, nil, nil
 	}
@@ -58,7 +58,7 @@ func (s *Service) ProcessMedia(ctx context.Context, account *models.ChannelAccou
 	return metas, attachments, nil
 }
 
-func (s *Service) processOneMedia(ctx context.Context, downloader corechannel.MediaDownloader, account corechannel.AccountConfig, userID uuid.UUID, reference corechannel.MediaReference, maxBytes int64) (models.MessageAttachmentMeta, *types.MessageAttachment, error) {
+func (s *Orchestrator) processOneMedia(ctx context.Context, downloader corechannel.MediaDownloader, account corechannel.AccountConfig, userID uuid.UUID, reference corechannel.MediaReference, maxBytes int64) (models.MessageAttachmentMeta, *types.MessageAttachment, error) {
 	if reference.Size > maxBytes {
 		return models.MessageAttachmentMeta{}, nil, fmt.Errorf("附件超过 %d 字节限制", maxBytes)
 	}
@@ -122,7 +122,7 @@ func (s *Service) processOneMedia(ctx context.Context, downloader corechannel.Me
 	return meta, attachment, nil
 }
 
-func (s *Service) describeGatewayImage(ctx context.Context, userID uuid.UUID, data []byte, ext string) (string, error) {
+func (s *Orchestrator) describeGatewayImage(ctx context.Context, userID uuid.UUID, data []byte, ext string) (string, error) {
 	client, err := svc.MultimodalClient(ctx, s.svc, userID)
 	if err != nil {
 		return "", err

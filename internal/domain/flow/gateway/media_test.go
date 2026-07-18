@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 )
 
-// 测试附件 MIME 校验拒绝将 HTML 伪装成图片。
+// TestAllowedMediaRejectsMIMEMismatch 验证附件 MIME 校验拒绝将 HTML 伪装成图片。
 func TestAllowedMediaRejectsMIMEMismatch(t *testing.T) {
 	if allowedMedia("image", "image/png", "text/html") {
 		t.Fatal("expected mismatched image MIME to be rejected")

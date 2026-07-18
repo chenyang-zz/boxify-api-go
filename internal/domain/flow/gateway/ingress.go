@@ -29,7 +29,7 @@ const (
 var errGatewayEnqueue = errors.New("gateway task enqueue failed")
 
 // HandleInbound 按持久化去重、权限、路由和调度顺序处理规范化事件。
-func (s *Service) HandleInbound(ctx context.Context, account *models.ChannelAccount, event corechannel.InboundEvent) (*models.ChannelInboxEvent, bool, error) {
+func (s *Orchestrator) HandleInbound(ctx context.Context, account *models.ChannelAccount, event corechannel.InboundEvent) (*models.ChannelInboxEvent, bool, error) {
 	if s == nil || s.svc == nil || s.svc.ChannelGatewayRepo == nil || account == nil {
 		return nil, false, xerr.Internal("网关入站服务未初始化", nil)
 	}
@@ -78,7 +78,7 @@ func (s *Service) HandleInbound(ctx context.Context, account *models.ChannelAcco
 }
 
 // RecoverInbox 重新投递已落库但尚未成功入队的事件。
-func (s *Service) RecoverInbox(ctx context.Context, limit int) error {
+func (s *Orchestrator) RecoverInbox(ctx context.Context, limit int) error {
 	rows, err := s.svc.ChannelGatewayRepo.ListRecoverableInboxEvents(ctx, limit)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (s *Service) RecoverInbox(ctx context.Context, limit int) error {
 	return nil
 }
 
-func (s *Service) processPersistedInbound(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) error {
+func (s *Orchestrator) processPersistedInbound(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) error {
 	if event.Sender.IsBot {
 		return s.markInbox(ctx, inbox.ID, models.ChannelInboxStatusIgnored, "")
 	}
@@ -203,7 +203,7 @@ func (s *Service) processPersistedInbound(ctx context.Context, account *models.C
 	return s.enqueueTurn(ctx, inbox.ID)
 }
 
-func (s *Service) authorizeAndBind(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) (*models.ChannelBinding, bool, error) {
+func (s *Orchestrator) authorizeAndBind(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) (*models.ChannelBinding, bool, error) {
 	if event.Route.ChatType == corechannel.ChatTypeDirect {
 		allowed, err := s.authorizeDirect(ctx, account, inbox, event)
 		if err != nil || !allowed {
@@ -245,7 +245,7 @@ func (s *Service) authorizeAndBind(ctx context.Context, account *models.ChannelA
 	return binding, true, nil
 }
 
-func (s *Service) authorizeDirect(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) (bool, error) {
+func (s *Orchestrator) authorizeDirect(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent) (bool, error) {
 	identity, err := s.svc.ChannelGatewayRepo.FindIdentity(ctx, account.ID, event.Sender.ID, event.Route.ChatID)
 	if err == nil {
 		switch identity.Status {
@@ -289,7 +289,7 @@ func (s *Service) authorizeDirect(ctx context.Context, account *models.ChannelAc
 	return false, s.markInbox(ctx, inbox.ID, models.ChannelInboxStatusPendingPair, "")
 }
 
-func (s *Service) refreshPairing(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent, identity *models.ChannelIdentity) (bool, error) {
+func (s *Orchestrator) refreshPairing(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, event corechannel.InboundEvent, identity *models.ChannelIdentity) (bool, error) {
 	code, hash, expiresAt, err := pairingCode(account.ID)
 	if err != nil {
 		return false, err
@@ -304,7 +304,7 @@ func (s *Service) refreshPairing(ctx context.Context, account *models.ChannelAcc
 	return false, s.markInbox(ctx, inbox.ID, models.ChannelInboxStatusPendingPair, "")
 }
 
-func (s *Service) ensureBindingConversation(ctx context.Context, account *models.ChannelAccount, binding *models.ChannelBinding, event corechannel.InboundEvent) (uuid.UUID, error) {
+func (s *Orchestrator) ensureBindingConversation(ctx context.Context, account *models.ChannelAccount, binding *models.ChannelBinding, event corechannel.InboundEvent) (uuid.UUID, error) {
 	if binding.ConversationID != nil {
 		if _, err := s.svc.ConversationRepo.FindByID(ctx, account.UserID, *binding.ConversationID); err == nil {
 			return *binding.ConversationID, nil
@@ -326,7 +326,7 @@ func (s *Service) ensureBindingConversation(ctx context.Context, account *models
 	return conversation.ID, nil
 }
 
-func (s *Service) resolveAgentConfig(ctx context.Context, account *models.ChannelAccount, binding *models.ChannelBinding) (*uuid.UUID, error) {
+func (s *Orchestrator) resolveAgentConfig(ctx context.Context, account *models.ChannelAccount, binding *models.ChannelBinding) (*uuid.UUID, error) {
 	if selected := selectedAgentConfigID(account, binding); selected != nil {
 		if _, err := s.svc.AgentConfigRepo.FindByID(ctx, account.UserID, *selected); err != nil {
 			return nil, err
@@ -353,7 +353,7 @@ func selectedAgentConfigID(account *models.ChannelAccount, binding *models.Chann
 	return nil
 }
 
-func (s *Service) enqueueTurn(ctx context.Context, inboxID uuid.UUID) error {
+func (s *Orchestrator) enqueueTurn(ctx context.Context, inboxID uuid.UUID) error {
 	task, err := types.NewGatewayTurnTask(inboxID)
 	if err != nil {
 		return err
@@ -374,7 +374,7 @@ func (s *Service) enqueueTurn(ctx context.Context, inboxID uuid.UUID) error {
 	})
 }
 
-func (s *Service) queueReply(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, route corechannel.Route, text string) error {
+func (s *Orchestrator) queueReply(ctx context.Context, account *models.ChannelAccount, inbox *models.ChannelInboxEvent, route corechannel.Route, text string) error {
 	deliveryID := uuid.NewString()
 	outbox, err := s.svc.ChannelGatewayRepo.CreateOutboxMessage(ctx, &models.ChannelOutboxMessage{
 		UserID: account.UserID, AccountID: account.ID, InboxEventID: inbox.ID,
@@ -403,7 +403,7 @@ func (s *Service) queueReply(ctx context.Context, account *models.ChannelAccount
 	return nil
 }
 
-func (s *Service) markInbox(ctx context.Context, id uuid.UUID, status, errorMessage string) error {
+func (s *Orchestrator) markInbox(ctx context.Context, id uuid.UUID, status, errorMessage string) error {
 	values := map[string]any{"status": status, "error_message": errorMessage}
 	if status == models.ChannelInboxStatusIgnored || status == models.ChannelInboxStatusFailed || status == models.ChannelInboxStatusCompleted {
 		now := time.Now()

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	corechannel "github.com/boxify/api-go/internal/core/channel"
+	flowgateway "github.com/boxify/api-go/internal/domain/flow/gateway"
 	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/lease"
-	gatewaylogic "github.com/boxify/api-go/internal/logic/gateway"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -142,7 +142,7 @@ func (h *GatewayDeliverTask) Handle(ctx context.Context, task *types.Task) error
 		)
 		return skipRetry(errors.New("gateway provider is unavailable"))
 	}
-	accountConfig, err := gatewaylogic.NewService(h.svc).AccountConfig(account)
+	accountConfig, err := flowgateway.NewOrchestrator(h.svc).AccountConfig(account)
 	if err != nil {
 		logger.WarnContext(ctx, "读取网关渠道凭据失败",
 			slog.String("outbox_id", outbox.ID.String()),

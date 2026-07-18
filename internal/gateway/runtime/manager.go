@@ -9,9 +9,9 @@ import (
 	"time"
 
 	corechannel "github.com/boxify/api-go/internal/core/channel"
+	flowgateway "github.com/boxify/api-go/internal/domain/flow/gateway"
 	"github.com/boxify/api-go/internal/domain/types"
 	"github.com/boxify/api-go/internal/infrastructure/lease"
-	gatewaylogic "github.com/boxify/api-go/internal/logic/gateway"
 	"github.com/boxify/api-go/internal/models"
 	"github.com/boxify/api-go/internal/observability/xlog"
 	"github.com/boxify/api-go/internal/svc"
@@ -27,7 +27,7 @@ type runningAccount struct {
 // Manager 对账数据库账号并保证每个 Receiver 只有一个实例运行。
 type Manager struct {
 	svc     *svc.ServiceContext
-	service *gatewaylogic.Service
+	flow    *flowgateway.Orchestrator
 	log     *slog.Logger
 	mu      sync.Mutex
 	running map[string]runningAccount
@@ -35,7 +35,7 @@ type Manager struct {
 
 // NewManager 创建网关运行管理器。
 func NewManager(svcCtx *svc.ServiceContext) *Manager {
-	return &Manager{svc: svcCtx, service: gatewaylogic.NewService(svcCtx), log: xlog.Component("gateway.runtime"), running: make(map[string]runningAccount)}
+	return &Manager{svc: svcCtx, flow: flowgateway.NewOrchestrator(svcCtx), log: xlog.Component("gateway.runtime"), running: make(map[string]runningAccount)}
 }
 
 // Run 监听重载通知并周期性对账账号、Inbox 和 Outbox。
@@ -95,7 +95,7 @@ func (m *Manager) reconcile(ctx context.Context) error {
 		go m.runAccount(accountCtx, account, version)
 	}
 	m.mu.Unlock()
-	if err := m.service.RecoverInbox(ctx, 100); err != nil {
+	if err := m.flow.RecoverInbox(ctx, 100); err != nil {
 		m.log.WarnContext(ctx, "网关 Inbox 对账失败", slog.String("error", "inbox reconcile failed"))
 	}
 	m.recoverOutbox(ctx)
@@ -119,13 +119,13 @@ func (m *Manager) runAccount(ctx context.Context, account *models.ChannelAccount
 		_ = m.svc.ChannelGatewayRepo.UpdateAccountHealth(ctx, account.ID, models.ChannelAccountStatusDegraded, "Provider 不可用")
 		return
 	}
-	accountConfig, err := m.service.AccountConfig(account)
+	accountConfig, err := m.flow.AccountConfig(account)
 	if err != nil {
 		_ = m.svc.ChannelGatewayRepo.UpdateAccountHealth(ctx, account.ID, models.ChannelAccountStatusDegraded, "凭据解密失败")
 		return
 	}
 	handler := corechannel.EventHandlerFunc(func(eventCtx context.Context, event corechannel.InboundEvent) error {
-		_, _, handleErr := m.service.HandleInbound(eventCtx, account, event)
+		_, _, handleErr := m.flow.HandleInbound(eventCtx, account, event)
 		return handleErr
 	})
 	backoff := time.Second
