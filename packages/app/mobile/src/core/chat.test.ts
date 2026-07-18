@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { deleteConversation, renameConversation } from './chat';
+
 const api = vi.hoisted(() => ({
   authenticatedCommand: vi.fn(),
   authenticatedRequest: vi.fn(),
@@ -15,8 +17,6 @@ vi.mock('./api', () => ({
 vi.mock('expo/fetch', () => ({ fetch: vi.fn() }));
 vi.mock('./session', () => ({ loadStoredSession: vi.fn() }));
 vi.mock('./sse', () => ({ consumeSseStream: vi.fn() }));
-
-import { deleteConversation, renameConversation } from './chat';
 
 describe('conversation actions', () => {
   beforeEach(() => {

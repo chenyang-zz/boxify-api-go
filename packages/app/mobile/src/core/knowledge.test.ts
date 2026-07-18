@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { listKnowledgeBases, setDefaultKnowledgeBase } from './knowledge';
+
 const api = vi.hoisted(() => ({ authenticatedRequest: vi.fn() }));
 
 vi.mock('./api', () => ({ authenticatedRequest: api.authenticatedRequest }));
-
-import { listKnowledgeBases, setDefaultKnowledgeBase } from './knowledge';
 
 describe('knowledge base API', () => {
   beforeEach(() => {

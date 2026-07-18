@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -76,8 +76,8 @@ export function ChatDrawer({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const drawerWidth = Math.min(310, width - 48);
-  const progress = useRef(new Animated.Value(0)).current;
-  const conversationScrollY = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
+  const [conversationScrollY] = useState(() => new Animated.Value(0));
   const conversationTopFadeOpacity = conversationScrollY.interpolate({
     inputRange: [0, 12],
     outputRange: [0, 1],
@@ -92,20 +92,18 @@ export function ChatDrawer({
 
   useEffect(() => {
     if (!visible) {
-      setRenameTarget(null);
-      setDeleteTarget(null);
-      setActionPendingId(undefined);
-      setActionError('');
       return;
     }
     progress.setValue(0);
-    Animated.spring(progress, {
+    const animation = Animated.spring(progress, {
       toValue: 1,
       damping: 24,
       stiffness: 280,
       mass: 0.86,
       useNativeDriver: true,
-    }).start();
+    });
+    animation.start();
+    return () => animation.stop();
   }, [progress, visible]);
 
   function close(afterClose?: () => void) {

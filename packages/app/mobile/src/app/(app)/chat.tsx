@@ -91,9 +91,37 @@ export default function ChatScreen() {
   const initialPositioningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMessageListInteractingRef = useRef(false);
   const isAutoFollowingRef = useRef(false);
-  const streamScrollPosition = useRef(new Animated.Value(0)).current;
+  const [streamScrollPosition] = useState(() => new Animated.Value(0));
   const messageListMetricsRef = useRef({ contentHeight: 0, viewportHeight: 0, offsetY: 0 });
   const activeConversation = conversations.find((item) => item.id === conversationId);
+
+  const scrollMessageListToBottom = useCallback((immediate = false) => {
+    const { contentHeight, viewportHeight, offsetY } = messageListMetricsRef.current;
+    const targetOffset = Math.max(0, contentHeight - viewportHeight);
+    streamScrollPosition.stopAnimation();
+    if (immediate || Math.abs(targetOffset - offsetY) < 1) {
+      isAutoFollowingRef.current = false;
+      messageListMetricsRef.current.offsetY = targetOffset;
+      listRef.current?.scrollToOffset({ offset: targetOffset, animated: false });
+      return;
+    }
+
+    isAutoFollowingRef.current = true;
+    streamScrollPosition.setValue(offsetY);
+    const duration = Math.min(220, Math.max(110, Math.abs(targetOffset - offsetY) * 0.22));
+    Animated.timing(streamScrollPosition, {
+      toValue: targetOffset,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        isAutoFollowingRef.current = false;
+        shouldFollowStreamRef.current = true;
+        messageListMetricsRef.current.offsetY = targetOffset;
+      }
+    });
+  }, [streamScrollPosition]);
 
   const loadConversationHistory = useCallback(async (nextConversationId: string) => {
     const generation = ++historyGenerationRef.current;
@@ -149,8 +177,11 @@ export default function ChatScreen() {
   }, [loadConversationHistory, signOut]);
 
   useEffect(() => {
-    void refreshConversations(true);
+    const refreshTimer = setTimeout(() => {
+      void refreshConversations(true);
+    }, 0);
     return () => {
+      clearTimeout(refreshTimer);
       historyGenerationRef.current += 1;
       abortRef.current?.abort();
       if (initialPositioningTimerRef.current) {
@@ -192,7 +223,7 @@ export default function ChatScreen() {
     }
     shouldFollowStreamRef.current = true;
     requestAnimationFrame(() => scrollMessageListToBottom());
-  }, [streaming]);
+  }, [scrollMessageListToBottom, streaming]);
 
   function startNewConversation() {
     abortRef.current?.abort();
@@ -297,34 +328,6 @@ export default function ChatScreen() {
   function handleMessageScrollEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
     isMessageListInteractingRef.current = false;
     updateMessageFollowState(event);
-  }
-
-  function scrollMessageListToBottom(immediate = false) {
-    const { contentHeight, viewportHeight, offsetY } = messageListMetricsRef.current;
-    const targetOffset = Math.max(0, contentHeight - viewportHeight);
-    streamScrollPosition.stopAnimation();
-    if (immediate || Math.abs(targetOffset - offsetY) < 1) {
-      isAutoFollowingRef.current = false;
-      messageListMetricsRef.current.offsetY = targetOffset;
-      listRef.current?.scrollToOffset({ offset: targetOffset, animated: false });
-      return;
-    }
-
-    isAutoFollowingRef.current = true;
-    streamScrollPosition.setValue(offsetY);
-    const duration = Math.min(220, Math.max(110, Math.abs(targetOffset - offsetY) * 0.22));
-    Animated.timing(streamScrollPosition, {
-      toValue: targetOffset,
-      duration,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) {
-        isAutoFollowingRef.current = false;
-        shouldFollowStreamRef.current = true;
-        messageListMetricsRef.current.offsetY = targetOffset;
-      }
-    });
   }
 
   function scheduleInitialMessagePositioning() {
@@ -697,24 +700,26 @@ export default function ChatScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <ChatDrawer
-        visible={drawerOpen}
-        conversations={conversations}
-        activeConversationId={conversationId}
-        state={conversationState}
-        error={conversationError}
-        user={session?.user ?? null}
-        onClose={() => setDrawerOpen(false)}
-        onRetry={() => void refreshConversations(false)}
-        onNewChat={startNewConversation}
-        onSelectConversation={selectConversation}
-        onRenameConversation={handleRenameConversation}
-        onDeleteConversation={handleDeleteConversation}
-        onOpenKnowledge={() => router.push('/(app)/knowledge')}
-        onOpenProfile={() => router.push('/(app)/profile')}
-        onLogout={() => void handleLogout()}
-        busyConversationId={streaming ? conversationId : undefined}
-      />
+      {drawerOpen ? (
+        <ChatDrawer
+          visible
+          conversations={conversations}
+          activeConversationId={conversationId}
+          state={conversationState}
+          error={conversationError}
+          user={session?.user ?? null}
+          onClose={() => setDrawerOpen(false)}
+          onRetry={() => void refreshConversations(false)}
+          onNewChat={startNewConversation}
+          onSelectConversation={selectConversation}
+          onRenameConversation={handleRenameConversation}
+          onDeleteConversation={handleDeleteConversation}
+          onOpenKnowledge={() => router.push('/(app)/knowledge')}
+          onOpenProfile={() => router.push('/(app)/profile')}
+          onLogout={() => void handleLogout()}
+          busyConversationId={streaming ? conversationId : undefined}
+        />
+      ) : null}
     </>
   );
 }

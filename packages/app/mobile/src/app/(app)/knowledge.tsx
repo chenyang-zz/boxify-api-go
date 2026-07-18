@@ -60,7 +60,10 @@ export default function KnowledgeScreen() {
   }, [signOut]);
 
   useEffect(() => {
-    void load();
+    const loadTimer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(loadTimer);
   }, [load]);
 
   const handleSetDefault = useCallback(async (item: KnowledgeBase) => {
