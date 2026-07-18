@@ -1,65 +1,75 @@
 ---
 name: cove-ios-native-navigation
-description: Design, implement, refactor, and debug Cove page transitions with UIKit UINavigationController, independent UIViewControllers, and route-specific WKWebViews. Use when work involves native iOS page pushes or pops, login/register/chat/profile navigation, right-to-left transitions, interactive back gestures, authentication stack cleanup, Web-to-native navigation bridge messages, or a transition that looks like a React/CSS swap instead of a native iOS transition.
+description: Design, implement, refactor, and debug Cove native iOS page navigation. Use for the current Expo Router native Stack in mobile/ or, when explicitly requested, the legacy UIKit UINavigationController with route-specific WKWebViews. Covers login/register/chat/profile pushes and pops, interactive Back, screen lifecycle, authentication history cleanup, sheets, transition performance, preloading, and transitions that look like React or CSS swaps instead of native iOS navigation.
 ---
 
 # Cove iOS Native Navigation
 
-Implement navigation as an iOS controller stack while keeping React responsible for each page's content and API state. Treat a transition as native only when UIKit changes the visible `UIViewController`.
+Treat a transition as native only when the platform navigation stack changes the visible native screen. The current app uses Expo Router `Stack`; the old Wails app uses UIKit controllers and WKWebViews.
 
-## Establish the Exact Navigation Edge
+## Select the Architecture First
 
-Name the edge before changing code: login → register, register → login, login/register → chat, chat → profile, profile → chat, or logout → login. Do not validate one edge and claim another is fixed.
+- Use `mobile/` and Expo Router by default.
+- Use the UIKit/WKWebView bridge only when the request explicitly targets `frontend/`, `build/ios/`, Wails, or the legacy wrapper.
+- Never mix evidence between the two implementations.
 
-Read [references/architecture.md](references/architecture.md) before changing the bridge, controller lifecycle, authentication transition, or native build overlay.
+Name the exact edge before changing code: login → register, register → login, authentication → chat, chat → profile, profile → chat, or logout → login. Read [references/architecture.md](references/architecture.md) before modifying layouts, authentication guards, screen lifecycle, the legacy bridge, or native build integration.
 
-## Follow the Required Workflow
+## Required Workflow
 
-1. Read the repository `AGENTS.md` and obey its GitNexus rules. Run upstream impact analysis before editing every existing symbol. Warn before proceeding when risk is HIGH or CRITICAL.
-2. Inspect the current route entry, TypeScript action union, Objective-C handler, controller stack mutation, and generated-project overlay. Keep the bridge contract synchronized across TypeScript and Objective-C.
-3. Preserve the non-iOS fallback. When the native bridge is absent, keep the React navigation path functional.
-4. Give every native destination an independent `UIViewController` and `WKWebView`. Use `UINavigationController.pushViewController(_:animated:)` and pop APIs for the visible transition.
-5. Share `WKWebsiteDataStore.defaultDataStore` so route-specific WebViews can read the same `localStorage` session. Do not copy tokens through ad-hoc bridge payloads.
-6. Preload exactly one route-relevant destination when appropriate. Push destinations without protected state, such as registration, immediately. Do not mask a cold route with a generic full-screen spinner; fix its preload lifecycle. For authenticated chat, wait for the session handshake rather than pushing before required state is readable.
-7. Give every route-specific controller a native root surface using the same dynamic page color as the web app. Keep an unready WKWebView transparent until its React root reports readiness so WebKit's default white frame never appears during an immediate push.
-8. Remove authentication controllers from history after authenticated chat becomes visible. On logout, clear the session, return to the authentication root, and release the authenticated chat controller.
-9. Let UIKit own the back gesture. Disable interactive pop while a profile sheet is open or a save is in progress, then restore it when navigation is safe.
-10. Edit source-of-truth files only. Do not patch generated copies under `build/ios/xcode/wails-full-bleed`; update `build/ios/cove_navigation_ios.m` or the overlay installer that copies it.
-11. Run focused tests, the frontend production build, Go tests, and iOS build. Use the Air iOS Simulator by default and verify the exact transition with a screen recording.
+1. Read `AGENTS.md`. Run GitNexus upstream impact analysis before editing each existing symbol and warn before HIGH or CRITICAL changes.
+2. Identify the source screen, destination screen, owning layout/stack, state that must survive, and state that must be destroyed.
+3. Preserve the platform fallback only when that fallback is still in product scope.
+4. Make the smallest navigation-owner change; do not build a second router inside page components.
+5. Run focused tests, TypeScript checks, an Expo iOS export or native build, and Simulator validation.
+6. Record the exact edge and its Back path. Inspect intermediate frames, not only the destination screenshot.
 
-## Preserve These Invariants
+## Expo Router Rules
 
-- A React state change, CSS transform, history change, or route query change alone is not native navigation.
-- Each native page owns one React entry selected by `coveRoute`; the native controller owns the page stack.
-- Bridge messages are commands or readiness signals, not a second source of application state.
-- The authenticated chat page must confirm that shared session storage is readable before UIKit pushes it.
-- Login and registration must not remain reachable through Back after authentication succeeds.
-- Chat state should survive a chat → profile → chat round trip.
-- Profile Back closes an open sheet first; page-level pop remains locked until the sheet or save operation is complete.
-- Hidden WebViews must have a lifecycle reason. Release pages that are no longer reachable instead of accumulating one WebView per visit.
-- A cold destination may reveal its native page-color surface briefly, but it must never reveal WebKit's default white background or a generic loading overlay.
+- Define page navigation in the relevant Expo Router `Stack` under `mobile/src/app/**/_layout.tsx`. Expo Router, React Native Screens, and the native stack own transition animation and interactive Back.
+- Use `router.push()` for a forward page, `router.back()` for a pop, and `router.replace()` only when history must be removed, such as an authentication boundary.
+- Keep login, register, chat, and profile as independent route components. Do not imitate page navigation with conditional rendering, `Animated.View`, CSS transforms, or a modal overlay.
+- Keep local form state local. Login → register creates a registration screen; Back pops and destroys it. Re-entering registration must not restore old fields, validation errors, focus, or pending state.
+- Keep chat under profile in the native stack. Profile → Back reveals the same chat instance, preserving conversation, draft, scroll, and drawer state.
+- Let `AuthProvider` and `Stack.Protected` own anonymous/authenticated availability. After login or registration, protected-route changes must remove authentication screens from reachable Back history. Logout must make chat/profile unreachable immediately.
+- Close a page-owned sheet before popping its screen when product behavior requires that priority. Do not disable the native Back gesture globally to work around sheet logic.
+- Give root navigation, screen content, headers, splash, and sheets the same dynamic palette background. Native transition frames must not expose white or transparent gaps in dark mode.
+- Do not prewarm hidden React Native pages by mounting extra route copies. Native-stack creation is already lightweight. If a measured delay remains, optimize module evaluation, asset decoding, or destination data fetching; do not keep login, register, chat, and profile all mounted.
+- Prefetch code or route data only after profiling proves it useful, and only for the currently reachable destination. Prefetch must not retain popped form state.
 
-## Reject False Positives
+## Legacy UIKit/WKWebView Rules
 
-Do not accept any of the following as proof of native navigation:
+For an explicitly legacy task:
 
-- Objective-C symbols exist in the binary.
-- The destination page eventually appears.
-- A final screenshot looks correct.
-- A React test confirms a route changed.
-- A CSS animation resembles the iOS push curve.
+- Every native destination owns an independent `UIViewController` and `WKWebView`.
+- Use `UINavigationController.pushViewController(_:animated:)` and pop APIs for the visible transition.
+- Share `WKWebsiteDataStore.defaultDataStore` for the localStorage session; never copy tokens through bridge payloads.
+- Synchronize the TypeScript action union, Objective-C handler, route-specific React entry, readiness messages, tests, and architecture reference.
+- Preload at most one justified off-stack destination. Release unreachable registration and authenticated controllers at the lifecycle points documented in [references/architecture.md](references/architecture.md).
+- Give each controller a native root surface using the dynamic page color and keep an unready WKWebView transparent to prevent white first frames.
+- Edit source-of-truth files, not generated copies in `build/ios/xcode/wails-full-bleed`.
 
-Require runtime evidence showing intermediate UIKit transition frames, the expected source and destination controllers, and correct Back behavior.
+## Invariants
 
-## Validate on iOS
+- A React state change, query change, CSS transform, or final screenshot alone does not prove native navigation.
+- Authentication screens are not reachable after authentication; protected screens are not reachable after logout.
+- Popped registration state is destroyed. Chat state survives a profile round trip.
+- Page Back honors sheet/save locking without permanently breaking the interactive gesture.
+- No generic full-screen loading page hides a cold navigation bug.
+- No destination is kept alive without a documented lifecycle reason.
 
-Use the project `cove-ios-simulator-debugging` skill for build, launch, logs, screenshots, and recordings.
+## Acceptance Evidence
 
-1. Run its preflight and record the dirty worktree.
-2. Build/install/launch with its `ios_qa.sh dev` workflow.
-3. Record the exact user sequence, including the tap before the transition and the Back gesture after it.
-4. Inspect intermediate recording frames for the UIKit push/pop parallax, not only the resting destination.
-5. Verify light/dark backgrounds, safe areas, keyboard behavior, and horizontal locking on the same build.
-6. Confirm stack cleanup after authentication and logout, then check for generated Xcode noise.
+Use the project `ios-simulator` skill and select its React Native or legacy command path as appropriate.
 
-Never claim completion from cached browser content or a stale installed app. Confirm the installed bundle was rebuilt from the current source when the visual result appears unchanged.
+Require all of the following:
+
+1. The installed build comes from current source, not a cached browser or stale development client.
+2. A Simulator recording contains intermediate native right-to-left push and left-to-right pop frames.
+3. The native Back button/gesture works where allowed.
+4. Register → Back → register shows a fresh form.
+5. Chat → profile → Back restores the same chat state.
+6. Authentication and logout clean unreachable history.
+7. Light/dark backgrounds and safe areas remain continuous through the transition.
+
+Never claim completion merely because navigation symbols exist, a unit test changed a route, or the destination eventually appeared.

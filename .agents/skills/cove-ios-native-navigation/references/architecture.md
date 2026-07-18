@@ -1,192 +1,171 @@
 # Cove Native Navigation Architecture
 
-## Source of Truth
+## Current Architecture: Expo React Native
 
-Read these files together before changing the navigation protocol:
+Use this section by default. The active mobile product is the Expo React Native application under `mobile/`.
+
+### Source of truth
+
+| Responsibility | Source |
+| --- | --- |
+| Root native stack and authentication guards | `mobile/src/app/_layout.tsx` |
+| Restoration entry and redirect | `mobile/src/app/index.tsx` |
+| Anonymous stack | `mobile/src/app/(auth)/_layout.tsx` |
+| Login and registration screens | `mobile/src/app/(auth)/login.tsx`, `register.tsx` |
+| Authenticated stack | `mobile/src/app/(app)/_layout.tsx` |
+| Chat and profile screens | `mobile/src/app/(app)/chat.tsx`, `profile.tsx` |
+| Session state and auth actions | `mobile/src/providers/AuthProvider.tsx` |
+| Dynamic navigation colors | `mobile/src/theme/palette.ts` |
+
+### Ownership boundary
+
+Expo Router/native stack owns:
+
+- native route stack membership
+- right-to-left push and left-to-right pop animation
+- native header/Back behavior and interactive Back gesture
+- mounting a pushed screen and unmounting a popped screen
+- removing routes made unavailable by `Stack.Protected`
+
+Screen components own:
+
+- content, accessibility, API data, and local form state
+- drawers, alerts, and bottom sheets contained within the page
+- closing page-owned overlays before requesting page Back
+- restoring or intentionally refreshing page data on focus
+
+`AuthProvider` owns the session. It must not also retain screen-local form or navigation state.
+
+### Route map and lifecycle
+
+| Route | Role | Expected lifetime |
+| --- | --- | --- |
+| `/` | Session restoration and redirect | Temporary entry only |
+| `/(auth)/login` | Anonymous root | Present while anonymous |
+| `/(auth)/register` | Forward auth page | New instance on push; destroyed on pop |
+| `/(app)/chat` | Authenticated root | Preserved underneath profile |
+| `/(app)/profile` | Independent detail page | Pushed from chat; destroyed on pop |
+
+Use `router.push()` for login → register and chat → profile. Use `router.back()` for register/profile Back. Use `router.replace()` only when a history entry must be made unreachable. Root `Stack.Protected` guards are the primary authentication boundary.
+
+### Required sequences
+
+#### Login → Register → Back
+
+```text
+login calls router.push('/(auth)/register')
+  → native stack mounts a fresh register screen
+  → native push animation runs
+  → Back pops register
+  → register component unmounts and local form state is discarded
+  → the existing login screen is revealed
+```
+
+Do not keep registration fields, errors, focus, or request state in a provider or module singleton. Do not mount a hidden registration page as “preload.” If entry is slow, profile module evaluation, asset decoding, and data work first.
+
+#### Authentication → Chat
+
+```text
+login/register API establishes the secure session
+  → AuthProvider status becomes authenticated
+  → anonymous Stack.Protected branch becomes unavailable
+  → authenticated branch becomes available
+  → index/route redirect resolves to chat
+```
+
+After success, Back must not reveal login or registration. A loading/restoration screen may appear only while session status is genuinely unknown; it must not be used to hide transition latency.
+
+#### Chat → Profile → Back
+
+```text
+chat calls router.push('/(app)/profile')
+  → profile is pushed above chat
+  → chat remains mounted underneath
+  → profile closes an open sheet before page Back when required
+  → router.back() or native gesture pops profile
+  → the same chat instance is revealed
+```
+
+Chat draft, selected conversation, scroll position, and drawer state should survive the round trip unless product requirements explicitly reset them.
+
+#### Logout
+
+```text
+user confirms logout
+  → AuthProvider clears secure session
+  → status becomes anonymous
+  → authenticated Stack.Protected branch is removed
+  → login becomes the anonymous root
+```
+
+The native Back gesture must never reopen chat or profile after logout.
+
+### Performance and preloading
+
+React Native native-stack navigation does not require one prebuilt WebView per destination. Follow these rules:
+
+- Do not mount hidden route copies to “warm” every screen.
+- Do not preserve popped registration state in global stores.
+- Preserve only screens that remain in the native stack, such as chat underneath profile.
+- If a destination is slow, measure JavaScript module evaluation, synchronous render work, image decoding, and first data fetch independently.
+- Lazy-load or prefetch code/data only after measurement, and only for a destination reachable from the active screen.
+- Prefetching must not change navigation semantics or keep a popped form instance alive.
+
+### Native acceptance evidence
+
+Require a Simulator recording with intermediate push/pop frames, native Back behavior, and lifecycle checks:
+
+1. Login → register → Back → register starts with an empty new form.
+2. Chat → profile → Back preserves the same chat state.
+3. Login/register cannot be reached after authentication.
+4. Chat/profile cannot be reached after logout.
+5. Light/dark page colors remain continuous during the transition.
+
+A unit test or final screenshot is necessary but not sufficient proof of native navigation.
+
+## Legacy Architecture: Wails + UIKit + WKWebView
+
+Use this section only when the request explicitly targets the legacy application.
+
+### Legacy source of truth
 
 | Responsibility | Source |
 | --- | --- |
 | Typed Web → native actions and route detection | `frontend/src/app/nativeNavigation.ts` |
-| Default authentication entry and Web fallback | `frontend/src/app/App.tsx` |
+| Authentication entry and Web fallback | `frontend/src/app/App.tsx` |
 | Route-specific React entry selection | `frontend/src/main.tsx` |
 | Authenticated chat entry and session handshake | `frontend/src/app/NativeChatApp.tsx` |
 | Registration entry | `frontend/src/app/NativeRegisterApp.tsx` |
 | Profile entry and navigation lock | `frontend/src/app/NativeProfileApp.tsx` |
-| UIKit controller stack and WKScriptMessageHandler | `build/ios/cove_navigation_ios.m` |
+| UIKit stack and script-message handler | `build/ios/cove_navigation_ios.m` |
 | Generated Xcode integration | `build/ios/scripts/full_bleed_overlay.go` |
 
-Do not edit the copied overlay in `build/ios/xcode/wails-full-bleed`. Regeneration replaces it.
+Do not edit copied output in `build/ios/xcode/wails-full-bleed`; regeneration replaces it.
 
-## Ownership Boundary
+UIKit owns controller membership, push/pop animation, interactive Back, and controller/WebView allocation. React owns page content, form/API state, session persistence, sheet state, and the non-iOS fallback. Every route-specific WebView uses `WKWebsiteDataStore.defaultDataStore` so the session is shared without bridge token payloads.
 
-UIKit owns:
+### Legacy bridge protocol
 
-- `UINavigationController` stack membership
-- animated push and pop
-- interactive back gesture
-- controller/WebView allocation and release
-- forwarding native lifecycle events to a route-specific page
+Keep `NativeNavigationAction`, the Objective-C handler, senders, receivers, tests, and this table synchronized.
 
-React owns:
+| Action | Meaning |
+| --- | --- |
+| `prepareRegister` / `pushRegister` / `registerReady` / `popRegister` | Registration preload, push, readiness, and pop |
+| `prepareChat` / `chatReady` / `authCompleted` / `chatSessionReady` | Authenticated chat preparation and shared-session handshake |
+| `cove:native-chat-authenticated` | Native event asking chat to reread shared storage |
+| `pushProfile` / `profileReady` / `popProfile` | Profile preparation, readiness, and pop |
+| `cove:native-profile-activate` | Native event asking profile to refresh before display |
+| `profileNavigationLock` | Disable or enable interactive pop for sheets/saves |
+| `profileSessionChanged` | Notify other roots to reread session state |
+| `chatLogout` / `profileLogout` | Reset stack to authentication and release protected pages |
 
-- page content and accessibility
-- form state and validation
-- authentication/session persistence
-- sheet state and the signal that page navigation is temporarily locked
-- a Web fallback when `window.webkit.messageHandlers.coveNavigation` is absent
+### Legacy lifecycle rules
 
-The bridge connects the two owners. It must not become a duplicate router or a token store.
+- Registration may be preloaded while login is idle, but the popped controller must be released only after UIKit confirms the pop. Re-entering creates a fresh empty controller.
+- Authenticated chat waits until the shared session is readable before it becomes visible. After success, replace authentication history with chat.
+- Keep chat alive underneath profile. Release profile after pop and release all authenticated controllers on logout.
+- Keep at most the active controller, its reachable parent, and one justified off-stack preload.
+- Give every controller a dynamic native page-color surface and keep an unready WKWebView transparent so a cold push never flashes WebKit white.
+- Remove script handlers and delegates during teardown to avoid retain cycles.
 
-## Controller and Route Map
-
-| Native controller role | `coveRoute` | React root | Lifetime |
-| --- | --- | --- | --- |
-| Authentication root | none | `App` / `AuthScreen` | Root while anonymous |
-| Registration | `register` | `NativeRegisterApp` | Preload or create on demand; destroy after pop to login |
-| Authenticated chat | `chat` | `NativeChatApp` | Becomes the only stack root after authentication |
-| Profile | `profile` | `NativeProfileApp` | Push from chat; preserve chat underneath |
-
-The current Objective-C name `coveChatController` refers to the initial authentication controller. Do not infer behavior from that legacy name; inspect stack membership.
-
-Every route-specific `WKWebView` uses `WKWebsiteDataStore.defaultDataStore`. This is why the chat WebView can read the session written by the login or registration WebView.
-
-## Bridge Protocol
-
-Keep this table synchronized with `NativeNavigationAction` and `CoveNavigationMessageHandler`:
-
-| Action | Direction | Meaning |
-| --- | --- | --- |
-| `prepareRegister` | Web → native | Preload the registration controller |
-| `pushRegister` | Web → native | Push the fresh preloaded registration controller immediately |
-| `registerReady` | Web → native | Registration React root has mounted |
-| `popRegister` | Web → native | Pop registration to login |
-| `prepareChat` | Web → native | Preload authenticated chat |
-| `chatReady` | Web → native | Chat React root has mounted |
-| `authCompleted` | Web → native | Login or registration persisted a valid session |
-| `cove:native-chat-authenticated` | native → Web event | Tell preloaded chat to reread shared storage |
-| `chatSessionReady` | Web → native | Chat confirmed a stored session and can be shown |
-| `chatLogout` | Web → native | Reset to authentication and release chat |
-| `pushProfile` | Web → native | Prepare and push profile from chat |
-| `profileReady` | Web → native | Profile React root has mounted |
-| `cove:native-profile-activate` | native → Web event | Refresh profile state before a push |
-| `profileNavigationLock` | Web → native | Disable/enable interactive pop for sheets or saves |
-| `popProfile` | Web → native | Pop profile to chat |
-| `profileSessionChanged` | Web → native | Notify chat and auth roots to reread session state |
-| `profileLogout` | Web → native | Clear authenticated navigation and return to login |
-
-When adding an action, update the TypeScript union, its sender, the native message handler, the receiver, tests, and this table in the same change.
-
-## Required Sequences
-
-### Login or Registration to Chat
-
-```text
-authentication page writes localStorage session
-  → Web posts authCompleted
-  → native creates/preloads coveRoute=chat WebView
-  → chat posts chatReady after mounting
-  → native dispatches cove:native-chat-authenticated
-  → chat rereads shared localStorage
-  → chat posts chatSessionReady
-  → UINavigationController pushes chat animated
-  → didShow replaces the stack with [chat]
-```
-
-Do not push chat immediately after `authCompleted`. A newly created WebView can still be loading or may not yet see the state expected by its React root.
-
-### Login to Registration and Back
-
-```text
-login root posts prepareRegister during idle setup
-  → user selects Register
-  → Web posts pushRegister
-  → native pushes registration animated immediately
-  → registration posts registerReady after mounting
-  → UIKit Back gesture or popRegister returns to login
-  → didShow releases the old registration controller and WKWebView
-  → login preloads a new, empty registration controller
-```
-
-Do not gate the registration push on `registerReady`. Registration has no session dependency, so delaying UIKit until React mounts makes the tap appear unresponsive. Do not add a generic full-screen loading animation to compensate for a missing preload. Authenticated chat is different: it must still wait until shared session storage is confirmed.
-
-Destroy registration only after UIKit confirms that the pop completed. An interactive pop can be cancelled; releasing at gesture start or when `popRegister` is requested would leave the visible transition without its controller. Re-entering registration must create a fresh controller so form values, errors, focus, and pending request state do not survive.
-
-## Route-Aware Preloading
-
-Keep at most one off-stack destination preloaded:
-
-- While login is idle, preload registration only.
-- After registration pops, destroy the old controller and immediately preload a new empty registration controller while login is visible.
-- After a validated login or registration submission starts, release any off-stack registration preload and preload authenticated chat while the API request is in flight.
-- When authentication fails, release the chat preload. If login is visible, create a fresh registration preload; if registration is visible, keep the active registration controller.
-- After authentication succeeds, promote the prepared chat controller and remove authentication history.
-- Preload profile only after authenticated chat becomes visible; never preload it from the anonymous root WebView.
-- Release profile when logout returns the stack to authentication.
-- Never release a controller that is still in the navigation stack. A visible registration page and the login controller beneath it are reachable state, not off-stack preloads.
-
-This policy bounds speculative WebViews without sacrificing a fresh registration form or delaying chat initialization until after the network response.
-
-### Chat to Profile and Back
-
-```text
-chat posts pushProfile
-  → native creates/preloads profile
-  → profile posts profileReady
-  → native dispatches cove:native-profile-activate
-  → native pushes profile animated
-  → profile reports navigation lock while sheet/save is active
-  → pop or interactive Back returns to the still-mounted chat controller
-```
-
-### Logout
-
-```text
-Web clears the local session
-  → Web posts chatLogout or profileLogout
-  → native sets stack to [authentication root]
-  → native releases authenticated chat
-  → authentication root rereads session state
-```
-
-The user must never be able to swipe back into authenticated content after logout.
-
-## Performance and Lifecycle
-
-Multiple `WKWebView` instances trade memory for native transitions and state preservation. Apply these rules:
-
-- Keep chat alive while profile is visible so conversation state, draft, and scroll position survive Back.
-- Preload registration and authenticated chat only when the expected latency justifies their memory cost.
-- Avoid reloading a destination on every push; use explicit activation events to refresh mutable data.
-- Release authenticated chat on logout and discard unreachable controllers after stack cleanup.
-- Remove script message handlers and delegates during teardown to prevent retain cycles or callbacks into dead owners.
-- Prefer at most the active controller, its reachable parent, and one justified preloaded destination.
-- Back every independent WKWebView with a native root view using the same dynamic light/dark page color. Keep the WebView transparent until its React entry reports ready; this preserves an immediate UIKit push without exposing WebKit's default white first frame.
-
-If memory becomes a measured problem, optimize controller lifecycle before replacing native navigation with CSS animation.
-
-## Native Acceptance Evidence
-
-Require all of the following:
-
-1. Runtime logging or inspection confirms distinct source and destination `UIViewController` instances.
-2. A Simulator recording contains intermediate right-to-left push or left-to-right pop frames.
-3. The native interactive Back gesture works where allowed and is blocked while profile navigation is locked.
-4. Authentication completion removes login/registration from Back history.
-5. Logout removes authenticated chat/profile from history.
-6. The exact installed build is current; rebuild/reinstall when cache is suspected.
-
-A final screenshot proves layout only. It does not prove who performed the transition.
-
-## Regression Checklist
-
-- Login → chat uses UIKit push and cannot return to login with Back.
-- Register → chat uses the same authenticated handshake.
-- Login ↔ register uses native push/pop and preserves form semantics.
-- Returning from register destroys its controller; entering again shows a fresh form.
-- Chat → profile → chat preserves chat state.
-- Profile sheet closes before page pop and locks interactive Back while necessary.
-- Profile updates propagate to chat without rebuilding the entire navigation stack.
-- Logout returns to login and cannot swipe back into protected content.
-- Light/dark page colors remain continuous during intermediate transition frames.
-- Status bar, Home Indicator, keyboard, and horizontal overscroll remain correct.
-- Frontend tests/build, Go tests, iOS build, and Air Simulator recording all pass.
+Legacy acceptance still requires distinct controller instances, intermediate UIKit transition frames, correct interactive Back, authentication/logout stack cleanup, and verification that the installed bundle is current.
