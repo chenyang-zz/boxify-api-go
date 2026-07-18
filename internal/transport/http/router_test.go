@@ -1775,8 +1775,13 @@ func TestToolConfigRoutesListBuiltinToolsAndToggleFalse(t *testing.T) {
 	if err := json.Unmarshal(list.Body.Bytes(), &initial); err != nil {
 		t.Fatalf("unmarshal initial list body: %v", err)
 	}
-	if len(initial.Data.BuiltinTools) != 2 || !initial.Data.BuiltinTools[0].Enabled || !initial.Data.BuiltinTools[1].Enabled || len(initial.Data.MCPServers) != 0 {
-		t.Fatalf("initial data = %+v, want two default-enabled builtin tools and no MCP groups", initial.Data)
+	if len(initial.Data.BuiltinTools) != 4 || len(initial.Data.MCPServers) != 0 {
+		t.Fatalf("initial data = %+v, want four default-enabled builtin tools and no MCP groups", initial.Data)
+	}
+	for _, tool := range initial.Data.BuiltinTools {
+		if !tool.Enabled {
+			t.Fatalf("initial builtin tools = %+v, want all enabled", initial.Data.BuiltinTools)
+		}
 	}
 
 	toggle := httptest.NewRecorder()
@@ -1806,8 +1811,8 @@ func TestToolConfigRoutesListBuiltinToolsAndToggleFalse(t *testing.T) {
 	if err := json.Unmarshal(after.Body.Bytes(), &afterBody); err != nil {
 		t.Fatalf("unmarshal after list body: %v", err)
 	}
-	if len(afterBody.Data.BuiltinTools) != 2 || afterBody.Data.BuiltinTools[0].ToolKey != "current_time" || afterBody.Data.BuiltinTools[0].Enabled {
-		t.Fatalf("after tools = %+v, want current_time disabled", afterBody.Data.BuiltinTools)
+	if len(afterBody.Data.BuiltinTools) != 4 || afterBody.Data.BuiltinTools[0].ToolKey != "current_time" || afterBody.Data.BuiltinTools[0].Enabled {
+		t.Fatalf("after tools = %+v, want current_time disabled among four builtins", afterBody.Data.BuiltinTools)
 	}
 }
 

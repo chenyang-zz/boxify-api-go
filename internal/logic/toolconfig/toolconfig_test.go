@@ -25,12 +25,16 @@ func TestListToolConfigsUsesBuiltinCatalogAndDefaultsEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListToolConfigs error = %v, want nil", err)
 	}
-	if len(out.BuiltinTools) != 2 {
-		t.Fatalf("ListToolConfigs builtin len = %d, want 2", len(out.BuiltinTools))
+	if len(out.BuiltinTools) != 4 {
+		t.Fatalf("ListToolConfigs builtin len = %d, want 4", len(out.BuiltinTools))
 	}
-	keys := []string{out.BuiltinTools[0].ToolKey, out.BuiltinTools[1].ToolKey}
-	if !slices.Equal(keys, []string{"current_time", "knowledge_search"}) {
-		t.Fatalf("ListToolConfigs keys = %#v, want builtin catalog keys", keys)
+	keys := make([]string, 0, len(out.BuiltinTools))
+	for _, item := range out.BuiltinTools {
+		keys = append(keys, item.ToolKey)
+	}
+	wantKeys := []string{"current_time", "knowledge_search", "update_identity", "update_soul"}
+	if !slices.Equal(keys, wantKeys) {
+		t.Fatalf("ListToolConfigs keys = %#v, want %#v", keys, wantKeys)
 	}
 	for _, item := range out.BuiltinTools {
 		if !item.Enabled || item.ToolType != builtinToolType || item.Name == "" || item.Description == "" || item.Icon == "" {

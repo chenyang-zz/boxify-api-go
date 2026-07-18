@@ -18,6 +18,10 @@ const (
 	ToolCurrentTime = builtin.ToolCurrentTime
 	// ToolKnowledgeSearch 是知识库检索工具名称。
 	ToolKnowledgeSearch = builtin.ToolKnowledgeSearch
+	// ToolUpdateSoul 是更新生效角色 Soul 的工具名称。
+	ToolUpdateSoul = builtin.ToolUpdateSoul
+	// ToolUpdateIdentity 是更新生效角色 Identity 的工具名称。
+	ToolUpdateIdentity = builtin.ToolUpdateIdentity
 )
 
 // NewCatalog 创建并返回领域层本地工具目录。
@@ -33,7 +37,11 @@ func NewCatalog(svcCtx *svc.ServiceContext, opts ...builtin.Option) (*coretool.C
 		Name:        ToolSetSystem,
 		Description: "提供运行上下文相关的基础系统工具。",
 		Tags:        []string{"system"},
-	}, builtin.NewCurrentTimeTool(opts...))
+	},
+		builtin.NewCurrentTimeTool(opts...),
+		builtin.NewUpdateSoulTool(svcCtx),
+		builtin.NewUpdateIdentityTool(svcCtx),
+	)
 	if err := catalog.RegisterSet(context.Background(), systemSet); err != nil {
 		return nil, fmt.Errorf("register system tool set: %w", err)
 	}

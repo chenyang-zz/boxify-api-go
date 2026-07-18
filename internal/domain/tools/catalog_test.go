@@ -91,6 +91,25 @@ func TestNewCatalogBuildRegistryInvokesKnowledgeSearch(t *testing.T) {
 	}
 }
 
+// 验证 NewCatalog 的 system 工具集包含 update_soul 与 update_identity。
+func TestNewCatalogRegistersPersonaUpdateTools(t *testing.T) {
+	catalog, err := NewCatalog(&svc.ServiceContext{})
+	if err != nil {
+		t.Fatalf("NewCatalog() error = %v, want nil", err)
+	}
+	registry, err := catalog.BuildRegistry(context.Background(), coretool.Selection{
+		ToolNames: []string{ToolUpdateSoul, ToolUpdateIdentity},
+	})
+	if err != nil {
+		t.Fatalf("Catalog.BuildRegistry(persona tools) error = %v, want nil", err)
+	}
+	for _, name := range []string{ToolUpdateSoul, ToolUpdateIdentity} {
+		if _, ok := registry.Lookup(name); !ok {
+			t.Fatalf("Registry.Lookup(%s) ok = false, want true", name)
+		}
+	}
+}
+
 func mustParseTime(t *testing.T, value string) time.Time {
 	t.Helper()
 	parsed, err := time.Parse(time.RFC3339, value)
