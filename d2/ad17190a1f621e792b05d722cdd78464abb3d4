@@ -1,0 +1,21 @@
+packages/server/internal/logic/auth/auth_test.go
+  s_1b5b88f9601d9b::t_8a227cd05787d6 301-370
+packages/server/internal/logic/auth/password.go
+  s_1b5b88f9601d9b::t_0990835bd35b13 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d2ad17190a1f621e792b05d722cdd78464abb3d4",
+  "prompts": {},
+  "sessions": {
+    "s_1b5b88f9601d9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_1b5b88f9601d9b",
+        "model": "unknown"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
