@@ -33,7 +33,7 @@ func (l *PasswordLogic) Password(userID uuid.UUID, input *request.PasswordReques
 	}
 
 	if !security.CheckPassword(user.PasswordHash, input.OldPassword) {
-		return xerr.Wrapf(err, "原密码错误")
+		return xerr.BadRequest("原密码错误")
 	}
 
 	if input.OldPassword == input.NewPassword {

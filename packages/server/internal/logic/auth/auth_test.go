@@ -298,6 +298,76 @@ func TestMeLogicRequiresUserIDInContext(t *testing.T) {
 	}
 }
 
+// TestPasswordLogicRejectsInvalidCurrentAndReusedPasswords 验证修改密码会拒绝错误原密码和与原密码相同的新密码，并保持原哈希不变。
+func TestPasswordLogicRejectsInvalidCurrentAndReusedPasswords(t *testing.T) {
+	tests := []struct {
+		name        string
+		oldPassword string
+		newPassword string
+		wantMessage string
+	}{
+		{name: "incorrect current password", oldPassword: "wrong-secret", newPassword: "new-secret", wantMessage: "原密码错误"},
+		{name: "reused current password", oldPassword: "old-secret", newPassword: "old-secret", wantMessage: "原密码与新密码不能相同"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			users := newFakeUserRepository()
+			userID := uuid.New()
+			passwordHash, err := security.HashPassword("old-secret")
+			if err != nil {
+				t.Fatalf("HashPassword error = %v", err)
+			}
+			user := &models.User{ID: userID, Username: "alice", PasswordHash: passwordHash}
+			users.byID[userID] = user
+			users.byLogin[user.Username] = user
+
+			err = auth.NewPasswordLogic(t.Context(), &svc.ServiceContext{UserRepo: users}).Password(userID, &request.PasswordRequest{
+				OldPassword: tt.oldPassword,
+				NewPassword: tt.newPassword,
+			})
+			if err == nil {
+				t.Fatal("Password error = nil, want rejection")
+			}
+			appErr := xerr.From(err)
+			if appErr.Kind != xerr.KindBadRequest || appErr.SafeMessage != tt.wantMessage {
+				t.Fatalf("Password error = kind %s message %q, want bad_request %q", appErr.Kind, appErr.SafeMessage, tt.wantMessage)
+			}
+			if users.byID[userID].PasswordHash != passwordHash {
+				t.Fatal("Password rejection changed the stored hash")
+			}
+		})
+	}
+}
+
+// TestPasswordLogicPersistsNewPasswordHash 验证正确原密码会生成并保存仅匹配新密码的新哈希。
+func TestPasswordLogicPersistsNewPasswordHash(t *testing.T) {
+	users := newFakeUserRepository()
+	userID := uuid.New()
+	passwordHash, err := security.HashPassword("old-secret")
+	if err != nil {
+		t.Fatalf("HashPassword error = %v", err)
+	}
+	user := &models.User{ID: userID, Username: "alice", PasswordHash: passwordHash}
+	users.byID[userID] = user
+	users.byLogin[user.Username] = user
+
+	err = auth.NewPasswordLogic(t.Context(), &svc.ServiceContext{UserRepo: users}).Password(userID, &request.PasswordRequest{
+		OldPassword: "old-secret",
+		NewPassword: "new-secret",
+	})
+	if err != nil {
+		t.Fatalf("Password error = %v", err)
+	}
+	updatedHash := users.byID[userID].PasswordHash
+	if updatedHash == passwordHash || !security.CheckPassword(updatedHash, "new-secret") {
+		t.Fatal("Password did not persist a hash matching the new password")
+	}
+	if security.CheckPassword(updatedHash, "old-secret") {
+		t.Fatal("Password hash still matches the old password")
+	}
+}
+
 func TestUpdateAvatarStoresFileAndUpdatesUser(t *testing.T) {
 	// 验证上传头像会读取文件内容、写入对象存储，并把用户 avatar 更新为存储 key。
 	users := newFakeUserRepository()
