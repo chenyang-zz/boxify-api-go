@@ -1,0 +1,40 @@
+packages/server/integration/fakeopenai/main.go
+  s_e3078b7a7a7582::t_72442faf5788db 4,27-31,73,77-150
+  s_e3078b7a7a7582::t_fc9d0e978ff99d 151
+e2e/README.md
+  s_e3078b7a7a7582::t_fff8cec3b3c4d5 29,63,179
+  s_e3078b7a7a7582::t_e45b35befd4c4d 100,108-109,125,164,173,182
+packages/server/integration/fakeopenai/main_test.go
+  s_e3078b7a7a7582::t_72442faf5788db 63-149
+  s_e3078b7a7a7582::t_c262bd64daefc9 7
+packages/server/integration/realdb/testdata/harmless.md
+  s_e3078b7a7a7582::t_fff8cec3b3c4d5 1-3
+e2e/REAL_DATABASE_COVERAGE.md
+  s_e3078b7a7a7582::t_4ef622a524327e 13,96
+  s_e3078b7a7a7582::t_fff8cec3b3c4d5 84-86
+packages/server/integration/realdb/document_upload_test.go
+  s_e3078b7a7a7582::t_fff8cec3b3c4d5 12,132-136
+  s_e3078b7a7a7582::t_2c9c465c389cf6 1-11,13-131,137-168,170-283,324-353
+  s_e3078b7a7a7582::t_c4ea90d9c8c68c 169,284-323
+e2e/scripts/e2e.sh
+  s_e3078b7a7a7582::t_e59199eea30f33 44
+  s_e3078b7a7a7582::t_e45b35befd4c4d 221
+  s_e3078b7a7a7582::t_f963f5ef8d60f0 15,166-190,210,216,228,250,268-271
+  s_e3078b7a7a7582::t_3ba25c635fa976 272-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bce09c86a28b574a30d64306ed9e0b514ae1847c",
+  "prompts": {},
+  "sessions": {
+    "s_e3078b7a7a7582": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4fa9-f0d2-7b33-b7bc-bf22f65eeb0a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "chenyang <904852749@qq.com>"
+    }
+  }
+}
