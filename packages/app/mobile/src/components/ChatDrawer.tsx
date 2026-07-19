@@ -231,6 +231,7 @@ export function ChatDrawer({
                 <Text style={[styles.brandName, { color: palette.text }]}>Cove</Text>
               </View>
               <Pressable
+                testID="chat-drawer-close"
                 accessibilityRole="button"
                 accessibilityLabel="关闭会话列表"
                 hitSlop={6}
@@ -241,6 +242,7 @@ export function ChatDrawer({
             </View>
 
             <Pressable
+              testID="chat-new-conversation"
               accessibilityRole="button"
               onPress={() => close(onNewChat)}
               style={({ pressed }) => [
@@ -294,6 +296,7 @@ export function ChatDrawer({
             ) : (
               <View style={styles.conversationListFrame}>
                 <Animated.FlatList
+                  testID="chat-conversation-list"
                   style={styles.conversationList}
                   data={conversations}
                   keyExtractor={(item) => item.id}
@@ -333,6 +336,7 @@ export function ChatDrawer({
                           active && { backgroundColor: palette.surfaceMuted },
                         ]}>
                         <Pressable
+                          testID="chat-conversation-item"
                           accessibilityRole="button"
                           accessibilityLabel={`打开会话：${item.title || '新对话'}`}
                           accessibilityState={{ selected: active }}

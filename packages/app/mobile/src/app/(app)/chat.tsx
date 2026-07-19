@@ -514,6 +514,7 @@ export default function ChatScreen() {
           style={styles.flex}>
           <View style={[styles.header, { borderBottomColor: palette.border }]}>
             <Pressable
+              testID="chat-drawer-open"
               accessibilityRole="button"
               accessibilityLabel="打开会话列表"
               hitSlop={6}
@@ -531,10 +532,10 @@ export default function ChatScreen() {
               </View>
             </Pressable>
             <View pointerEvents="none" style={styles.headerTitle}>
-              <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
+              <Text testID="chat-conversation-title" numberOfLines={1} style={[styles.title, { color: palette.text }]}>
                 {activeConversation?.title || '新对话'}
               </Text>
-              <Text style={[styles.subtitle, { color: palette.textMuted }]}>
+              <Text testID="chat-streaming-status" style={[styles.subtitle, { color: palette.textMuted }]}>
                 {streaming ? 'Cove 正在回复' : 'Cove A'}
               </Text>
             </View>
@@ -556,6 +557,7 @@ export default function ChatScreen() {
           </View>
 
           <FlatList
+            testID="chat-message-list"
             ref={listRef}
             data={messages}
             keyExtractor={(item) => item.id}
@@ -605,14 +607,14 @@ export default function ChatScreen() {
             renderItem={({ item }) => item.role === 'assistant' ? (
               <AssistantMessage message={item} streaming={streaming} />
             ) : (
-              <View style={[styles.userMessage, { backgroundColor: palette.surfaceMuted }]}>
+              <View testID="chat-user-message" style={[styles.userMessage, { backgroundColor: palette.surfaceMuted }]}>
                 <Text style={[styles.userMessageText, { color: palette.text }]}>{item.content}</Text>
               </View>
             )}
           />
 
           {error && messageState !== 'error' ? (
-            <Text style={[styles.error, { color: palette.danger, backgroundColor: palette.dangerSurface }]}>
+            <Text testID="chat-stream-error" style={[styles.error, { color: palette.danger, backgroundColor: palette.dangerSurface }]}>
               {error}
             </Text>
           ) : null}
@@ -628,6 +630,7 @@ export default function ChatScreen() {
                 },
               ]}>
               <TextInput
+                testID="chat-message-input"
                 value={draft}
                 onChangeText={setDraft}
                 editable={!streaming && messageState !== 'loading'}
@@ -649,6 +652,7 @@ export default function ChatScreen() {
                     />
                   </View>
                   <Pressable
+                    testID="chat-knowledge-toggle"
                     accessibilityRole="button"
                     accessibilityLabel="知识库"
                     accessibilityState={{ selected: enableKnowledge, disabled: streaming }}
@@ -675,6 +679,7 @@ export default function ChatScreen() {
                   </View>
                 </View>
                 <Pressable
+                  testID="chat-message-send"
                   accessibilityRole="button"
                   accessibilityLabel={streaming ? '停止回复' : '发送消息'}
                   disabled={!streaming && (!draft.trim() || messageState === 'loading')}

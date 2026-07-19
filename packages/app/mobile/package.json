@@ -42,7 +42,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e:ios:profile-password": "bash e2e/maestro/run-profile-password.sh",
+    "e2e:ios:chat-persistence": "bash e2e/maestro/run-chat-persistence.sh",
+    "e2e:ios:native-lifecycle": "bash e2e/maestro/run-native-lifecycle.sh"
   },
   "private": true
 }

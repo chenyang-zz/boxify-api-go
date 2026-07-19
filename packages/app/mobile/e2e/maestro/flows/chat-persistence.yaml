@@ -1,0 +1,93 @@
+appId: io.github.chenyangzz.cove.mobile
+name: Persistent chat and SSE lifecycle
+tags:
+  - ios
+  - local-real-db
+  - chat-sse
+---
+- clearKeychain
+- launchApp:
+    clearState: true
+- openLink: ${MAESTRO_EXPO_DEV_CLIENT_URL}
+- extendedWaitUntil:
+    visible: Continue
+    timeout: 10000
+- tapOn:
+    text: Continue
+    label: Dismiss the Expo development-client first-run guide
+- waitForAnimationToEnd
+- tapOn:
+    text: Close
+    optional: true
+    label: Close the Expo development menu after its first-run guide
+- assertVisible:
+    id: auth-login-action
+
+# Authenticate with a run-owned fixture and remain on the real App chat route.
+- tapOn:
+    id: auth-login-input
+- inputText: ${MAESTRO_E2E_USERNAME}
+- tapOn:
+    id: auth-password-input
+- inputText: ${MAESTRO_E2E_PASSWORD}
+- tapOn:
+    id: auth-login-action
+- tapOn:
+    text: 以后
+    optional: true
+    label: Dismiss the iOS password-save prompt when it appears
+- tapOn:
+    text: Not Now
+    optional: true
+    label: Dismiss the English iOS password-save prompt when it appears
+- extendedWaitUntil:
+    visible:
+      id: chat-message-input
+    timeout: 10000
+
+# Disable knowledge retrieval so only the deterministic provider participates.
+- tapOn:
+    id: chat-knowledge-toggle
+- tapOn:
+    id: chat-message-input
+- inputText: ${MAESTRO_E2E_CHAT_PROMPT}
+- tapOn:
+    id: chat-message-send
+- assertVisible:
+    id: chat-streaming-status
+    text: Cove 正在回复
+- extendedWaitUntil:
+    visible: ${MAESTRO_E2E_CHAT_ANSWER}
+    timeout: 15000
+- assertVisible: ${MAESTRO_E2E_CHAT_PROMPT}
+- assertVisible:
+    id: chat-conversation-title
+    text: ${MAESTRO_E2E_CHAT_PROMPT}
+- takeScreenshot: 01-chat-stream-complete
+
+# Terminate and relaunch the native process, then prove history hydrates from PostgreSQL.
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: chat-message-input
+    timeout: 15000
+- extendedWaitUntil:
+    visible: ${MAESTRO_E2E_CHAT_ANSWER}
+    timeout: 10000
+- assertVisible: ${MAESTRO_E2E_CHAT_PROMPT}
+- assertVisible:
+    id: chat-conversation-title
+    text: ${MAESTRO_E2E_CHAT_PROMPT}
+- takeScreenshot: 02-chat-restored-after-relaunch
+
+# The restored conversation must also be discoverable through the App drawer.
+- tapOn:
+    id: chat-drawer-open
+- extendedWaitUntil:
+    visible:
+      id: chat-conversation-item
+      text: .*${MAESTRO_E2E_CHAT_PROMPT}.*
+    timeout: 10000
+- takeScreenshot: 03-chat-listed-in-drawer

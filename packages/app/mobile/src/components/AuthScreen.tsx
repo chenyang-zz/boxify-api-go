@@ -129,7 +129,11 @@ export function AuthScreen({ mode }: { mode: Mode }) {
             </View>
 
             {formError ? (
-              <View style={[styles.alert, { backgroundColor: palette.dangerSurface }]}>
+              <View
+                accessibilityLabel={formError}
+                accessibilityRole="alert"
+                testID="auth-form-error"
+                style={[styles.alert, { backgroundColor: palette.dangerSurface }]}>
                 <Text style={[styles.alertText, { color: palette.danger }]}>{formError}</Text>
               </View>
             ) : null}
@@ -140,6 +144,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                   ref={(node) => {
                     refs.current.login = node;
                   }}
+                  accessibilityLabel="用户名或邮箱"
+                  testID="auth-login-input"
                   label="用户名或邮箱"
                   value={loginValue}
                   error={errors.login}
@@ -156,6 +162,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                     ref={(node) => {
                       refs.current.username = node;
                     }}
+                    accessibilityLabel="用户名"
+                    testID="auth-username-input"
                     label="用户名"
                     value={username}
                     error={errors.username}
@@ -170,6 +178,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                     ref={(node) => {
                       refs.current.email = node;
                     }}
+                    accessibilityLabel="邮箱"
+                    testID="auth-email-input"
                     label="邮箱"
                     optional="可选"
                     value={email}
@@ -188,6 +198,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                 ref={(node) => {
                   refs.current.password = node;
                 }}
+                accessibilityLabel="密码"
+                testID="auth-password-input"
                 label="密码"
                 value={password}
                 error={errors.password}
@@ -203,6 +215,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
                   ref={(node) => {
                     refs.current.confirmPassword = node;
                   }}
+                  accessibilityLabel="确认密码"
+                  testID="auth-confirm-password-input"
                   label="确认密码"
                   value={confirmPassword}
                   error={errors.confirmPassword}
@@ -218,6 +232,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
 
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={isLogin ? '登录' : '创建账号'}
+              testID={isLogin ? 'auth-login-action' : 'auth-register-action'}
               disabled={submitting}
               onPress={() => void submit()}
               style={({ pressed }) => [
@@ -232,6 +248,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
 
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={isLogin ? '前往创建账号' : '返回登录'}
+              testID={isLogin ? 'auth-register-navigation' : 'auth-login-navigation'}
               hitSlop={8}
               onPress={
                 isLogin ? () => router.push('/(auth)/register') : () => router.back()

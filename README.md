@@ -89,11 +89,15 @@ make app-frontend-test      # Web 端测试
 make app-mobile-lint        # 移动端 lint
 make app-mobile-typecheck   # 移动端类型检查
 make app-mobile-test        # 移动端测试
+make app-mobile-e2e-profile-password # iOS App 资料/密码本地真实数据库 E2E
+make app-mobile-e2e-chat-persistence # iOS App Chat/SSE 与重启恢复本地 E2E
+make app-mobile-e2e-native-lifecycle # iOS App 导航、键盘、Sheet 与 SecureStore 生命周期 E2E
 
 # --- 真实依赖 / E2E ---
 make server-db-smoke        # 后端真实数据库冒烟（PostgreSQL + Redis + ES）
 make e2e-smoke              # 辅助 React/Vite 浏览器冒烟
 make e2e-up                 # 启动可丢弃本地依赖栈
+make e2e-app-backend        # 启动 App E2E 的真实 API、依赖与确定性 LLM
 make e2e-down               # 清理本地依赖栈
 ```
 
@@ -139,9 +143,9 @@ Web 端位于 `packages/app/frontend/`：
 
 Cove 强调基于真实依赖的端到端验证，不使用 mock 数据库或 `httptest` 充当完成证明：
 
-- **后端真实数据库冒烟**：`make server-db-smoke` 在 OrbStack 中启动 PostgreSQL、Redis、Elasticsearch，运行真实迁移与 API，验证会话/消息持久化、跨用户隔离、密码轮换
+- **后端真实数据库冒烟**：`make server-db-smoke` 在 OrbStack 中启动 PostgreSQL、Redis、Elasticsearch 与本地确定性 OpenAI-compatible provider，运行真实迁移与 API，验证 Chat/SSE 生成落库、会话/消息持久化、跨用户隔离、密码轮换
 - **辅助浏览器冒烟**：`make e2e-smoke` 通过 Playwright 验证 React/Vite 端会话持久化与 Token 刷新
-- **原生 App 验证**：通过 iOS Simulator + Computer Use 完成，遵循 `.agents/skills/ios-simulator/SKILL.md`，并由 `e2e/REAL_DATABASE_COVERAGE.md` 记录增量覆盖
+- **原生 App 验证**：遵循 `.agents/skills/ios-simulator/SKILL.md`，探索性流程使用 Computer Use；已纳入回归的资料/密码、Chat/SSE 重启恢复以及导航/键盘/Sheet/SecureStore 生命周期流程使用 `packages/app/mobile/e2e/maestro/`，并由 `e2e/REAL_DATABASE_COVERAGE.md` 记录增量覆盖
 
 E2E 环境始终使用独立的 Compose project、空闲本地端口与合成用户，默认端口 PostgreSQL `55432`、Redis `56379`、Elasticsearch `59200`，可通过 `E2E_*_PORT` 覆盖。
 

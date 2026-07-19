@@ -1,0 +1,152 @@
+appId: io.github.chenyangzz.cove.mobile
+name: Navigation and native lifecycle
+tags:
+  - ios
+  - local-real-db
+  - native-lifecycle
+---
+- clearKeychain
+- launchApp:
+    clearState: true
+- openLink: ${MAESTRO_EXPO_DEV_CLIENT_URL}
+- extendedWaitUntil:
+    visible: (Continue|登录)
+    timeout: 60000
+- tapOn:
+    text: Continue
+    optional: true
+    label: Dismiss the Expo development-client first-run guide
+- waitForAnimationToEnd
+- tapOn:
+    text: Close
+    optional: true
+    label: Close the Expo development menu after its first-run guide
+- extendedWaitUntil:
+    visible:
+      id: auth-login-action
+    timeout: 20000
+
+# Protected routes must not render authenticated screens for an anonymous session.
+- openLink: cove-mobile://profile
+- assertVisible:
+    id: auth-login-action
+- assertNotVisible:
+    id: profile-display-name
+- takeScreenshot: 01-protected-route-rejected
+
+# Authenticate through the App and arrive at the protected chat stack.
+- tapOn:
+    id: auth-login-input
+- inputText: ${MAESTRO_E2E_USERNAME}
+- tapOn:
+    id: auth-password-input
+- inputText: ${MAESTRO_E2E_PASSWORD}
+- tapOn:
+    id: auth-login-action
+- tapOn:
+    text: 以后
+    optional: true
+    label: Dismiss the iOS password-save prompt when it appears
+- tapOn:
+    text: Not Now
+    optional: true
+    label: Dismiss the English iOS password-save prompt when it appears
+- extendedWaitUntil:
+    visible:
+      id: chat-message-input
+    timeout: 20000
+- assertNotVisible:
+    id: auth-login-action
+- takeScreenshot: 02-login-complete
+
+# Keep a local chat draft while the keyboard is active, then navigate through the drawer.
+- tapOn:
+    id: chat-message-input
+- inputText: ${MAESTRO_E2E_CHAT_DRAFT}
+- assertVisible:
+    id: chat-message-input
+    text: ${MAESTRO_E2E_CHAT_DRAFT}
+- takeScreenshot: 03-chat-keyboard-draft
+- tapOn:
+    id: chat-drawer-open
+- assertVisible:
+    id: chat-drawer-close
+- tapOn:
+    text: 打开知识库
+- extendedWaitUntil:
+    visible:
+      text: 默认知识库
+    timeout: 20000
+- assertVisible: 共 1 个
+- takeScreenshot: 04-knowledge-native-screen
+
+# Exercise the native interactive-pop gesture and prove the chat screen stayed mounted.
+- swipe:
+    start: 1%, 50%
+    end: 92%, 50%
+    duration: 650
+- extendedWaitUntil:
+    visible:
+      id: chat-message-input
+    timeout: 10000
+- assertVisible:
+    id: chat-message-input
+    text: ${MAESTRO_E2E_CHAT_DRAFT}
+- takeScreenshot: 05-back-gesture-preserved-draft
+
+# Open the profile sheet, use its keyboard, and cancel an unsaved edit.
+- tapOn:
+    id: chat-drawer-open
+- tapOn:
+    text: 打开个人信息
+- extendedWaitUntil:
+    visible:
+      id: profile-display-name
+    timeout: 10000
+- assertVisible:
+    id: profile-display-name
+    text: ${MAESTRO_E2E_USERNAME}
+- tapOn:
+    id: profile-nickname-edit
+- assertVisible:
+    id: profile-save-action
+- tapOn:
+    id: profile-nickname-input
+- inputText: ${MAESTRO_E2E_UNSAVED_NICKNAME}
+- takeScreenshot: 06-profile-sheet-keyboard
+- tapOn:
+    id: profile-cancel-action
+- assertNotVisible:
+    id: profile-save-action
+- assertVisible:
+    id: profile-display-name
+    text: ${MAESTRO_E2E_USERNAME}
+- assertNotVisible:
+    text: ${MAESTRO_E2E_UNSAVED_NICKNAME}
+
+# Return to chat, restart the process, and restore only durable session state.
+- tapOn:
+    text: 返回
+- assertVisible:
+    id: chat-message-input
+    text: ${MAESTRO_E2E_CHAT_DRAFT}
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: chat-message-input
+    timeout: 20000
+- assertNotVisible:
+    id: auth-login-action
+- assertNotVisible:
+    text: ${MAESTRO_E2E_CHAT_DRAFT}
+- tapOn:
+    id: chat-drawer-open
+- tapOn:
+    text: 打开个人信息
+- assertVisible:
+    id: profile-display-name
+    text: ${MAESTRO_E2E_USERNAME}
+- assertNotVisible:
+    text: ${MAESTRO_E2E_UNSAVED_NICKNAME}
+- takeScreenshot: 07-secure-session-restored

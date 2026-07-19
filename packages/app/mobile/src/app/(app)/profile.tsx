@@ -63,7 +63,7 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}>
         <View style={styles.hero}>
           <View style={styles.heroText}>
-            <Text numberOfLines={1} style={[styles.name, { color: palette.text }]}>{displayName}</Text>
+            <Text testID="profile-display-name" numberOfLines={1} style={[styles.name, { color: palette.text }]}>{displayName}</Text>
             <Text numberOfLines={1} style={[styles.username, { color: palette.textMuted }]}>@{user?.username}</Text>
           </View>
           <View style={[styles.avatar, { backgroundColor: palette.accent }]}>
@@ -74,18 +74,20 @@ export default function ProfileScreen() {
         </View>
 
         <ProfileSection title="基本信息" palette={palette}>
-          <ProfileRow label="昵称" value={displayName} palette={palette} onPress={() => setSheet('profile')} />
+          <ProfileRow testID="profile-nickname-edit" label="昵称" value={displayName} palette={palette} onPress={() => setSheet('profile')} />
           <ProfileRow label="用户名" value={`@${user?.username ?? ''}`} palette={palette} />
-          <ProfileRow label="邮箱" value={user?.email?.trim() || '未设置'} palette={palette} onPress={() => setSheet('profile')} />
+          <ProfileRow testID="profile-email-edit" label="邮箱" value={user?.email?.trim() || '未设置'} palette={palette} onPress={() => setSheet('profile')} />
         </ProfileSection>
 
         <ProfileSection title="账户" palette={palette} account>
-          <ProfileRow label="密码" value="修改密码" palette={palette} onPress={() => setSheet('password')} />
+          <ProfileRow testID="profile-password-edit" label="密码" value="修改密码" palette={palette} onPress={() => setSheet('password')} />
           <ProfileRow label="登录设备" value="暂未接入" palette={palette} />
         </ProfileSection>
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="退出登录"
+          testID="profile-logout-action"
           onPress={() => void handleLogout()}
           style={({ pressed }) => [
             styles.logout,
@@ -136,11 +138,13 @@ function ProfileRow({
   value,
   palette,
   onPress,
+  testID,
 }: {
   label: string;
   value: string;
   palette: Palette;
   onPress?: () => void;
+  testID?: string;
 }) {
   const content = (
     <>
@@ -154,7 +158,12 @@ function ProfileRow({
 
   if (onPress) {
     return (
-      <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}，${value}`}
+        testID={testID}
+        onPress={onPress}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
         {content}
       </Pressable>
     );
@@ -308,29 +317,50 @@ function ProfileSheet({
           ]}>
           <View style={[styles.grabber, { backgroundColor: palette.borderStrong }]} />
           <View style={styles.sheetHeader}>
-            <Pressable disabled={submitting} hitSlop={8} onPress={close} style={({ pressed }) => pressed && styles.pressed}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="取消"
+              testID={mode === 'profile' ? 'profile-cancel-action' : 'password-cancel-action'}
+              disabled={submitting}
+              hitSlop={8}
+              onPress={close}
+              style={({ pressed }) => pressed && styles.pressed}>
               <Text style={[styles.sheetAction, { color: palette.accent }]}>取消</Text>
             </Pressable>
             <Text style={[styles.sheetTitle, { color: palette.text }]}>{mode === 'profile' ? '编辑个人信息' : '修改密码'}</Text>
-            <Pressable disabled={submitting} hitSlop={8} onPress={() => void submit()} style={({ pressed }) => pressed && styles.pressed}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="保存"
+              testID={mode === 'profile' ? 'profile-save-action' : 'password-save-action'}
+              disabled={submitting}
+              hitSlop={8}
+              onPress={() => void submit()}
+              style={({ pressed }) => pressed && styles.pressed}>
               <Text style={[styles.sheetAction, styles.saveAction, { color: palette.accent }]}>{submitting ? '保存中' : '保存'}</Text>
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetForm}>
             {mode === 'profile' ? (
               <>
-                <SheetField label="昵称" value={nickname} onChangeText={setNickname} error={profileErrors.nickname} palette={palette} autoComplete="nickname" maxLength={64} />
-                <SheetField label="邮箱" value={email} onChangeText={setEmail} error={profileErrors.email} palette={palette} autoCapitalize="none" autoComplete="email" keyboardType="email-address" maxLength={255} placeholder="未设置" />
+                <SheetField accessibilityLabel="昵称" testID="profile-nickname-input" label="昵称" value={nickname} onChangeText={setNickname} error={profileErrors.nickname} palette={palette} autoComplete="nickname" maxLength={64} />
+                <SheetField accessibilityLabel="邮箱" testID="profile-email-input" label="邮箱" value={email} onChangeText={setEmail} error={profileErrors.email} palette={palette} autoCapitalize="none" autoComplete="email" keyboardType="email-address" maxLength={255} placeholder="未设置" />
                 <Text style={[styles.helper, { color: palette.textMuted }]}>邮箱留空后保存即可清除。</Text>
               </>
             ) : (
               <>
-                <SheetField label="原密码" value={oldPassword} onChangeText={setOldPassword} error={passwordErrors.old_password} palette={palette} secureTextEntry autoComplete="current-password" />
-                <SheetField label="新密码" value={newPassword} onChangeText={setNewPassword} error={passwordErrors.new_password} palette={palette} secureTextEntry autoComplete="new-password" />
-                <SheetField label="确认新密码" value={confirmPassword} onChangeText={setConfirmPassword} error={passwordErrors.confirm_password} palette={palette} secureTextEntry autoComplete="new-password" />
+                <SheetField accessibilityLabel="原密码" testID="password-old-input" label="原密码" value={oldPassword} onChangeText={setOldPassword} error={passwordErrors.old_password} palette={palette} secureTextEntry autoComplete="current-password" />
+                <SheetField accessibilityLabel="新密码" testID="password-new-input" label="新密码" value={newPassword} onChangeText={setNewPassword} error={passwordErrors.new_password} palette={palette} secureTextEntry autoComplete="new-password" />
+                <SheetField accessibilityLabel="确认新密码" testID="password-confirm-input" label="确认新密码" value={confirmPassword} onChangeText={setConfirmPassword} error={passwordErrors.confirm_password} palette={palette} secureTextEntry autoComplete="new-password" />
               </>
             )}
-            {formError ? <Text style={[styles.sheetError, { color: palette.danger }]}>{formError}</Text> : null}
+            {formError ? (
+              <Text
+                accessibilityLiveRegion="polite"
+                testID={mode === 'profile' ? 'profile-form-error' : 'password-form-error'}
+                style={[styles.sheetError, { color: palette.danger }]}>
+                {formError}
+              </Text>
+            ) : null}
           </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>

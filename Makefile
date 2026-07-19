@@ -6,8 +6,8 @@ SERVER_DIR := $(WORKSPACE_ROOT)/packages/server
 
 .PHONY: api worker gateway migration gen-route gen-repository gen-docs gen-prompt docs install-hooks
 .PHONY: app-dev app-build app-package app-run app-build-server app-run-server app-build-docker app-run-docker
-.PHONY: app-go-test app-frontend-build app-frontend-test app-mobile-lint app-mobile-typecheck app-mobile-test
-.PHONY: server-db-smoke e2e-up e2e-smoke e2e e2e-logs e2e-down
+.PHONY: app-go-test app-frontend-build app-frontend-test app-mobile-lint app-mobile-typecheck app-mobile-test app-mobile-e2e-profile-password app-mobile-e2e-chat-persistence app-mobile-e2e-native-lifecycle
+.PHONY: server-db-smoke e2e-up e2e-app-backend e2e-smoke e2e e2e-logs e2e-down
 .PHONY: help
 
 # Server targets
@@ -94,12 +94,24 @@ app-mobile-typecheck:
 app-mobile-test:
 	cd "$(APP_MOBILE_DIR)" && pnpm test
 
+app-mobile-e2e-profile-password:
+	cd "$(APP_MOBILE_DIR)" && pnpm e2e:ios:profile-password
+
+app-mobile-e2e-chat-persistence:
+	cd "$(APP_MOBILE_DIR)" && pnpm e2e:ios:chat-persistence
+
+app-mobile-e2e-native-lifecycle:
+	cd "$(APP_MOBILE_DIR)" && pnpm e2e:ios:native-lifecycle
+
 # Cross-package E2E lifecycle
 server-db-smoke:
 	bash "$(WORKSPACE_ROOT)/e2e/scripts/e2e.sh" server-db-smoke
 
 e2e-up:
 	bash "$(WORKSPACE_ROOT)/e2e/scripts/e2e.sh" up
+
+e2e-app-backend:
+	bash "$(WORKSPACE_ROOT)/e2e/scripts/e2e.sh" app-backend
 
 e2e-smoke:
 	bash "$(WORKSPACE_ROOT)/e2e/scripts/e2e.sh" smoke
@@ -115,6 +127,6 @@ e2e-down:
 help:
 	@echo "Server: api worker gateway migration gen-route gen-repository gen-docs gen-prompt docs install-hooks"
 	@echo "App: app-dev app-build app-package app-run app-build-server app-run-server app-build-docker app-run-docker"
-	@echo "App checks: app-go-test app-frontend-build app-frontend-test app-mobile-lint app-mobile-typecheck app-mobile-test"
+	@echo "App checks: app-go-test app-frontend-build app-frontend-test app-mobile-lint app-mobile-typecheck app-mobile-test app-mobile-e2e-profile-password app-mobile-e2e-chat-persistence app-mobile-e2e-native-lifecycle"
 	@echo "Real database: server-db-smoke"
-	@echo "E2E: e2e-up e2e-smoke e2e e2e-logs e2e-down"
+	@echo "E2E: e2e-up e2e-app-backend e2e-smoke e2e e2e-logs e2e-down"

@@ -11,11 +11,12 @@ artifact_root="${workspace_root}/output/playwright"
 orbstack_context="${E2E_ORBSTACK_CONTEXT:-orbstack}"
 api_pid=""
 web_pid=""
+llm_pid=""
 compose_log=""
 
 command_name="${1:-}"
 if [[ -z "${command_name}" ]]; then
-  echo "usage: $0 <up|server-db-smoke|smoke|logs|down>" >&2
+  echo "usage: $0 <up|app-backend|server-db-smoke|smoke|logs|down>" >&2
   exit 2
 fi
 
@@ -47,6 +48,7 @@ if [[ "${command_name}" == "smoke" || "${command_name}" == "server-db-smoke" ]];
   export E2E_ELASTICSEARCH_PORT="${E2E_ELASTICSEARCH_PORT:-$(free_port)}"
   e2e_api_port="${E2E_API_PORT:-$(free_port)}"
   e2e_web_port="${E2E_WEB_PORT:-$(free_port)}"
+  e2e_llm_port="${E2E_LLM_PORT:-$(free_port)}"
 else
   e2e_run_id="${E2E_RUN_ID:-manual}"
   e2e_project="${E2E_PROJECT:-cove-e2e}"
@@ -55,10 +57,12 @@ else
   export E2E_ELASTICSEARCH_PORT="${E2E_ELASTICSEARCH_PORT:-59200}"
   e2e_api_port="${E2E_API_PORT:-58000}"
   e2e_web_port="${E2E_WEB_PORT:-55173}"
+  e2e_llm_port="${E2E_LLM_PORT:-58001}"
 fi
 
 e2e_api_url="http://127.0.0.1:${e2e_api_port}"
 e2e_web_url="http://127.0.0.1:${e2e_web_port}"
+e2e_llm_url="http://127.0.0.1:${e2e_llm_port}/v1"
 e2e_database_url="postgres://cove_e2e:cove_e2e@127.0.0.1:${E2E_POSTGRES_PORT}/cove_e2e?sslmode=disable"
 run_artifact_dir="${artifact_root}/runs/${e2e_run_id}"
 runtime_dir="${run_artifact_dir}/runtime"
@@ -105,15 +109,22 @@ print_environment() {
   echo "Redis: 127.0.0.1:${E2E_REDIS_PORT}"
   echo "Elasticsearch: http://127.0.0.1:${E2E_ELASTICSEARCH_PORT}"
   echo "API: ${e2e_api_url}"
+  if [[ "${command_name}" == "app-backend" || "${command_name}" == "server-db-smoke" ]]; then
+    echo "Deterministic LLM: ${e2e_llm_url}"
+  fi
   echo "Web: ${e2e_web_url}"
   echo "Artifacts: ${run_artifact_dir}"
 }
 
 server_env() {
+  local app_host="127.0.0.1"
+  if [[ "${command_name}" == "app-backend" ]]; then
+    app_host="${E2E_APP_HOST:-0.0.0.0}"
+  fi
   env \
     CONFIG_PATH="${config_file}" \
     APP_ENV=test \
-    APP_HOST=127.0.0.1 \
+    APP_HOST="${app_host}" \
     APP_PORT="${e2e_api_port}" \
     DATABASE_URL="${e2e_database_url}" \
     REDIS_ADDR="127.0.0.1:${E2E_REDIS_PORT}" \
@@ -169,10 +180,12 @@ start_dependencies() {
 run_smoke() {
   api_pid=""
   web_pid=""
+  llm_pid=""
   local api_log="${log_dir}/api.log"
   local web_log="${log_dir}/web.log"
   local migration_log="${log_dir}/migration.log"
   local server_real_db_log="${log_dir}/server-real-db.log"
+  local llm_log="${log_dir}/fake-openai.log"
   compose_log="${log_dir}/compose.log"
 
   mkdir -p "${runtime_dir}" "${log_dir}" "${storage_dir}"
@@ -184,6 +197,7 @@ run_smoke() {
     trap - EXIT
     stop_pid "${web_pid}"
     stop_pid "${api_pid}"
+    stop_pid "${llm_pid}"
     compose logs --no-color >"${compose_log}" 2>&1 || true
     if [[ "${E2E_KEEP_ENV:-0}" != "1" ]]; then
       compose down --volumes --remove-orphans >/dev/null 2>&1 || true
@@ -202,7 +216,18 @@ run_smoke() {
     cd "${server_dir}"
     go build -o "${runtime_dir}/cove-migration" ./cmd/migration
     go build -o "${runtime_dir}/cove-api" ./cmd/api
+    if [[ "${command_name}" == "app-backend" || "${command_name}" == "server-db-smoke" ]]; then
+      go build -o "${runtime_dir}/cove-fake-openai" ./integration/fakeopenai
+    fi
   )
+
+  if [[ "${command_name}" == "app-backend" || "${command_name}" == "server-db-smoke" ]]; then
+    COVE_E2E_LLM_ADDRESS="127.0.0.1:${e2e_llm_port}" \
+      COVE_E2E_LLM_ANSWER="${COVE_E2E_LLM_ANSWER:-Local chat reply persisted.}" \
+      "${runtime_dir}/cove-fake-openai" >"${llm_log}" 2>&1 &
+    llm_pid=$!
+    wait_for_url "deterministic OpenAI-compatible provider" "http://127.0.0.1:${e2e_llm_port}/health" "${llm_pid}" "${llm_log}"
+  fi
 
   if ! server_env "${runtime_dir}/cove-migration" >"${migration_log}" 2>&1; then
     echo "migration failed. Last log lines:" >&2
@@ -221,8 +246,18 @@ run_smoke() {
       COVE_REAL_DB_API_URL="${e2e_api_url}" \
         COVE_REAL_DB_DATABASE_URL="${e2e_database_url}" \
         COVE_REAL_DB_RUN_ID="${e2e_run_id}" \
+        COVE_REAL_DB_LLM_URL="${e2e_llm_url}" \
+        COVE_REAL_DB_LLM_ANSWER="${COVE_E2E_LLM_ANSWER:-Local chat reply persisted.}" \
         go test -count=1 -v ./integration/realdb
     ) 2>&1 | tee "${server_real_db_log}"
+    return
+  fi
+
+  if [[ "${command_name}" == "app-backend" ]]; then
+    echo "App backend is ready. Keep this command running while Metro and the Simulator flow execute."
+    echo "App fixture API URL: ${e2e_api_url}"
+    echo "App fixture model base URL: ${e2e_llm_url}"
+    wait "${api_pid}"
     return
   fi
 
@@ -248,6 +283,9 @@ case "${command_name}" in
     start_dependencies
     print_environment
     ;;
+  app-backend)
+    run_smoke
+    ;;
   smoke)
     run_smoke
     ;;
@@ -271,7 +309,7 @@ case "${command_name}" in
     ;;
   *)
     echo "unknown command: ${command_name}" >&2
-    echo "usage: $0 <up|server-db-smoke|smoke|logs|down>" >&2
+    echo "usage: $0 <up|app-backend|server-db-smoke|smoke|logs|down>" >&2
     exit 2
     ;;
 esac

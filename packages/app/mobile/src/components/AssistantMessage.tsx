@@ -144,7 +144,7 @@ export function AssistantMessage({ message, streaming }: { message: ChatMessage;
   const compact = message.pending === true;
 
   return (
-    <View style={styles.row}>
+    <View testID="chat-assistant-message" style={styles.row}>
       <BrandMark size={compact ? 28 : 36} />
       <View style={[styles.content, !compact && styles.contentCompleted]}>
         {timeline.map((item, index) => {

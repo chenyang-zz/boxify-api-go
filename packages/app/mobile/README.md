@@ -29,11 +29,16 @@ When unset, the development fallback is `http://localhost:8000`. The iOS Simulat
 pnpm install
 pnpm typecheck
 pnpm test
+pnpm e2e:ios:profile-password
+pnpm e2e:ios:chat-persistence
+pnpm e2e:ios:native-lifecycle
 pnpm exec expo prebuild --platform ios
 pnpm ios
 ```
 
 `react-native-enriched-markdown` contains native code, so use the generated development build rather than Expo Go.
+
+Native App scenarios follow the repository [`ios-simulator` skill](../../../.agents/skills/ios-simulator/SKILL.md). Deterministic profile/password, Chat/SSE persistence, and navigation/native lifecycle coverage is implemented in [`e2e/maestro/`](./e2e/maestro/README.md); it requires the disposable local backend/provider lifecycle, Metro, a development build, and an explicit Simulator.
 
 ## iOS toolchain note
 
